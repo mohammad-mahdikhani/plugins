@@ -124,6 +124,28 @@ $rows = HPL_Column_Mapper::apply( $parsed->sheets[0], $map );
 $plan = ( new HPL_Updater( hpl_catalog() ) )->plan( $rows );
 hpl_assert( $plan['stats']['changed'] >= 2, 'pdf matched and changed prices' );
 
+echo "== Flexible matching ==\n";
+$flex = new HPL_Updater( hpl_catalog() );
+$item = $flex->plan_row( array( 'sku' => 'SKU100', 'product_id' => '', 'barcode' => '', 'name' => '', 'regular_price' => '185000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '11' === $item['product_id'], 'SKU100 matches SKU-100' );
+$item = $flex->plan_row( array( 'sku' => '100', 'product_id' => '', 'barcode' => '', 'name' => '', 'regular_price' => '185000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '11' === $item['product_id'], '100 matches SKU-100 prefix' );
+$item = $flex->plan_row( array( 'sku' => '6260001', 'product_id' => '', 'barcode' => '', 'name' => '', 'regular_price' => '185000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '11' === $item['product_id'], 'barcode in sku column' );
+$item = $flex->plan_row( array( 'sku' => '11', 'product_id' => '', 'barcode' => '', 'name' => '', 'regular_price' => '185000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '11' === $item['product_id'], 'product id in sku column' );
+$item = $flex->plan_row( array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'روغن مایع', 'regular_price' => '185000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '11' === $item['product_id'], 'partial unique name' );
+$item = $flex->plan_row( array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'چای سیاه', 'regular_price' => '210000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '13' === $item['product_id'], 'name without unit' );
+$zeros = HPL_Catalog::from_products(
+	array(
+		array( 'id' => 21, 'sku' => '00100', 'name' => 'کالای صفر دار', 'regular_price' => '10', 'sale_price' => '', 'stock' => '1' ),
+	)
+);
+$item = ( new HPL_Updater( $zeros ) )->plan_row( array( 'sku' => '100', 'product_id' => '', 'barcode' => '', 'name' => '', 'regular_price' => '20', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '21' === $item['product_id'], 'leading zeros stripped' );
+
 echo "== Name / barcode fallback ==\n";
 $row  = array( 'sku' => '', 'product_id' => '', 'barcode' => '6260001', 'name' => '', 'regular_price' => '199000', 'sale_price' => '', 'stock' => '' );
 $item = ( new HPL_Updater( hpl_catalog() ) )->plan_row( $row );

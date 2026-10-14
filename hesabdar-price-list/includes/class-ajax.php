@@ -149,13 +149,22 @@ class HPL_Ajax {
 		$payload['import_id']  = 0;
 		HPL_Storage::update( $token, $payload );
 
-		$preview_rows = array_slice( $plan['items'], 0, 250 );
+		$priority = array();
+		$rest     = array();
+		foreach ( $plan['items'] as $item ) {
+			if ( in_array( $item['status'], array( 'missing', 'changed', 'invalid' ), true ) ) {
+				$priority[] = $item;
+			} else {
+				$rest[] = $item;
+			}
+		}
+		$preview_rows = array_slice( array_merge( $priority, $rest ), 0, 500 );
 		wp_send_json_success(
 			array(
 				'token'     => $token,
 				'stats'     => $plan['stats'],
 				'items'     => $preview_rows,
-				'truncated' => count( $plan['items'] ) > 250,
+				'truncated' => count( $plan['items'] ) > 500,
 				'total'     => count( $plan['items'] ),
 			)
 		);

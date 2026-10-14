@@ -94,6 +94,7 @@ class HPL_Updater {
 			'new_stock'     => '',
 			'status'        => 'missing',
 			'changes'       => array(),
+			'hint'          => '',
 		);
 
 		if ( ( isset( $row['regular_price'] ) && '__invalid__' === $row['regular_price'] )
@@ -106,6 +107,7 @@ class HPL_Updater {
 		$product = $this->catalog->match( $row, $this->settings['match_order'] );
 		if ( ! $product ) {
 			$item['status'] = 'missing';
+			$item['hint']   = $this->catalog->suggest( $row );
 			return $item;
 		}
 

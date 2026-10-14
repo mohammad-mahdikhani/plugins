@@ -69,17 +69,23 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 			<p>اگر همه چیز درست است، قیمت‌ها را اعمال کنید. تا قبل از این مرحله هیچ محصولی تغییر نمی‌کند.</p>
 		</div>
 		<div class="hpl-stats" id="hpl-stats"></div>
+		<div class="hpl-filters" id="hpl-filters">
+			<button type="button" class="hpl-btn is-on" data-filter="all">همه</button>
+			<button type="button" class="hpl-btn" data-filter="changed">قابل تغییر</button>
+			<button type="button" class="hpl-btn" data-filter="missing">پیدا نشده</button>
+			<button type="button" class="hpl-btn" data-filter="unchanged">بدون تغییر</button>
+		</div>
+		<p class="hpl-hint" id="hpl-match-note"></p>
 		<div class="hpl-table-wrap hpl-table-tall">
 			<table class="hpl-table" id="hpl-preview">
 				<thead>
 					<tr>
 						<th>وضعیت</th>
-						<th>کد</th>
+						<th>کد فایل</th>
 						<th>محصول فروشگاه</th>
+						<th>نحوه پیدا شدن</th>
 						<th>قیمت فعلی</th>
 						<th>قیمت جدید</th>
-						<th>ویژه فعلی</th>
-						<th>ویژه جدید</th>
 					</tr>
 				</thead>
 				<tbody></tbody>

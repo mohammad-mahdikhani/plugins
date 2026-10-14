@@ -52,9 +52,61 @@ class HPL_Normalizer {
 	 */
 	public static function sku( $value ) {
 		$string = self::digits( $value );
+		$string = str_replace( array( 'ي', 'ك' ), array( 'ی', 'ک' ), $string );
 		$string = str_replace( array( "\xE2\x80\x8C", "\xE2\x80\x8F", "\xC2\xA0" ), '', $string );
 		$string = preg_replace( '/\s+/u', '', $string );
 		return strtoupper( $string );
+	}
+
+	/**
+	 * All lookup variants of a code (SKU / barcode / id).
+	 *
+	 * @param mixed $value Raw code.
+	 * @return string[]
+	 */
+	public static function code_keys( $value ) {
+		$sku = self::sku( $value );
+		if ( '' === $sku ) {
+			return array();
+		}
+
+		$keys   = array( $sku );
+		$compact = preg_replace( '/[^A-Z0-9]/', '', $sku );
+		if ( '' !== $compact ) {
+			$keys[] = $compact;
+			$nozero = ltrim( $compact, '0' );
+			if ( '' !== $nozero ) {
+				$keys[] = $nozero;
+			}
+		}
+
+		foreach ( array( 'SKU-', 'SKU', 'PROD-', 'PROD', 'P-', 'WC-', 'ID-', '#' ) as $prefix ) {
+			if ( 0 === strpos( $sku, $prefix ) && strlen( $sku ) > strlen( $prefix ) + 1 ) {
+				$rest = substr( $sku, strlen( $prefix ) );
+				$keys = array_merge( $keys, self::code_keys( $rest ) );
+			}
+		}
+
+		$keys = array_values( array_unique( array_filter( $keys ) ) );
+		return $keys;
+	}
+
+	/**
+	 * Name without quantity/unit noise, for looser matching.
+	 *
+	 * @param mixed $value Raw name.
+	 * @return string
+	 */
+	public static function name_core( $value ) {
+		$string = self::name( $value );
+		$string = preg_replace(
+			'/\b(کیلوگرم|کیلو|kg|گرم|gr|g|لیتر|میل[یي]?[\s]?لیتر|ml|ltr|عدد|بسته|کارتن|جفت|دستگاه|رول|متر|سانتی[\s]?متر|میلی[\s]?متر)\b/u',
+			' ',
+			$string
+		);
+		$string = preg_replace( '/\b\d+([.\/]\d+)?\b/u', ' ', $string );
+		$string = preg_replace( '/\s+/u', ' ', $string );
+		return trim( $string );
 	}
 
 	/**

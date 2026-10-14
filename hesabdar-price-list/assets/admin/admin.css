@@ -234,6 +234,24 @@
 	background: #fff8e8;
 }
 
+.hpl-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 14px 0 8px;
+}
+
+.hpl-filters .hpl-btn.is-on {
+	background: #0f6b4c;
+	border-color: #0f6b4c;
+	color: #fff;
+}
+
+.hpl-hint-cell {
+	color: #8a3b32;
+	font-size: 12px;
+}
+
 .hpl-stats {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

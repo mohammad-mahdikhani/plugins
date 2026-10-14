@@ -23,7 +23,8 @@ class HPL_Column_Mapper {
 			'sku'            => array(
 				'sku', 'skucode', 'productsku', 'itemsku', 'code', 'itemcode',
 				'کد', 'کدکالا', 'کدمحصول', 'کداقلام', 'شناسهکالا', 'کدجنس',
-				'کدانبار', 'شمارهکالا', 'کدفنی', 'partno', 'partnumber',
+				'کدانبار', 'شمارهکالا', 'کدفنی', 'کدحسابداری', 'کدسیستم',
+				'کدسایت', 'کدووکامرس', 'partno', 'partnumber', 'itemno',
 			),
 			'product_id'     => array(
 				'id', 'productid', 'wc_id', 'wcid', 'postid',
@@ -187,6 +188,29 @@ class HPL_Column_Mapper {
 					$row[ $field ] = HPL_Normalizer::sku( $raw );
 				}
 			}
+
+			$row['identifiers'] = array();
+			foreach ( array( $row['sku'], $row['product_id'], $row['barcode'] ) as $ident ) {
+				if ( '' !== $ident ) {
+					$row['identifiers'][] = $ident;
+				}
+			}
+			$price_cols = array();
+			foreach ( array( 'regular_price', 'sale_price', 'stock' ) as $field ) {
+				if ( isset( $mapping[ $field ] ) && (int) $mapping[ $field ] >= 0 ) {
+					$price_cols[ (int) $mapping[ $field ] ] = true;
+				}
+			}
+			foreach ( $cells as $col => $raw ) {
+				if ( isset( $price_cols[ (int) $col ] ) ) {
+					continue;
+				}
+				$code = HPL_Normalizer::sku( $raw );
+				if ( strlen( $code ) >= 2 && strlen( $code ) <= 64 ) {
+					$row['identifiers'][] = $code;
+				}
+			}
+			$row['identifiers'] = array_values( array_unique( array_filter( $row['identifiers'] ) ) );
 
 			if ( self::is_empty_row( $row ) ) {
 				continue;

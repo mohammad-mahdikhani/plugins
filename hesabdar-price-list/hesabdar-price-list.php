@@ -3,7 +3,7 @@
  * Plugin Name: Hesabdar Price List
  * Plugin URI:  https://webakery.ir
  * Description: به‌روزرسانی یکجای قیمت محصولات ووکامرس با آپلود لیست قیمت اکسل یا PDF.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      webakery
  * Author URI:  https://webakery.ir
  * Text Domain: hesabdar-price-list
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HPL_VERSION', '1.0.0' );
+define( 'HPL_VERSION', '1.0.1' );
 define( 'HPL_FILE', __FILE__ );
 define( 'HPL_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HPL_URL', plugin_dir_url( __FILE__ ) );

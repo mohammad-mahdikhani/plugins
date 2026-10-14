@@ -41,10 +41,22 @@
       {
         changed: "تغییر می‌کند",
         unchanged: "بدون تغییر",
-        missing: "در فروشگاه نیست",
+        missing: "پیدا نشد",
         invalid: "نامعتبر",
         skipped: "رد شد",
       }[status] || status
+    );
+  }
+
+  function matchLabel(method) {
+    return (
+      {
+        sku: "کد کالا",
+        product_id: "شناسه",
+        barcode: "بارکد",
+        code: "کد/بارکد",
+        name: "نام کالا",
+      }[method] || "—"
     );
   }
 
@@ -156,27 +168,41 @@
       .map(([k, v]) => '<div class="hpl-stat"><b>' + fmt(v) + "</b><span>" + k + "</span></div>")
       .join("");
 
+    const note = $("#hpl-match-note");
+    if (note) {
+      const missing = Number(stats.missing || 0);
+      note.textContent = missing
+        ? "ردیف‌های پیدا نشده معمولاً به‌خاطر متفاوت بودن کد فایل با SKU فروشگاه است. فیلتر «پیدا نشده» را بزنید."
+        : "همه ردیف‌های فایل با محصولات فروشگاه تطبیق داده شد.";
+    }
     const tbody = $("#hpl-preview tbody");
     tbody.innerHTML = (data.items || [])
       .map((item) => {
+        const shop =
+          item.status === "missing"
+            ? escapeHtml(item.name || "") +
+              (item.hint
+                ? '<div class="hpl-hint-cell">نزدیک‌ترین در فروشگاه: ' + escapeHtml(item.hint) + "</div>"
+                : "")
+            : escapeHtml(item.product_name || item.name);
         return (
           '<tr class="is-' +
+          escapeHtml(item.status) +
+          '" data-status="' +
           escapeHtml(item.status) +
           '"><td>' +
           statusLabel(item.status) +
           "</td><td>" +
           escapeHtml(item.sku) +
           "</td><td>" +
-          escapeHtml(item.product_name || item.name) +
+          shop +
+          "</td><td>" +
+          (item.status === "missing" ? "—" : matchLabel(item.matched_by)) +
           "</td><td>" +
           escapeHtml(item.old_regular) +
           "</td><td><b>" +
           escapeHtml(item.new_regular) +
-          "</b></td><td>" +
-          escapeHtml(item.old_sale) +
-          "</td><td>" +
-          escapeHtml(item.new_sale) +
-          "</td></tr>"
+          "</b></td></tr>"
         );
       })
       .join("");
@@ -255,6 +281,16 @@
     if (back1) back1.addEventListener("click", () => setStep(1));
     const back2 = $("#hpl-back-2");
     if (back2) back2.addEventListener("click", () => setStep(2));
+    $$("#hpl-filters .hpl-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        $$("#hpl-filters .hpl-btn").forEach((b) => b.classList.remove("is-on"));
+        btn.classList.add("is-on");
+        const filter = btn.getAttribute("data-filter");
+        $$("#hpl-preview tbody tr").forEach((tr) => {
+          tr.style.display = filter === "all" || tr.getAttribute("data-status") === filter ? "" : "none";
+        });
+      });
+    });
   }
 
   function bindHistory() {
