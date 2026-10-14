@@ -1,0 +1,6 @@
+SimpleXLSX, SimpleXLS and SimpleXLSXGen
+Copyright (c) Sergey Shuchkin
+License: MIT
+https://github.com/shuchkin/simplexlsx
+https://github.com/shuchkin/simplexls
+https://github.com/shuchkin/simplexlsxgen
