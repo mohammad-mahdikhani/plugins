@@ -16,6 +16,7 @@ require_once HPL_DIR . 'includes/parsers/class-xls-parser.php';
 require_once HPL_DIR . 'includes/parsers/class-pdf-parser.php';
 require_once HPL_DIR . 'includes/class-catalog.php';
 require_once HPL_DIR . 'includes/class-updater.php';
+require_once HPL_DIR . 'includes/class-screener.php';
 require_once HPL_DIR . 'includes/class-export.php';
 require_once HPL_DIR . 'vendor/SimpleXLSX.php';
 require_once HPL_DIR . 'vendor/SimpleXLSXGen.php';

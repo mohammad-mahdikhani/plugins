@@ -165,6 +165,28 @@ $long = HPL_Catalog::from_products(
 $item = ( new HPL_Updater( $long ) )->plan_row( array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'دستگاه تصفيه آب آکواجوی مدل 401', 'regular_price' => '13000000', 'sale_price' => '', 'stock' => '' ) );
 hpl_assert( '33' === $item['product_id'], 'aquajoy 401 matches longer shop title' );
 
+echo "== Screening engine ==\n";
+$screen_cat = HPL_Catalog::from_products(
+	array(
+		array( 'id' => 11, 'sku' => 'SKU-100', 'name' => 'روغن مایع ۱.۸ لیتر', 'regular_price' => '150000', 'sale_price' => '', 'stock' => '10' ),
+		array( 'id' => 31, 'sku' => 'AQ-401', 'name' => 'تصفیه آب آکواجوی مدل 401', 'regular_price' => '10000000', 'sale_price' => '', 'stock' => '2' ),
+		array( 'id' => 32, 'sku' => 'AQ-402', 'name' => 'تصفیه آب آکواجوی مدل 402', 'regular_price' => '11000000', 'sale_price' => '', 'stock' => '2' ),
+	)
+);
+$screen = HPL_Screener::run(
+	array(
+		array( 'sku' => 'SKU-100', 'product_id' => '', 'barcode' => '', 'name' => 'روغن مایع', 'regular_price' => '185000', 'sale_price' => '', 'stock' => '40' ),
+		array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'دستگاه تصفيه آب آکواجوی مدل 401', 'regular_price' => '13000000', 'sale_price' => '', 'stock' => '3' ),
+		array( 'sku' => 'UNKNOWN-X', 'product_id' => '', 'barcode' => '', 'name' => 'کالای کاملا ناموجود در فروشگاه تست', 'regular_price' => '1000', 'sale_price' => '', 'stock' => '1' ),
+	),
+	$screen_cat,
+	new HPL_Updater( $screen_cat )
+);
+hpl_assert( 2 === $screen['stats']['on_site'], 'screen finds two products on site' );
+hpl_assert( 1 === $screen['stats']['not_on_site'] || 1 === $screen['stats']['review'], 'unknown row screened out of on-site' );
+$create = HPL_Screener::prepare_create( array( 'sku' => 'BRAND-NEW', 'name' => 'کالای جدید تست', 'regular_price' => '5000', 'stock' => '8' ), 9 );
+hpl_assert( 'create' === $create['status'] && 'کالای جدید تست' === $create['name'], 'prepare create from file row' );
+
 echo "== Name / barcode fallback ==\n";
 $row  = array( 'sku' => '', 'product_id' => '', 'barcode' => '6260001', 'name' => '', 'regular_price' => '199000', 'sale_price' => '', 'stock' => '' );
 $item = ( new HPL_Updater( hpl_catalog() ) )->plan_row( $row );

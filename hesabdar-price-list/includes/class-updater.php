@@ -34,7 +34,7 @@ class HPL_Updater {
 			'match_order'      => array( 'sku', 'product_id', 'barcode', 'name' ),
 			'update_regular'   => true,
 			'update_sale'      => true,
-			'update_stock'     => false,
+			'update_stock'     => true,
 			'skip_empty_price' => true,
 			'zero_clears_sale' => true,
 		);
@@ -180,7 +180,7 @@ class HPL_Updater {
 
 		foreach ( $slice as $item ) {
 			$processed++;
-			if ( 'changed' !== $item['status'] ) {
+			if ( ! in_array( $item['status'], array( 'changed', 'create' ), true ) ) {
 				continue;
 			}
 			try {

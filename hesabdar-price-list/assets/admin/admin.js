@@ -146,8 +146,137 @@
     setStep(2);
   }
 
+  function renderScreen(data) {
+    state.screen = data;
+    const stats = data.stats || {};
+    $("#hpl-stats").innerHTML = [
+      ["ردیف فایل", stats.file_rows],
+      ["محصول سایت", stats.site_products],
+      ["در سایت", stats.on_site],
+      ["نیاز به تأیید", stats.review],
+      ["در سایت نیست", stats.not_on_site],
+      ["آماده اعمال", data.ready],
+    ]
+      .map(([k, v]) => '<div class="hpl-stat"><b>' + fmt(v) + "</b><span>" + k + "</span></div>")
+      .join("");
+    const note = $("#hpl-match-note");
+    if (note) {
+      note.textContent =
+        "در سایت: قیمت و موجودی به‌روز می‌شود. نیاز به تأیید: پیشنهاد موتور را بپذیرید. در سایت نیست: غایب‌ها را ست کنید یا رد کنید.";
+    }
+
+    const onBody = $("#hpl-body-on_site");
+    if (onBody) {
+      onBody.innerHTML = (data.on_site || [])
+        .map((item) => {
+          return (
+            "<tr class='is-" +
+            escapeHtml(item.status) +
+            "'><td>" +
+            escapeHtml(item.sku) +
+            "</td><td>" +
+            escapeHtml(item.product_name || item.name) +
+            "<div class='hpl-cand'>" +
+            matchLabel(item.matched_by) +
+            "</div></td><td>" +
+            escapeHtml(item.old_regular) +
+            "</td><td><b>" +
+            escapeHtml(item.new_regular) +
+            "</b></td><td>" +
+            escapeHtml(item.old_stock) +
+            "</td><td><b>" +
+            escapeHtml(item.new_stock) +
+            "</b></td></tr>"
+          );
+        })
+        .join("");
+    }
+
+    const reviewBody = $("#hpl-body-review");
+    if (reviewBody) {
+      reviewBody.innerHTML = (data.review || [])
+        .map((item) => {
+          const top = (item.candidates || [])[0];
+          const cand = top
+            ? escapeHtml(top.name) + " (" + escapeHtml(top.sku || "بدون کد") + ")"
+            : "—";
+          return (
+            "<tr data-index='" +
+            item.row_index +
+            "'><td>" +
+            escapeHtml(item.sku || item.name) +
+            "<div class='hpl-cand'>" +
+            escapeHtml(item.name || "") +
+            "</div></td><td>" +
+            cand +
+            "</td><td class='hpl-score'>" +
+            Math.round((item.confidence || 0) * 100) +
+            "٪</td><td>" +
+            (top
+              ? "<button type='button' class='hpl-btn hpl-btn-primary hpl-accept' data-index='" +
+                item.row_index +
+                "' data-id='" +
+                escapeHtml(top.id) +
+                "'>تأیید اتصال</button> "
+              : "") +
+            "<button type='button' class='hpl-btn hpl-skip' data-index='" +
+            item.row_index +
+            "'>رد</button></td></tr>"
+          );
+        })
+        .join("");
+    }
+
+    const missBody = $("#hpl-body-not_on_site");
+    if (missBody) {
+      missBody.innerHTML = (data.not_on_site || [])
+        .map((item) => {
+          return (
+            "<tr><td>" +
+            escapeHtml(item.sku) +
+            "</td><td>" +
+            escapeHtml(item.name) +
+            (item.hint ? "<div class='hpl-cand'>نزدیک‌ترین: " + escapeHtml(item.hint) + "</div>" : "") +
+            "</td><td>" +
+            escapeHtml(item.new_regular) +
+            "</td><td>" +
+            escapeHtml(item.new_stock) +
+            "</td><td><button type='button' class='hpl-btn hpl-btn-primary hpl-create' data-index='" +
+            item.row_index +
+            "'>ست کردن در سایت</button> <button type='button' class='hpl-btn hpl-skip' data-index='" +
+            item.row_index +
+            "'>نادیده</button></td></tr>"
+          );
+        })
+        .join("");
+    }
+
+    const nif = $("#hpl-body-not_in_file");
+    if (nif) {
+      nif.innerHTML = (data.not_in_file || [])
+        .map((p) => {
+          return (
+            "<tr><td>" +
+            escapeHtml(p.id) +
+            "</td><td>" +
+            escapeHtml(p.name) +
+            "</td><td>" +
+            escapeHtml(p.sku) +
+            "</td><td>" +
+            escapeHtml(p.regular_price) +
+            "</td><td>" +
+            escapeHtml(p.stock) +
+            "</td></tr>"
+          );
+        })
+        .join("");
+    }
+    bindScreenButtons();
+    setStep(3);
+  }
+
   async function preview() {
-    toast(HPL.i18n.previewing);
+    toast("در حال غربالگری همه ردیف‌های فایل با همه محصولات سایت…");
     const data = await post("hpl_preview", {
       token: state.token,
       sheet: String(state.sheet),
@@ -156,57 +285,30 @@
       update_sale: $("#hpl-update-sale").checked ? "1" : "0",
       update_stock: $("#hpl-update-stock").checked ? "1" : "0",
     });
-    const stats = data.stats || {};
-    $("#hpl-stats").innerHTML = [
-      ["کل ردیف‌ها", stats.total],
-      ["تطبیق‌شده", stats.matched],
-      ["قابل تغییر", stats.changed],
-      ["بدون تغییر", stats.unchanged],
-      ["پیدا نشد", stats.missing],
-      ["نامعتبر", stats.invalid],
-    ]
-      .map(([k, v]) => '<div class="hpl-stat"><b>' + fmt(v) + "</b><span>" + k + "</span></div>")
-      .join("");
+    renderScreen(data);
+  }
 
-    const note = $("#hpl-match-note");
-    if (note) {
-      const missing = Number(stats.missing || 0);
-      note.textContent = missing
-        ? "ردیف‌های پیدا نشده معمولاً به‌خاطر متفاوت بودن کد فایل با SKU فروشگاه است. فیلتر «پیدا نشده» را بزنید."
-        : "همه ردیف‌های فایل با محصولات فروشگاه تطبیق داده شد.";
-    }
-    const tbody = $("#hpl-preview tbody");
-    tbody.innerHTML = (data.items || [])
-      .map((item) => {
-        const shop =
-          item.status === "missing"
-            ? escapeHtml(item.name || "") +
-              (item.hint
-                ? '<div class="hpl-hint-cell">نزدیک‌ترین در فروشگاه: ' + escapeHtml(item.hint) + "</div>"
-                : "")
-            : escapeHtml(item.product_name || item.name);
-        return (
-          '<tr class="is-' +
-          escapeHtml(item.status) +
-          '" data-status="' +
-          escapeHtml(item.status) +
-          '"><td>' +
-          statusLabel(item.status) +
-          "</td><td>" +
-          escapeHtml(item.sku) +
-          "</td><td>" +
-          shop +
-          "</td><td>" +
-          (item.status === "missing" ? "—" : matchLabel(item.matched_by)) +
-          "</td><td>" +
-          escapeHtml(item.old_regular) +
-          "</td><td><b>" +
-          escapeHtml(item.new_regular) +
-          "</b></td></tr>"
+  async function screenDo(doAction, index, productId) {
+    const payload = { token: state.token, do: doAction };
+    if (index != null) payload.index = String(index);
+    if (productId) payload.product_id = String(productId);
+    const data = await post("hpl_screen_action", payload);
+    renderScreen(data);
+  }
+
+  function bindScreenButtons() {
+    $$(".hpl-accept").forEach((btn) => {
+      btn.onclick = () =>
+        screenDo("accept", btn.getAttribute("data-index"), btn.getAttribute("data-id")).catch((err) =>
+          toast(err.message)
         );
-      })
-      .join("");
-    setStep(3);
+    });
+    $$(".hpl-create").forEach((btn) => {
+      btn.onclick = () => screenDo("create", btn.getAttribute("data-index")).catch((err) => toast(err.message));
+    });
+    $$(".hpl-skip").forEach((btn) => {
+      btn.onclick = () => screenDo("skip", btn.getAttribute("data-index")).catch((err) => toast(err.message));
+    });
   }
 
   async function applyAll() {
@@ -215,8 +317,13 @@
     let updated = 0;
     const bar = $("#hpl-bar");
     const text = $("#hpl-progress-text");
+    const publish = $("#hpl-publish-new") && $("#hpl-publish-new").checked ? "1" : "0";
     while (true) {
-      const data = await post("hpl_apply", { token: state.token, offset: String(offset) });
+      const data = await post("hpl_apply", {
+        token: state.token,
+        offset: String(offset),
+        publish_new: publish,
+      });
       offset = data.offset;
       updated += Number(data.updated || 0);
       const pct = data.total ? Math.round((offset / data.total) * 100) : 100;
@@ -285,12 +392,21 @@
       btn.addEventListener("click", () => {
         $$("#hpl-filters .hpl-btn").forEach((b) => b.classList.remove("is-on"));
         btn.classList.add("is-on");
-        const filter = btn.getAttribute("data-filter");
-        $$("#hpl-preview tbody tr").forEach((tr) => {
-          tr.style.display = filter === "all" || tr.getAttribute("data-status") === filter ? "" : "none";
-        });
+        const panel = btn.getAttribute("data-panel");
+        $$(".hpl-screen-panels .hpl-table-wrap").forEach((el) => el.classList.add("is-hidden"));
+        const target = $("#hpl-panel-" + panel);
+        if (target) target.classList.remove("is-hidden");
       });
     });
+    const acceptAll = $("#hpl-accept-all");
+    if (acceptAll)
+      acceptAll.addEventListener("click", () => screenDo("accept_all").catch((err) => toast(err.message)));
+    const createAll = $("#hpl-create-all");
+    if (createAll)
+      createAll.addEventListener("click", () => {
+        if (!confirm("همه کالاهای غایب به‌عنوان محصول جدید در سایت ست شوند؟")) return;
+        screenDo("create_all").catch((err) => toast(err.message));
+      });
   }
 
   function bindHistory() {

@@ -247,6 +247,19 @@
 	color: #fff;
 }
 
+.hpl-score {
+	font-variant-numeric: tabular-nums;
+	color: #0f6b4c;
+	font-weight: 700;
+}
+
+.hpl-cand {
+	display: block;
+	color: #5b7268;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
 .hpl-hint-cell {
 	color: #8a3b32;
 	font-size: 12px;

@@ -35,6 +35,9 @@ class HPL_Catalog {
 	/** @var array<string, string[]> name_core => ids when duplicates */
 	private $name_core_dups = array();
 
+	/** @var array<string, array<string, bool>> token => product id set */
+	public $inv = array();
+
 	/**
 	 * @param array<int, array<string, mixed>> $products Products.
 	 * @return self
@@ -86,6 +89,8 @@ class HPL_Catalog {
 				}
 			}
 
+			$catalog->index_search_tokens( $id, $record );
+
 			if ( self::is_parent_variable( $type ) ) {
 				continue;
 			}
@@ -134,6 +139,29 @@ class HPL_Catalog {
 	 * @param string $id       Product id.
 	 * @param int    $priority Priority.
 	 */
+	/**
+	 * @param string               $id     Product id.
+	 * @param array<string, mixed> $record Product.
+	 */
+	private function index_search_tokens( $id, array $record ) {
+		$tokens = isset( $record['name_tokens'] ) ? $record['name_tokens'] : array();
+		foreach ( array( $record['sku'], $record['barcode'], $id ) as $code ) {
+			foreach ( HPL_Normalizer::code_keys( $code ) as $key ) {
+				$tokens[] = mb_strtolower( $key, 'UTF-8' );
+			}
+		}
+		foreach ( $tokens as $token ) {
+			$token = trim( (string) $token );
+			if ( mb_strlen( $token, 'UTF-8' ) < 2 ) {
+				continue;
+			}
+			if ( ! isset( $this->inv[ $token ] ) ) {
+				$this->inv[ $token ] = array();
+			}
+			$this->inv[ $token ][ $id ] = true;
+		}
+	}
+
 	private function index_code( $key, $id, $priority ) {
 		if ( '' === $key ) {
 			return;
@@ -558,6 +586,188 @@ class HPL_Catalog {
 			$label .= ' — ' . $product['sku'];
 		}
 		return $label;
+	}
+
+	/**
+	 * Rank site products against one file row using every code and name signal.
+	 *
+	 * @param array<string, mixed> $row   Row.
+	 * @param int                  $limit Max results.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function rank( array $row, $limit = 5 ) {
+		$direct = $this->match( $row );
+		$ranked = array();
+		if ( $direct ) {
+			$ranked[] = array(
+				'product' => $direct,
+				'score'   => 1,
+				'reason'  => isset( $direct['matched_by'] ) ? $direct['matched_by'] : 'code',
+			);
+		}
+
+		$tokens = self::row_tokens( $row );
+		$ids    = array();
+		foreach ( $tokens as $token ) {
+			if ( isset( $this->inv[ $token ] ) ) {
+				foreach ( $this->inv[ $token ] as $id => $flag ) {
+					$ids[ $id ] = true;
+				}
+			}
+		}
+		if ( empty( $ids ) ) {
+			foreach ( $this->by_id as $id => $product ) {
+				if ( ! self::is_parent_variable( $product['type'] ) ) {
+					$ids[ $id ] = true;
+				}
+			}
+		}
+
+		$query_compact = HPL_Normalizer::name_compact( isset( $row['name'] ) ? $row['name'] : '' );
+		$query_tokens  = HPL_Normalizer::name_tokens( isset( $row['name'] ) ? $row['name'] : '' );
+		$numbers       = array();
+		foreach ( $query_tokens as $token ) {
+			if ( preg_match( '/^\d+([.\/]\d+)?$/', $token ) ) {
+				$numbers[] = $token;
+			}
+		}
+
+		foreach ( array_keys( $ids ) as $id ) {
+			if ( $direct && (string) $id === (string) $direct['id'] ) {
+				continue;
+			}
+			if ( ! isset( $this->by_id[ $id ] ) ) {
+				continue;
+			}
+			$product = $this->by_id[ $id ];
+			if ( self::is_parent_variable( $product['type'] ) ) {
+				continue;
+			}
+			$score = $this->score_product( $row, $product, $tokens, $query_compact, $query_tokens, $numbers );
+			if ( $score < 0.42 ) {
+				continue;
+			}
+			$ranked[] = array(
+				'product' => $product,
+				'score'   => $score,
+				'reason'  => 'engine',
+			);
+		}
+
+		usort(
+			$ranked,
+			static function ( $a, $b ) {
+				if ( $a['score'] === $b['score'] ) {
+					return 0;
+				}
+				return ( $a['score'] > $b['score'] ) ? -1 : 1;
+			}
+		);
+
+		return array_slice( $ranked, 0, $limit );
+	}
+
+	/**
+	 * @param array<string, mixed> $row Row.
+	 * @return string[]
+	 */
+	public static function row_tokens( array $row ) {
+		$tokens = HPL_Normalizer::name_tokens( isset( $row['name'] ) ? $row['name'] : '' );
+		$raws   = array();
+		foreach ( array( 'sku', 'product_id', 'barcode' ) as $field ) {
+			if ( ! empty( $row[ $field ] ) ) {
+				$raws[] = $row[ $field ];
+			}
+		}
+		if ( ! empty( $row['identifiers'] ) && is_array( $row['identifiers'] ) ) {
+			$raws = array_merge( $raws, $row['identifiers'] );
+		}
+		foreach ( $raws as $raw ) {
+			foreach ( HPL_Normalizer::code_keys( $raw ) as $key ) {
+				$tokens[] = mb_strtolower( $key, 'UTF-8' );
+			}
+		}
+		return array_values( array_unique( array_filter( $tokens ) ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $row           Row.
+	 * @param array<string, mixed> $product       Product.
+	 * @param string[]             $row_tokens    Tokens.
+	 * @param string               $query_compact Compact name.
+	 * @param string[]             $query_tokens  Name tokens.
+	 * @param string[]             $numbers       Model numbers.
+	 * @return float
+	 */
+	private function score_product( array $row, array $product, array $row_tokens, $query_compact, array $query_tokens, array $numbers ) {
+		$score = 0.0;
+
+		foreach ( array( isset( $row['sku'] ) ? $row['sku'] : '', isset( $row['product_id'] ) ? $row['product_id'] : '', isset( $row['barcode'] ) ? $row['barcode'] : '' ) as $code ) {
+			if ( ! $code ) {
+				continue;
+			}
+			foreach ( HPL_Normalizer::code_keys( $code ) as $key ) {
+				if ( $key && ( $key === $product['sku'] || $key === $product['barcode'] || $key === $product['id'] ) ) {
+					return 0.99;
+				}
+				if ( $key && isset( $this->by_code[ $key ] ) && (string) $this->by_code[ $key ] === (string) $product['id'] ) {
+					return 0.97;
+				}
+			}
+		}
+
+		if ( $query_compact && ! empty( $product['name_compact'] ) ) {
+			if ( $query_compact === $product['name_compact'] ) {
+				$score = max( $score, 0.94 );
+			} elseif ( false !== mb_strpos( $product['name_compact'], $query_compact, 0, 'UTF-8' ) || false !== mb_strpos( $query_compact, $product['name_compact'], 0, 'UTF-8' ) ) {
+				$score = max( $score, 0.88 );
+			}
+		}
+
+		$hay_tokens = ! empty( $product['name_tokens'] ) ? $product['name_tokens'] : array();
+		$hay_set    = array_fill_keys( $hay_tokens, true );
+		foreach ( $numbers as $num ) {
+			if ( ! isset( $hay_set[ $num ] ) && false === strpos( (string) $product['sku'], (string) $num ) ) {
+				return min( $score, 0.35 );
+			}
+		}
+
+		if ( ! empty( $query_tokens ) ) {
+			$hit = 0;
+			foreach ( $query_tokens as $token ) {
+				if ( isset( $hay_set[ $token ] ) ) {
+					$hit++;
+				}
+			}
+			$score = max( $score, $hit / count( $query_tokens ) );
+		}
+
+		if ( ! empty( $row_tokens ) && ! empty( $hay_tokens ) ) {
+			$hit = 0;
+			foreach ( $row_tokens as $token ) {
+				if ( isset( $hay_set[ $token ] ) || isset( $this->inv[ $token ][ $product['id'] ] ) ) {
+					$hit++;
+				}
+			}
+			$score = max( $score, 0.75 * ( $hit / count( $row_tokens ) ) );
+		}
+
+		return (float) $score;
+	}
+
+	/**
+	 * @param string $query Query.
+	 * @param int    $limit Limit.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function search( $query, $limit = 8 ) {
+		$row = array(
+			'sku'        => $query,
+			'product_id' => $query,
+			'barcode'    => $query,
+			'name'       => $query,
+		);
+		return $this->rank( $row, $limit );
 	}
 
 	/**
