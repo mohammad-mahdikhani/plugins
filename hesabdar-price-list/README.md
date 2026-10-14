@@ -6,7 +6,9 @@
 
 ## نصب
 
-پوشه `hesabdar-price-list` را در `wp-content/plugins/` قرار دهید و افزونه را فعال کنید. ووکامرس باید فعال باشد.
+فایل آماده نصب: [`../dist/hesabdar-price-list.zip`](../dist/hesabdar-price-list.zip)
+
+در پیشخوان وردپرس: **افزونه‌ها ← افزودن ← بارگذاری افزونه** و همین ZIP را انتخاب کنید. ووکامرس باید فعال باشد.
 
 راهنمای فارسی: `INSTALL-FA.txt` و `GUIDE-FA.txt`
 

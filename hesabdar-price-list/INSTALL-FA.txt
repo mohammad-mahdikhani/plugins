@@ -13,10 +13,11 @@
 
 نصب
 ----
-1. پوشه hesabdar-price-list را داخل wp-content/plugins/ کپی کنید
-   یا فایل ZIP افزونه را از «افزونه‌ها ← افزودن ← بارگذاری» نصب کنید.
+1. فایل dist/hesabdar-price-list.zip را دانلود کنید.
+2. در پیشخوان وردپرس: افزونه‌ها ← افزودن ← بارگذاری افزونه
+   همان ZIP را انتخاب و نصب کنید، سپس فعال کنید.
 
-   ساختار صحیح:
+   ساختار صحیح روی هاست:
      wp-content/plugins/hesabdar-price-list/hesabdar-price-list.php
 
 2. افزونه را فعال کنید.
