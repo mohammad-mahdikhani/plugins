@@ -146,6 +146,25 @@ $zeros = HPL_Catalog::from_products(
 $item = ( new HPL_Updater( $zeros ) )->plan_row( array( 'sku' => '100', 'product_id' => '', 'barcode' => '', 'name' => '', 'regular_price' => '20', 'sale_price' => '', 'stock' => '' ) );
 hpl_assert( '21' === $item['product_id'], 'leading zeros stripped' );
 
+$aqua = HPL_Catalog::from_products(
+	array(
+		array( 'id' => 31, 'sku' => 'AQ-401', 'name' => 'تصفیه آب آکواجوی مدل 401', 'regular_price' => '10000000', 'sale_price' => '', 'stock' => '2' ),
+		array( 'id' => 32, 'sku' => 'AQ-402', 'name' => 'تصفیه آب آکواجوی مدل 402', 'regular_price' => '11000000', 'sale_price' => '', 'stock' => '2' ),
+	)
+);
+$aqua_up = new HPL_Updater( $aqua );
+$item    = $aqua_up->plan_row( array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'دستگاه تصفيه آب آکواجوی مدل 401', 'regular_price' => '13000000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '31' === $item['product_id'], 'aquajoy 401 arabic yeh / دستگاه / مدل' );
+$item = $aqua_up->plan_row( array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'دستگاه تصفيه آب آکواجوی مدل 402', 'regular_price' => '14000000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '32' === $item['product_id'], 'aquajoy 402 not confused with 401' );
+$long = HPL_Catalog::from_products(
+	array(
+		array( 'id' => 33, 'sku' => 'AQ-401H', 'name' => 'دستگاه تصفیه آب خانگی آکواجوی Aquajoy 401', 'regular_price' => '12000000', 'sale_price' => '', 'stock' => '1' ),
+	)
+);
+$item = ( new HPL_Updater( $long ) )->plan_row( array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'دستگاه تصفيه آب آکواجوی مدل 401', 'regular_price' => '13000000', 'sale_price' => '', 'stock' => '' ) );
+hpl_assert( '33' === $item['product_id'], 'aquajoy 401 matches longer shop title' );
+
 echo "== Name / barcode fallback ==\n";
 $row  = array( 'sku' => '', 'product_id' => '', 'barcode' => '6260001', 'name' => '', 'regular_price' => '199000', 'sale_price' => '', 'stock' => '' );
 $item = ( new HPL_Updater( hpl_catalog() ) )->plan_row( $row );

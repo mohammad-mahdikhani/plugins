@@ -51,6 +51,8 @@ class HPL_Catalog {
 				'name'          => isset( $product['name'] ) ? (string) $product['name'] : '',
 				'name_key'      => isset( $product['name'] ) ? HPL_Normalizer::name( $product['name'] ) : '',
 				'name_core'     => isset( $product['name'] ) ? HPL_Normalizer::name_core( $product['name'] ) : '',
+				'name_compact'  => isset( $product['name'] ) ? HPL_Normalizer::name_compact( $product['name'] ) : '',
+				'name_tokens'   => isset( $product['name'] ) ? HPL_Normalizer::name_tokens( $product['name'] ) : array(),
 				'regular_price' => isset( $product['regular_price'] ) ? (string) $product['regular_price'] : '',
 				'sale_price'    => isset( $product['sale_price'] ) ? (string) $product['sale_price'] : '',
 				'stock'         => isset( $product['stock'] ) ? (string) $product['stock'] : '',
@@ -408,55 +410,115 @@ class HPL_Catalog {
 			return $product;
 		}
 
-		if ( '' === $key || mb_strlen( $key, 'UTF-8' ) < 4 ) {
-			return null;
-		}
-
-		$contains = array();
-		foreach ( $this->by_name as $product_key => $id ) {
-			if ( false !== mb_strpos( $product_key, $key, 0, 'UTF-8' ) || false !== mb_strpos( $key, $product_key, 0, 'UTF-8' ) ) {
-				$contains[ $id ] = true;
+		$compact = HPL_Normalizer::name_compact( $raw );
+		if ( mb_strlen( $compact, 'UTF-8' ) >= 6 ) {
+			$contains = array();
+			foreach ( $this->by_id as $id => $product ) {
+				if ( self::is_parent_variable( $product['type'] ) || '' === $product['name_compact'] ) {
+					continue;
+				}
+				$hay = $product['name_compact'];
+				if ( false !== mb_strpos( $hay, $compact, 0, 'UTF-8' ) || false !== mb_strpos( $compact, $hay, 0, 'UTF-8' ) ) {
+					$contains[ $id ] = true;
+				}
+			}
+			if ( 1 === count( $contains ) ) {
+				$id                    = (string) array_key_first( $contains );
+				$product               = $this->by_id[ $id ];
+				$product['matched_by'] = 'name';
+				return $product;
 			}
 		}
-		if ( 1 === count( $contains ) ) {
-			$id                    = (string) array_key_first( $contains );
-			$product               = $this->by_id[ $id ];
-			$product['matched_by'] = 'name';
-			return $product;
-		}
 
-		$tokens = array_values(
-			array_filter(
-				explode( ' ', $core ? $core : $key ),
-				static function ( $t ) {
-					return mb_strlen( $t, 'UTF-8' ) >= 2;
-				}
-			)
-		);
-		if ( count( $tokens ) < 2 ) {
+		return $this->match_name_scored( $raw );
+	}
+
+	/**
+	 * Score shop titles against a supplier name. Model numbers must match.
+	 *
+	 * @param string $raw Raw excel name.
+	 * @return array<string, mixed>|null
+	 */
+	private function match_name_scored( $raw ) {
+		$query_tokens = HPL_Normalizer::name_tokens( $raw );
+		if ( count( $query_tokens ) < 2 ) {
 			return null;
 		}
 
-		$hits = array();
+		$numbers = array();
+		$strong  = array();
+		foreach ( $query_tokens as $token ) {
+			if ( preg_match( '/^\d+([.\/]\d+)?$/', $token ) ) {
+				$numbers[] = $token;
+			}
+			if ( preg_match( '/^\d+([.\/]\d+)?$/', $token ) || mb_strlen( $token, 'UTF-8' ) >= 4 ) {
+				$strong[] = $token;
+			}
+		}
+
+		$best    = array();
+		$best_sc = 0;
+		$second  = 0;
+
 		foreach ( $this->by_id as $id => $product ) {
 			if ( self::is_parent_variable( $product['type'] ) ) {
 				continue;
 			}
-			$hay = $product['name_core'] ? $product['name_core'] : $product['name_key'];
-			$ok  = true;
-			foreach ( $tokens as $token ) {
-				if ( false === mb_strpos( $hay, $token, 0, 'UTF-8' ) ) {
+			$hay_tokens = ! empty( $product['name_tokens'] ) ? $product['name_tokens'] : HPL_Normalizer::name_tokens( $product['name'] );
+			$hay_set    = array_fill_keys( $hay_tokens, true );
+			$hay_join   = implode( ' ', $hay_tokens );
+
+			$ok = true;
+			foreach ( $numbers as $num ) {
+				if ( ! isset( $hay_set[ $num ] ) && false === mb_strpos( $hay_join, $num, 0, 'UTF-8' ) && false === mb_strpos( (string) $product['sku'], $num, 0, 'UTF-8' ) ) {
 					$ok = false;
 					break;
 				}
 			}
-			if ( $ok ) {
-				$hits[ $id ] = true;
+			if ( ! $ok ) {
+				continue;
+			}
+			foreach ( $strong as $token ) {
+				if ( preg_match( '/^\d+([.\/]\d+)?$/', $token ) ) {
+					continue;
+				}
+				if ( ! isset( $hay_set[ $token ] ) && false === mb_strpos( $hay_join, $token, 0, 'UTF-8' ) ) {
+					$ok = false;
+					break;
+				}
+			}
+			if ( ! $ok ) {
+				continue;
+			}
+
+			$hit = 0;
+			foreach ( $query_tokens as $token ) {
+				if ( isset( $hay_set[ $token ] ) || false !== mb_strpos( $hay_join, $token, 0, 'UTF-8' ) ) {
+					$hit++;
+				}
+			}
+			$score = $hit / count( $query_tokens );
+			if ( $score < 0.66 ) {
+				continue;
+			}
+			if ( $score > $best_sc ) {
+				$second  = $best_sc;
+				$best_sc = $score;
+				$best    = array( $id );
+			} elseif ( abs( $score - $best_sc ) < 0.0001 ) {
+				$best[] = $id;
+			} elseif ( $score > $second ) {
+				$second = $score;
 			}
 		}
-		if ( 1 === count( $hits ) ) {
-			$id                    = (string) array_key_first( $hits );
-			$product               = $this->by_id[ $id ];
+
+		if ( 1 === count( $best ) && ( $best_sc - $second ) >= 0.08 ) {
+			$product               = $this->by_id[ (string) $best[0] ];
+			$product['matched_by'] = 'name';
+			return $product;
+		}
+		if ( 1 === count( $best ) && $best_sc >= 0.8 ) {
+			$product               = $this->by_id[ (string) $best[0] ];
 			$product['matched_by'] = 'name';
 			return $product;
 		}

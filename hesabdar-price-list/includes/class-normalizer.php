@@ -99,14 +99,54 @@ class HPL_Normalizer {
 	 */
 	public static function name_core( $value ) {
 		$string = self::name( $value );
-		$string = preg_replace(
-			'/\b(کیلوگرم|کیلو|kg|گرم|gr|g|لیتر|میل[یي]?[\s]?لیتر|ml|ltr|عدد|بسته|کارتن|جفت|دستگاه|رول|متر|سانتی[\s]?متر|میلی[\s]?متر)\b/u',
-			' ',
-			$string
-		);
-		$string = preg_replace( '/\b\d+([.\/]\d+)?\b/u', ' ', $string );
+		$noise  = self::name_noise_pattern();
+		$string = preg_replace( '/\b' . $noise . '\b/u', ' ', $string );
 		$string = preg_replace( '/\s+/u', ' ', $string );
 		return trim( $string );
+	}
+
+	/**
+	 * Name with spaces removed, for contains-matching.
+	 *
+	 * @param mixed $value Raw name.
+	 * @return string
+	 */
+	public static function name_compact( $value ) {
+		return str_replace( ' ', '', self::name_core( $value ) );
+	}
+
+	/**
+	 * Distinctive tokens, including model numbers. Drops filler words.
+	 *
+	 * @param mixed $value Raw name.
+	 * @return string[]
+	 */
+	public static function name_tokens( $value ) {
+		$core   = self::name_core( $value );
+		$parts  = preg_split( '/\s+/u', $core );
+		$tokens = array();
+		foreach ( (array) $parts as $part ) {
+			if ( '' === $part ) {
+				continue;
+			}
+			if ( preg_match( '/^\d+([.\/]\d+)?$/', $part ) ) {
+				$tokens[] = $part;
+				continue;
+			}
+			if ( mb_strlen( $part, 'UTF-8' ) >= 2 ) {
+				$tokens[] = $part;
+			}
+		}
+		return array_values( array_unique( $tokens ) );
+	}
+
+	/**
+	 * Filler words that differ between supplier lists and shop titles.
+	 *
+	 * @return string
+	 */
+	public static function name_noise_pattern() {
+		return '(دستگاه|مدل|مدلهای|خانگی|اصل|اورجینال|اصلی|جدید|کالا|محصول|برند|نوع|کیلوگرم|کیلو|kg|گرم|لیتر|میلی[\s]?لیتر|ml|ltr|عدد|بسته|کارتن|جفت|رول|متر)';
 	}
 
 	/**
@@ -117,8 +157,12 @@ class HPL_Normalizer {
 	 */
 	public static function name( $value ) {
 		$string = self::digits( $value );
-		$string = str_replace( array( 'ي', 'ك', 'ة', 'ؤ', 'أ', 'إ', 'ٱ' ), array( 'ی', 'ک', 'ه', 'و', 'ا', 'ا', 'ا' ), $string );
-		$string = preg_replace( '/[\x{200C}\x{200F}\x{0640}\x{00A0}]/u', ' ', $string );
+		$string = str_replace(
+			array( 'ي', 'ى', 'ۍ', 'ې', 'ك', 'ڪ', 'ة', 'ھ', 'ؤ', 'أ', 'إ', 'ٱ', 'آ' ),
+			array( 'ی', 'ی', 'ی', 'ی', 'ک', 'ک', 'ه', 'ه', 'و', 'ا', 'ا', 'ا', 'ا' ),
+			$string
+		);
+		$string = preg_replace( '/[\x{064B}-\x{065F}\x{0670}\x{200C}\x{200F}\x{0640}\x{00A0}]/u', ' ', $string );
 		$string = preg_replace( '/[^\p{L}\p{N}\s]+/u', ' ', $string );
 		$string = preg_replace( '/\s+/u', ' ', $string );
 		return trim( mb_strtolower( $string, 'UTF-8' ) );

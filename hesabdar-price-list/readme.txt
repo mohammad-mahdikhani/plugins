@@ -5,7 +5,7 @@ Requires at least: 5.8
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. منوی «لیست قیمت» را باز کنید و فایل را آپلود نمایید.
 
 == Changelog ==
+
+= 1.0.2 =
+* تطبیق نام‌هایی مثل «دستگاه تصفيه آب آکواجوی مدل 401» با عنوان فروشگاه (ی عربی، دستگاه/مدل، شماره مدل)
 
 = 1.0.1 =
 * شناسایی بهتر محصولات: کد بدون خط تیره، صفر اول، بارکد، شناسه و نام ناقص
