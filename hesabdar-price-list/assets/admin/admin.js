@@ -222,7 +222,8 @@
           '">تنظیمات لیست قیمت</a> وارد کنید.';
       }
     } else if (help) {
-      help.textContent = "هر پست کانال یک کالا است. نام کالا و قیمت از متن پست خوانده می‌شود؛ کد کالا لازم نیست.";
+      help.textContent =
+        "اگر دکمه کانال خطا داد، کل پست را از تلگرام کپی کنید و بچسبانید. سرور بعضی هاست‌ها به t.me وصل نمی‌شود.";
     }
     renderTelegramPosts(HPL.posts || []);
     const latest = $("#hpl-telegram-latest");
@@ -234,6 +235,20 @@
         }
         toast(HPL.i18n.telegram || "در حال خواندن از تلگرام…");
         post("hpl_telegram_open", { id: "" })
+          .then(acceptParsed)
+          .catch((err) => toast(err.message));
+      });
+    }
+    const pasteBtn = $("#hpl-telegram-paste-btn");
+    if (pasteBtn) {
+      pasteBtn.addEventListener("click", () => {
+        const text = ($("#hpl-telegram-paste") && $("#hpl-telegram-paste").value) || "";
+        if (!text.trim()) {
+          toast("ابتدا متن پست را از تلگرام کپی و اینجا بچسبانید.");
+          return;
+        }
+        toast("در حال خواندن نام و قیمت از متن پست…");
+        post("hpl_telegram_paste", { text: text })
           .then(acceptParsed)
           .catch((err) => toast(err.message));
       });

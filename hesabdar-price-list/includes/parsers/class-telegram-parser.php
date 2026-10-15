@@ -67,6 +67,40 @@ class HPL_Telegram_Parser {
 	}
 
 	/**
+	 * Split pasted channel copy into separate posts (each has its own قیمت).
+	 *
+	 * @param string $text Pasted text.
+	 * @return string[]
+	 */
+	public static function split_posts( $text ) {
+		$text = trim( self::html_to_text( $text ) );
+		if ( '' === $text ) {
+			return array();
+		}
+		if ( ! preg_match_all( '/قیمت[^\n]*/u', $text, $matches, PREG_OFFSET_CAPTURE ) ) {
+			return array( $text );
+		}
+		if ( count( $matches[0] ) < 2 ) {
+			return array( $text );
+		}
+		$chunks = array();
+		$start  = 0;
+		foreach ( $matches[0] as $hit ) {
+			$end   = $hit[1] + strlen( $hit[0] );
+			$chunk = trim( substr( $text, $start, $end - $start ) );
+			$start = $end;
+			if ( '' !== $chunk ) {
+				$chunks[] = $chunk;
+			}
+		}
+		$tail = trim( substr( $text, $start ) );
+		if ( '' !== $tail ) {
+			$chunks[] = $tail;
+		}
+		return $chunks;
+	}
+
+	/**
 	 * @param string $text  Message text / caption.
 	 * @param string $title Sheet title.
 	 * @return HPL_Sheet

@@ -279,6 +279,15 @@ hpl_assert( 1 === $dior_screen['stats']['on_site'] || '41' === $dior_plan['produ
 $merged = HPL_Telegram_Parser::from_posts( array( $dior_post, "آکواجوی 401 : 13000000" ) );
 hpl_assert( count( $merged->sheets[0]->rows ) >= 2, 'several channel posts merge into one list' );
 
+$paste = $dior_post . "\n\n🌷 کرم مرطوب‌کننده تست\nقیمت: ۱۲،۰۰۰ تومان\n";
+$split = HPL_Telegram_Parser::split_posts( $paste );
+hpl_assert( count( $split ) >= 2, 'paste splits two priced posts' );
+HPL_Telegram::$store = array();
+$pasted = HPL_Telegram::ingest_pasted( $paste );
+hpl_assert( count( $pasted->sheets[0]->rows ) >= 2, 'pasted posts become a price list' );
+$explained = HPL_Telegram::explain_error( 'cURL error 7: Failed to connect to t.me port 443 after 2 ms: Could not connect to the server' );
+hpl_assert( false === strpos( $explained, 'cURL' ) && false !== strpos( $explained, 'بچسبانید' ), 'curl t.me error is explained in Persian' );
+
 echo "== Sample export ==\n";
 $bin = HPL_Export::sample_xlsx();
 hpl_assert( strlen( $bin ) > 100 && 'PK' === substr( $bin, 0, 2 ), 'sample xlsx is zip' );

@@ -152,6 +152,18 @@
 	font-size: 16px;
 }
 
+#hpl-telegram-paste {
+	width: 100%;
+	min-height: 140px;
+	border: 1px solid #c5d7cd;
+	border-radius: 10px;
+	padding: 10px 12px;
+	font-family: inherit;
+	font-size: 13px;
+	line-height: 1.7;
+	resize: vertical;
+}
+
 .hpl-btn {
 	appearance: none;
 	border: 1px solid #c5d7cd;

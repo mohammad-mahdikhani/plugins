@@ -34,6 +34,7 @@ class HPL_Ajax {
 		add_action( 'wp_ajax_hpl_search_products', array( $this, 'search_products' ) );
 		add_action( 'wp_ajax_hpl_telegram_fetch', array( $this, 'telegram_fetch' ) );
 		add_action( 'wp_ajax_hpl_telegram_open', array( $this, 'telegram_open' ) );
+		add_action( 'wp_ajax_hpl_telegram_paste', array( $this, 'telegram_paste' ) );
 	}
 
 	private function guard() {
@@ -85,7 +86,7 @@ class HPL_Ajax {
 		try {
 			HPL_Telegram::fetch();
 		} catch ( Exception $e ) {
-			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+			wp_send_json_error( array( 'message' => HPL_Telegram::explain_error( $e->getMessage() ) ) );
 		}
 		$latest = HPL_Telegram::latest();
 		wp_send_json_success(
@@ -101,8 +102,17 @@ class HPL_Ajax {
 		$id = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : '';
 		try {
 			if ( '' === $id || 'all' === $id ) {
-				HPL_Telegram::fetch();
-				$parsed = HPL_Telegram::open_all();
+				$fetch_err = '';
+				try {
+					HPL_Telegram::fetch();
+				} catch ( Exception $e ) {
+					$fetch_err = HPL_Telegram::explain_error( $e->getMessage() );
+				}
+				try {
+					$parsed = HPL_Telegram::open_all();
+				} catch ( Exception $e ) {
+					throw new RuntimeException( $fetch_err ? $fetch_err : $e->getMessage() );
+				}
 				wp_send_json_success( $this->session_from_parsed( $parsed, 'پست‌های کانال تلگرام' ) );
 			}
 			$parsed = HPL_Telegram::open( $id );
@@ -114,6 +124,18 @@ class HPL_Ajax {
 				$name = 'تلگرام: ' . $item['preview'];
 			}
 			wp_send_json_success( $this->session_from_parsed( $parsed, $name ) );
+		} catch ( Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+		}
+	}
+
+	public function telegram_paste() {
+		$this->guard();
+		$text = isset( $_POST['text'] ) ? wp_unslash( $_POST['text'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$text = is_string( $text ) ? $text : '';
+		try {
+			$parsed = HPL_Telegram::ingest_pasted( $text );
+			wp_send_json_success( $this->session_from_parsed( $parsed, 'پست‌های چسبانده‌شده تلگرام' ) );
 		} catch ( Exception $e ) {
 			wp_send_json_error( array( 'message' => $e->getMessage() ) );
 		}

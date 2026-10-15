@@ -45,7 +45,14 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 				<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-telegram-latest">خواندن همه پست‌های کانال</button>
 				<button type="button" class="hpl-btn" id="hpl-telegram-refresh">نمایش پست‌ها</button>
 			</div>
-			<p class="hpl-hint" id="hpl-telegram-help"></p>
+			<p class="hpl-hint" id="hpl-telegram-help">اگر سرور به تلگرام وصل نشود، کل پست را از اپ تلگرام کپی کنید و در کادر زیر بچسبانید.</p>
+			<label class="hpl-field">
+				<span>چسباندن پست تلگرام</span>
+				<textarea id="hpl-telegram-paste" rows="7" placeholder="عنوان کالا&#10;&#10;قیمت: ۲۴،۵۰۰ تومان"></textarea>
+			</label>
+			<div class="hpl-actions">
+				<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-telegram-paste-btn">خواندن متن چسبانده‌شده</button>
+			</div>
 			<div class="hpl-table-wrap" id="hpl-telegram-list-wrap" hidden>
 				<table class="hpl-table">
 					<thead>

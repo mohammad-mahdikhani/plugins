@@ -120,7 +120,7 @@ class HPL_Telegram {
 			try {
 				self::poll_updates();
 			} catch ( Exception $e ) {
-				$errors[] = $e->getMessage();
+				$errors[] = self::explain_error( $e->getMessage() );
 			}
 		}
 		$channel = self::channel();
@@ -128,7 +128,7 @@ class HPL_Telegram {
 			try {
 				self::ingest_public_channel( $channel );
 			} catch ( Exception $e ) {
-				$errors[] = $e->getMessage();
+				$errors[] = self::explain_error( $e->getMessage() );
 			}
 		}
 		if ( $errors ) {
@@ -159,12 +159,74 @@ class HPL_Telegram {
 	 * @return string
 	 */
 	private static function empty_help( array $errors ) {
-		$msg = 'هنوز لیست قیمتی از تلگرام نرسیده است.';
 		if ( $errors ) {
-			$msg .= ' ' . implode( ' ', $errors );
+			return $errors[0];
 		}
-		$msg .= ' ربات را ادمین کانال کنید؛ هر پست با نام کالا و «قیمت» خوانده می‌شود.';
-		return $msg;
+		return 'پستی از کانال دریافت نشد. متن پست را از تلگرام کپی کنید و در کادر چسباندن قرار دهید.';
+	}
+
+	/**
+	 * Hide raw cURL / host errors from the merchant.
+	 *
+	 * @param string $message Raw error.
+	 * @return string
+	 */
+	public static function explain_error( $message ) {
+		$raw = (string) $message;
+		if ( preg_match( '/t\.me|telegram\.me|curl error 7|could not connect|connection refused|failed to connect|timed out|operation timed out|name lookup/i', $raw ) ) {
+			return 'سرور میزبانی به تلگرام وصل نمی‌شود. پست‌ها را کپی و در کادر زیر بچسبانید، یا ربات را ادمین کنید و همان پست را برای ربات فوروارد کنید.';
+		}
+		if ( preg_match( '/conflict|getupdates|webhook/i', $raw ) ) {
+			return 'وب‌هوک فعال است؛ پست جدید خودکار می‌رسد. برای پست‌های قبلی متن را بچسبانید.';
+		}
+		return $raw;
+	}
+
+	/**
+	 * Parse pasted channel copy into inbox items + a price sheet.
+	 *
+	 * @param string $raw Pasted text.
+	 * @return HPL_Parsed_File
+	 */
+	public static function ingest_pasted( $raw ) {
+		$chunks = HPL_Telegram_Parser::split_posts( $raw );
+		if ( empty( $chunks ) ) {
+			throw new RuntimeException( 'متنی چسبانده نشد.' );
+		}
+		$kept = array();
+		foreach ( $chunks as $i => $chunk ) {
+			try {
+				$sheet = HPL_Telegram_Parser::parse_post( $chunk );
+			} catch ( Exception $e ) {
+				unset( $e );
+				continue;
+			}
+			if ( empty( $sheet->rows ) ) {
+				continue;
+			}
+			$name = isset( $sheet->rows[0][1] ) ? $sheet->rows[0][1] : HPL_Telegram_Parser::extract_ad_name( $chunk );
+			self::push_inbox(
+				array(
+					'id'         => 'paste:' . md5( $chunk ),
+					'chat_id'    => 'paste',
+					'message_id' => $i + 1,
+					'date'       => time(),
+					'kind'       => 'text',
+					'filename'   => '',
+					'mime'       => '',
+					'file_id'    => '',
+					'text'       => $chunk,
+					'preview'    => $name,
+					'rows_guess' => count( $sheet->rows ),
+					'source'     => 'paste',
+				)
+			);
+			$kept[] = $chunk;
+		}
+		if ( empty( $kept ) ) {
+			throw new RuntimeException( 'در متن چسبانده‌شده نام و قیمت پیدا نشد. کل پست را از تلگرام کپی کنید؛ خط قیمت مثل «قیمت: ۲۴،۵۰۰ تومان» لازم است.' );
+		}
+		return HPL_Telegram_Parser::from_posts( $kept, 'پست‌های چسبانده‌شده تلگرام' );
 	}
 
 	/**
