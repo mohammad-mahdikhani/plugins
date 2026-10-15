@@ -195,6 +195,66 @@ $row  = array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'قن
 $item = ( new HPL_Updater( hpl_catalog() ) )->plan_row( $row );
 hpl_assert( 'changed' === $item['status'] && '14' === $item['product_id'], 'match by name' );
 
+echo "== Telegram text prices ==\n";
+$tg_text = "لیست قیمت ۱۵ مهر ۱۴۰۳\nدستگاه تصفيه آب آکواجوی مدل 401 : ۱۳٬۵۰۰٬۰۰۰ تومان\nSKU-100 روغن مایع 185,000\nآکواجوی 402\n14,000,000\nکد: AQ-500 نام: فیلتر قیمت: 2500000 موجودی: 7\n";
+$tg_sheet = HPL_Telegram_Parser::parse_text( $tg_text );
+hpl_assert( count( $tg_sheet->rows ) >= 4, 'telegram text yields price rows' );
+$names = array();
+foreach ( $tg_sheet->rows as $r ) {
+	$names[] = $r[1];
+}
+$joined = implode( ' ', $names );
+hpl_assert( false !== strpos( $joined, 'آکواجوی' ) || false !== strpos( $joined, 'آکواجوی' ), 'telegram keeps aquajoy name' );
+$prices = array();
+foreach ( $tg_sheet->rows as $r ) {
+	$prices[] = $r[2];
+}
+hpl_assert( in_array( '13500000', $prices, true ), 'telegram persian price with separators' );
+hpl_assert( in_array( '185000', $prices, true ), 'telegram sku line price' );
+hpl_assert( in_array( '14000000', $prices, true ), 'telegram two-line name then price' );
+$sku100 = false;
+foreach ( $tg_sheet->rows as $r ) {
+	if ( 'SKU-100' === $r[0] && '185000' === $r[2] ) {
+		$sku100 = true;
+	}
+}
+hpl_assert( $sku100, 'telegram keeps SKU-100' );
+$labeled_ok = false;
+foreach ( $tg_sheet->rows as $r ) {
+	if ( 'AQ-500' === $r[0] && '2500000' === $r[2] && '7' === $r[3] && false !== strpos( $r[1], 'فیلتر' ) ) {
+		$labeled_ok = true;
+	}
+}
+hpl_assert( $labeled_ok, 'telegram labeled sku/price/stock' );
+hpl_assert( HPL_Telegram_Parser::is_heading( 'لیست قیمت ۱۴۰۳/۰۷/۲۴' ), 'telegram heading skipped' );
+
+HPL_Telegram::$store = array();
+$item = HPL_Telegram::ingest_update(
+	array(
+		'update_id'    => 9,
+		'channel_post' => array(
+			'message_id' => 44,
+			'date'       => 1700000000,
+			'chat'       => array( 'id' => -1001, 'username' => 'pricelist', 'type' => 'channel' ),
+			'text'       => "آکواجوی 401 : 13000000\nSKU-100 روغن 200000",
+		),
+	)
+);
+hpl_assert( $item && 'text' === $item['kind'] && $item['rows_guess'] >= 2, 'telegram ingest channel text' );
+hpl_assert( 1 === count( HPL_Telegram::inbox() ), 'telegram inbox stores post' );
+
+$html = '<div class="tgme_widget_message" data-post="pricelist/12"><div class="tgme_widget_message_text js-message_text">تصفيه آب آکواجوی مدل 401 : 13,500,000</div><div class="tgme_widget_message_footer">';
+$public = HPL_Telegram::parse_public_html( $html, 'pricelist' );
+hpl_assert( 1 === count( $public ) && $public[0]['rows_guess'] >= 1, 'telegram public html text' );
+hpl_assert( 'pricelist' === HPL_Telegram::normalize_channel( 'https://t.me/s/pricelist' ), 'telegram channel link normalized' );
+
+$mapped = HPL_Column_Mapper::detect( $tg_sheet->headers );
+hpl_assert( 0 === $mapped['sku'] && 1 === $mapped['name'] && 2 === $mapped['regular_price'], 'telegram sheet maps columns' );
+$rows = HPL_Column_Mapper::apply( $tg_sheet, $mapped );
+$aqua_up = new HPL_Updater( $aqua );
+$hit = $aqua_up->plan_row( $rows[0] );
+hpl_assert( '31' === $hit['product_id'], 'telegram aquajoy row matches shop product' );
+
 echo "== Sample export ==\n";
 $bin = HPL_Export::sample_xlsx();
 hpl_assert( strlen( $bin ) > 100 && 'PK' === substr( $bin, 0, 2 ), 'sample xlsx is zip' );

@@ -22,7 +22,10 @@ class HPL_Install {
 	}
 
 	public static function deactivate() {
-		// Keep history tables; they are dropped on uninstall.
+		$ts = wp_next_scheduled( 'hpl_telegram_poll' );
+		if ( $ts ) {
+			wp_unschedule_event( $ts, 'hpl_telegram_poll' );
+		}
 	}
 
 	public static function maybe_upgrade() {

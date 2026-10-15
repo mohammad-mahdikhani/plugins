@@ -32,6 +32,8 @@ class HPL_Ajax {
 		add_action( 'wp_ajax_hpl_history', array( $this, 'history' ) );
 		add_action( 'wp_ajax_hpl_screen_action', array( $this, 'screen_action' ) );
 		add_action( 'wp_ajax_hpl_search_products', array( $this, 'search_products' ) );
+		add_action( 'wp_ajax_hpl_telegram_fetch', array( $this, 'telegram_fetch' ) );
+		add_action( 'wp_ajax_hpl_telegram_open', array( $this, 'telegram_open' ) );
 	}
 
 	private function guard() {
@@ -69,10 +71,63 @@ class HPL_Ajax {
 
 		try {
 			$parsed = HPL_Parser::parse( $file['tmp_name'], $filename );
+			wp_send_json_success( $this->session_from_parsed( $parsed, $filename ) );
 		} catch ( Exception $e ) {
 			wp_send_json_error( array( 'message' => $e->getMessage() ) );
 		}
+	}
 
+	public function telegram_fetch() {
+		$this->guard();
+		if ( ! HPL_Telegram::configured() ) {
+			wp_send_json_error( array( 'message' => 'ابتدا در تنظیمات، توکن ربات و نام کانال تلگرام را وارد کنید.' ) );
+		}
+		try {
+			HPL_Telegram::fetch();
+		} catch ( Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+		}
+		$latest = HPL_Telegram::latest();
+		wp_send_json_success(
+			array(
+				'posts'  => HPL_Telegram::inbox_preview(),
+				'latest' => $latest ? $latest['id'] : '',
+			)
+		);
+	}
+
+	public function telegram_open() {
+		$this->guard();
+		$id = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : '';
+		try {
+			if ( '' === $id ) {
+				HPL_Telegram::fetch();
+				$latest = HPL_Telegram::latest();
+				if ( ! $latest ) {
+					throw new RuntimeException( 'لیست قیمتی در کانال پیدا نشد.' );
+				}
+				$id = $latest['id'];
+			}
+			$parsed = HPL_Telegram::open( $id );
+			$item   = HPL_Telegram::find( $id );
+			$name   = $parsed->filename;
+			if ( $item && ! empty( $item['filename'] ) ) {
+				$name = $item['filename'];
+			} elseif ( $item && ! empty( $item['preview'] ) ) {
+				$name = 'تلگرام: ' . $item['preview'];
+			}
+			wp_send_json_success( $this->session_from_parsed( $parsed, $name ) );
+		} catch ( Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+		}
+	}
+
+	/**
+	 * @param HPL_Parsed_File $parsed   Parsed file.
+	 * @param string          $filename Filename.
+	 * @return array<string, mixed>
+	 */
+	private function session_from_parsed( HPL_Parsed_File $parsed, $filename ) {
 		$sheets  = array();
 		$mapping = array();
 		foreach ( $parsed->sheets as $index => $sheet ) {
@@ -98,22 +153,15 @@ class HPL_Ajax {
 			);
 		}
 
-		try {
-			$token = HPL_Storage::put( $payload );
-		} catch ( Exception $e ) {
-			wp_send_json_error( array( 'message' => $e->getMessage() ) );
-		}
-
-		wp_send_json_success(
-			array(
-				'token'    => $token,
-				'filename' => $filename,
-				'type'     => $parsed->type,
-				'warning'  => $parsed->warning,
-				'sheets'   => $sheets,
-				'mapping'  => $mapping,
-				'labels'   => HPL_Column_Mapper::labels(),
-			)
+		$token = HPL_Storage::put( $payload );
+		return array(
+			'token'    => $token,
+			'filename' => $filename,
+			'type'     => $parsed->type,
+			'warning'  => $parsed->warning,
+			'sheets'   => $sheets,
+			'mapping'  => $mapping,
+			'labels'   => HPL_Column_Mapper::labels(),
 		);
 	}
 

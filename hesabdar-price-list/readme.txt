@@ -5,7 +5,7 @@ Requires at least: 5.8
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 وقتی لیست قیمت جدیدی را به‌صورت Excel یا PDF آپلود می‌کنید، قیمت همه محصولات منطبق با آن لیست عوض می‌شود.
 
-* پشتیبانی از xlsx، xls، csv و PDF متنی
+* پشتیبانی از xlsx، xls، csv، PDF متنی و کانال تلگرام
 * تشخیص خودکار ستون‌ها (کد کالا، قیمت، قیمت ویژه، موجودی)
 * غربالگری هوشمند فایل در برابر همه محصولات سایت
 * ست کردن کالاهای غایب به‌عنوان محصول جدید
@@ -30,6 +30,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. منوی «لیست قیمت» را باز کنید و فایل را آپلود نمایید.
 
 == Changelog ==
+
+= 1.2.0 =
+* خواندن لیست قیمت از کانال تلگرام (فایل اکسل/PDF یا متن قیمت)
+* وب‌هوک و دریافت پست‌های کانال عمومی
 
 = 1.1.0 =
 * غربالگری هوشمند: همه ردیف‌های فایل در برابر همه محصولات سایت
