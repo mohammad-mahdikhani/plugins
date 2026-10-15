@@ -36,7 +36,7 @@ $order = implode( ',', (array) $settings['match_order'] );
 		<label class="hpl-check"><input type="checkbox" name="zero_clears_sale" value="1" <?php checked( ! empty( $settings['zero_clears_sale'] ) ); ?>> قیمت ویژه صفر در فایل، قیمت ویژه فروشگاه را پاک کند</label>
 
 		<h2 class="hpl-subhead">کانال تلگرام</h2>
-		<p class="hpl-hint">ربات را از BotFather بسازید، بعد همان ربات را ادمین کانال لیست قیمت کنید. پست‌های اکسل، PDF یا متن قیمت خوانده می‌شوند.</p>
+		<p class="hpl-hint">ربات را از BotFather بسازید و ادمین کانال کنید. هر پست کانال یک کالا است؛ نام و قیمت کافی است.</p>
 		<label class="hpl-field">
 			<span>توکن ربات</span>
 			<input type="password" name="telegram_bot_token" value="" placeholder="<?php echo ! empty( $settings['telegram_bot_token'] ) ? 'توکن ذخیره شده — برای تغییر، توکن جدید بنویسید' : '123456:ABC-DEF...'; ?>" autocomplete="off">
@@ -44,7 +44,7 @@ $order = implode( ',', (array) $settings['match_order'] );
 		<label class="hpl-field">
 			<span>کانال</span>
 			<input type="text" name="telegram_channel" value="<?php echo esc_attr( isset( $settings['telegram_channel'] ) ? $settings['telegram_channel'] : '' ); ?>" placeholder="@pricechannel یا لینک t.me">
-			<small>برای کانال عمومی حتی بدون ربات، متن قیمت‌های اخیر خوانده می‌شود. برای فایل اکسل/PDF ربات باید ادمین باشد.</small>
+			<small>پست‌هایی مثل «نام کالا» و در انتها «قیمت: ۲۴،۵۰۰ تومان» خوانده می‌شوند.</small>
 		</label>
 
 		<p>
@@ -57,7 +57,7 @@ $order = implode( ',', (array) $settings['match_order'] );
 			<input type="hidden" name="action" value="hpl_telegram_webhook">
 			<?php wp_nonce_field( 'hpl_telegram_webhook' ); ?>
 			<h2 class="hpl-subhead">وب‌هوک تلگرام</h2>
-			<p class="hpl-hint">با ثبت وب‌هوک، هر لیست قیمت جدیدی که در کانال پست شود همان لحظه به افزونه می‌رسد. آدرس سایت باید از اینترنت در دسترس باشد.</p>
+			<p class="hpl-hint">با ثبت وب‌هوک، هر پست جدید کانال (نام و قیمت) همان لحظه به افزونه می‌رسد. آدرس سایت باید از اینترنت در دسترس باشد.</p>
 			<p class="hpl-hint"><code><?php echo esc_html( HPL_Telegram::webhook_url() ); ?></code></p>
 			<?php if ( ! empty( $settings['telegram_webhook'] ) ) : ?>
 				<div class="hpl-alert is-ok">وب‌هوک ثبت شده است.</div>

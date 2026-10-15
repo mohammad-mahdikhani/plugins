@@ -11,7 +11,7 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 	<div class="hpl-hero">
 		<div>
 			<h1>لیست قیمت حسابدار</h1>
-			<p>لیست قیمت را از اکسل، PDF یا کانال تلگرام بخوانید تا قیمت و موجودی محصولات مطابق همان لیست به‌روز شود.</p>
+			<p>لیست قیمت را از اکسل، PDF یا پست‌های کانال تلگرام بخوانید. برای تلگرام نام کالا و قیمت کافی است.</p>
 		</div>
 		<div class="hpl-hero-actions">
 			<a class="hpl-btn hpl-btn-ghost" href="<?php echo esc_url( $sample_xlsx ); ?>">دانلود نمونه اکسل</a>
@@ -39,11 +39,11 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 		<div class="hpl-telegram" id="hpl-telegram">
 			<div class="hpl-telegram-head">
 				<strong>خواندن از کانال تلگرام</strong>
-				<span>آخرین فایل اکسل/PDF یا متن قیمت کانال را می‌گیرد و همان غربالگری را اجرا می‌کند.</span>
+				<span>هر پست یک کالا است؛ نام و قیمت از متن پست خوانده می‌شود.</span>
 			</div>
 			<div class="hpl-actions">
-				<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-telegram-latest">خواندن آخرین قیمت‌های تلگرام</button>
-				<button type="button" class="hpl-btn" id="hpl-telegram-refresh">نمایش پست‌های کانال</button>
+				<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-telegram-latest">خواندن همه پست‌های کانال</button>
+				<button type="button" class="hpl-btn" id="hpl-telegram-refresh">نمایش پست‌ها</button>
 			</div>
 			<p class="hpl-hint" id="hpl-telegram-help"></p>
 			<div class="hpl-table-wrap" id="hpl-telegram-list-wrap" hidden>

@@ -100,13 +100,10 @@ class HPL_Ajax {
 		$this->guard();
 		$id = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : '';
 		try {
-			if ( '' === $id ) {
+			if ( '' === $id || 'all' === $id ) {
 				HPL_Telegram::fetch();
-				$latest = HPL_Telegram::latest();
-				if ( ! $latest ) {
-					throw new RuntimeException( 'لیست قیمتی در کانال پیدا نشد.' );
-				}
-				$id = $latest['id'];
+				$parsed = HPL_Telegram::open_all();
+				wp_send_json_success( $this->session_from_parsed( $parsed, 'پست‌های کانال تلگرام' ) );
 			}
 			$parsed = HPL_Telegram::open( $id );
 			$item   = HPL_Telegram::find( $id );
@@ -188,6 +185,9 @@ class HPL_Ajax {
 
 		$settings = HPL_Plugin::settings();
 		$settings = $this->overlay_settings( $settings );
+		if ( isset( $payload['type'] ) && 'telegram' === $payload['type'] ) {
+			$settings['match_order'] = array( 'name', 'sku', 'barcode', 'product_id' );
+		}
 		$catalog  = HPL_Catalog::from_woocommerce();
 		$updater  = new HPL_Updater( $catalog, $settings );
 		$screen   = HPL_Screener::run( $rows, $catalog, $updater );

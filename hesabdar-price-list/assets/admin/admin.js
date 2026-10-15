@@ -139,6 +139,10 @@
       warn.hidden = true;
     }
     fillMap();
+    if (String(data.type) === "telegram") {
+      const stock = $("#hpl-update-stock");
+      if (stock) stock.checked = false;
+    }
     setStep(2);
   }
 
@@ -218,7 +222,7 @@
           '">تنظیمات لیست قیمت</a> وارد کنید.';
       }
     } else if (help) {
-      help.textContent = "ربات باید ادمین کانال باشد تا فایل اکسل/PDF را بگیرد. متن لیست قیمت کانال عمومی بدون ربات هم خوانده می‌شود.";
+      help.textContent = "هر پست کانال یک کالا است. نام کالا و قیمت از متن پست خوانده می‌شود؛ کد کالا لازم نیست.";
     }
     renderTelegramPosts(HPL.posts || []);
     const latest = $("#hpl-telegram-latest");

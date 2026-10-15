@@ -13,7 +13,7 @@ class HPL_Telegram {
 
 	const INBOX_OPTION  = 'hpl_telegram_inbox';
 	const OFFSET_OPTION = 'hpl_telegram_offset';
-	const INBOX_LIMIT   = 40;
+	const INBOX_LIMIT   = 80;
 
 	/**
 	 * Callable($method, $url, $params) for tests.
@@ -163,7 +163,7 @@ class HPL_Telegram {
 		if ( $errors ) {
 			$msg .= ' ' . implode( ' ', $errors );
 		}
-		$msg .= ' ربات را ادمین کانال کنید و یک فایل اکسل/PDF یا متن قیمت در کانال بفرستید. می‌توانید همان فایل را هم برای ربات فوروارد کنید.';
+		$msg .= ' ربات را ادمین کانال کنید؛ هر پست با نام کالا و «قیمت» خوانده می‌شود.';
 		return $msg;
 	}
 
@@ -293,6 +293,12 @@ class HPL_Telegram {
 			return null;
 		}
 		$preview = $filename ? $filename : self::preview_text( $text );
+		if ( $text && ! $filename ) {
+			$ad_name = HPL_Telegram_Parser::extract_ad_name( $text );
+			if ( $ad_name ) {
+				$preview = $ad_name;
+			}
+		}
 		return array(
 			'id'         => $chat_id . ':' . $mid,
 			'chat_id'    => $chat_id,
@@ -320,8 +326,26 @@ class HPL_Telegram {
 			return;
 		}
 		$html = self::http_get( 'https://t.me/s/' . rawurlencode( $channel ) );
-		foreach ( self::parse_public_html( $html, $channel ) as $item ) {
+		$got  = self::parse_public_html( $html, $channel );
+		foreach ( $got as $item ) {
 			self::push_inbox( $item );
+		}
+		$min_id = 0;
+		foreach ( $got as $item ) {
+			$mid = isset( $item['message_id'] ) ? (int) $item['message_id'] : 0;
+			if ( $mid > 0 && ( 0 === $min_id || $mid < $min_id ) ) {
+				$min_id = $mid;
+			}
+		}
+		if ( $min_id > 1 ) {
+			try {
+				$older = self::http_get( 'https://t.me/s/' . rawurlencode( $channel ) . '?before=' . $min_id );
+				foreach ( self::parse_public_html( $older, $channel ) as $item ) {
+					self::push_inbox( $item );
+				}
+			} catch ( Exception $e ) {
+				unset( $e );
+			}
 		}
 	}
 
@@ -399,7 +423,7 @@ class HPL_Telegram {
 			'mime'       => '',
 			'file_id'    => '',
 			'text'       => $text,
-			'preview'    => self::preview_text( $text ),
+			'preview'    => HPL_Telegram_Parser::extract_ad_name( $text ) ? HPL_Telegram_Parser::extract_ad_name( $text ) : self::preview_text( $text ),
 			'rows_guess' => $rows,
 			'source'     => 'public',
 		);
@@ -433,6 +457,27 @@ class HPL_Telegram {
 		$text = isset( $item['text'] ) ? $item['text'] : '';
 		$name = ! empty( $item['filename'] ) ? $item['filename'] : 'telegram-' . $item['id'] . '.txt';
 		return HPL_Telegram_Parser::to_parsed_file( $text, $name );
+	}
+
+	/**
+	 * Merge every text post in the inbox into one price list.
+	 *
+	 * @return HPL_Parsed_File
+	 */
+	public static function open_all() {
+		$texts = array();
+		foreach ( self::inbox() as $item ) {
+			if ( ! empty( $item['file_id'] ) || ( isset( $item['kind'] ) && 'public_file' === $item['kind'] ) ) {
+				continue;
+			}
+			if ( ! empty( $item['text'] ) ) {
+				$texts[] = $item['text'];
+			}
+		}
+		if ( empty( $texts ) ) {
+			throw new RuntimeException( 'پستی با نام و قیمت در کانال پیدا نشد.' );
+		}
+		return HPL_Telegram_Parser::from_posts( $texts, 'پست‌های کانال تلگرام' );
 	}
 
 	/**

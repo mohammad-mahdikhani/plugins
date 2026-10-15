@@ -255,6 +255,30 @@ $aqua_up = new HPL_Updater( $aqua );
 $hit = $aqua_up->plan_row( $rows[0] );
 hpl_assert( '31' === $hit['product_id'], 'telegram aquajoy row matches shop product' );
 
+$dior_post = "🌷 پلت هایلایتر  لاکچری و جذاب دیور رنگ 001\n\nDIOR BACKSTAGE GLOW MAXIMIZER PALETTE 001 UNIVERSAL GLOW\n\nاگه عاشق پوست درخشان و گلو طبیعی و جذابی، این پالت از دیور همون چیزیه که برای کامل کردن میکاپت نیاز داری!\n\n✅ دارای ۴ رنگ درخشان و کاربردی برای ایجاد جلوه‌های متفاوت روی پوست\n✅ بافت نرم و لطیف با پیگمنت بالا و جلوه‌ای درخشان\n✅ قابل استفاده برای برجسته کردن گونه‌ها\n\nخرید انگلیس\n\n🌷 قیمت: ۲۴،۵۰۰ تومان\n";
+hpl_assert( HPL_Telegram_Parser::is_product_ad( $dior_post ), 'dior channel post is a product ad' );
+$dior_sheet = HPL_Telegram_Parser::parse_post( $dior_post );
+hpl_assert( 1 === count( $dior_sheet->rows ), 'dior post is one product' );
+hpl_assert( '24500' === $dior_sheet->rows[0][2], 'dior price 24,500 toman' );
+hpl_assert( false !== strpos( $dior_sheet->rows[0][1], 'هایلایتر' ), 'dior keeps persian title' );
+hpl_assert( false !== strpos( $dior_sheet->rows[0][1], 'DIOR BACKSTAGE' ), 'dior keeps english title' );
+hpl_assert( false === strpos( $dior_sheet->rows[0][1], 'اگه عاشق' ), 'dior drops marketing copy' );
+hpl_assert( false === strpos( $dior_sheet->rows[0][1], 'خرید انگلیس' ), 'dior drops buy-uk line' );
+
+$dior_cat = HPL_Catalog::from_products(
+	array(
+		array( 'id' => 41, 'sku' => 'DIOR-001', 'name' => 'پالت هایلایتر دیور رنگ 001', 'regular_price' => '20000', 'sale_price' => '', 'stock' => '3' ),
+	)
+);
+$dior_map = HPL_Column_Mapper::detect( $dior_sheet->headers );
+$dior_rows = HPL_Column_Mapper::apply( $dior_sheet, $dior_map );
+$dior_plan = ( new HPL_Updater( $dior_cat ) )->plan_row( $dior_rows[0] );
+$dior_screen = HPL_Screener::run( $dior_rows, $dior_cat, new HPL_Updater( $dior_cat ) );
+hpl_assert( 1 === $dior_screen['stats']['on_site'] || '41' === $dior_plan['product_id'], 'dior telegram name matches shop product' );
+
+$merged = HPL_Telegram_Parser::from_posts( array( $dior_post, "آکواجوی 401 : 13000000" ) );
+hpl_assert( count( $merged->sheets[0]->rows ) >= 2, 'several channel posts merge into one list' );
+
 echo "== Sample export ==\n";
 $bin = HPL_Export::sample_xlsx();
 hpl_assert( strlen( $bin ) > 100 && 'PK' === substr( $bin, 0, 2 ), 'sample xlsx is zip' );

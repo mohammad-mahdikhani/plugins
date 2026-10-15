@@ -12,6 +12,61 @@ if ( ! defined( 'ABSPATH' ) && ! defined( 'HPL_TEST' ) ) {
 class HPL_Telegram_Parser {
 
 	/**
+	 * One Telegram post: either a product ad (title + قیمت) or a compact list.
+	 *
+	 * @param string $text  Message text / caption.
+	 * @param string $title Sheet title.
+	 * @return HPL_Sheet
+	 */
+	public static function parse_post( $text, $title = 'تلگرام' ) {
+		$text = self::html_to_text( $text );
+		if ( self::is_product_ad( $text ) ) {
+			return self::sheet_from_ad( $text, $title );
+		}
+		$list = self::parse_text( $text, $title );
+		if ( ! empty( $list->rows ) ) {
+			return $list;
+		}
+		return self::sheet_from_ad( $text, $title );
+	}
+
+	/**
+	 * Merge many channel posts into one sheet.
+	 *
+	 * @param string[] $texts    Post texts.
+	 * @param string   $filename Filename.
+	 * @return HPL_Parsed_File
+	 */
+	public static function from_posts( array $texts, $filename = 'telegram-channel.txt' ) {
+		$rows = array();
+		foreach ( $texts as $text ) {
+			$sheet = self::parse_post( (string) $text );
+			foreach ( $sheet->rows as $row ) {
+				$rows[] = $row;
+			}
+		}
+		if ( empty( $rows ) ) {
+			throw new RuntimeException( 'در پست‌های کانال نام و قیمتی پیدا نشد.' );
+		}
+		$seen = array();
+		$uniq = array();
+		foreach ( $rows as $row ) {
+			$key = HPL_Normalizer::name_compact( $row[1] ) . '|' . $row[2];
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+			$uniq[]       = $row;
+		}
+		$sheet            = new HPL_Sheet( 'تلگرام', array( 'کد کالا', 'نام کالا', 'قیمت', 'موجودی' ), $uniq, 1 );
+		$parsed           = new HPL_Parsed_File();
+		$parsed->filename = $filename;
+		$parsed->type     = 'telegram';
+		$parsed->sheets   = array( $sheet );
+		return $parsed;
+	}
+
+	/**
 	 * @param string $text  Message text / caption.
 	 * @param string $title Sheet title.
 	 * @return HPL_Sheet
@@ -23,7 +78,7 @@ class HPL_Telegram_Parser {
 		$pending = '';
 
 		foreach ( $lines as $line ) {
-			$line = trim( preg_replace( '/\s+/u', ' ', (string) $line ) );
+			$line = self::strip_decor( $line );
 			if ( '' === $line ) {
 				continue;
 			}
@@ -57,7 +112,7 @@ class HPL_Telegram_Parser {
 	 * @return HPL_Parsed_File
 	 */
 	public static function to_parsed_file( $text, $filename = 'telegram.txt' ) {
-		$sheet = self::parse_text( $text, 'تلگرام' );
+		$sheet = self::parse_post( $text, 'تلگرام' );
 		if ( empty( $sheet->rows ) ) {
 			throw new RuntimeException( 'در پیام تلگرام قیمتی پیدا نشد.' );
 		}
@@ -76,10 +131,141 @@ class HPL_Telegram_Parser {
 	 */
 	public static function guess_rows( $text ) {
 		try {
-			return count( self::parse_text( $text )->rows );
+			return count( self::parse_post( $text )->rows );
 		} catch ( Exception $e ) {
 			return 0;
 		}
+	}
+
+	/**
+	 * Channel ads are long posts with one title and one «قیمت».
+	 *
+	 * @param string $text Text.
+	 * @return bool
+	 */
+	public static function is_product_ad( $text ) {
+		$text = (string) $text;
+		$len  = function_exists( 'mb_strlen' ) ? mb_strlen( $text, 'UTF-8' ) : strlen( $text );
+		$checks = preg_match_all( '/✅|✔️/u', $text );
+		if ( $len >= 180 || $checks >= 2 ) {
+			return true;
+		}
+		if ( preg_match( '/^\s*[^\n]{0,8}قیمت\s*[:：]/mu', $text ) && $len >= 80 ) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @param string $text  Post text.
+	 * @param string $title Sheet title.
+	 * @return HPL_Sheet
+	 */
+	public static function sheet_from_ad( $text, $title = 'تلگرام' ) {
+		$price = self::extract_labeled_price( $text );
+		if ( '' === $price ) {
+			$picked = self::pick_price( $text );
+			$price  = $picked ? $picked['value'] : '';
+		}
+		$name = self::extract_ad_name( $text );
+		$rows = array();
+		if ( '' !== $name && '' !== $price ) {
+			$rows[] = array( '', $name, $price, '' );
+		}
+		return new HPL_Sheet( $title, array( 'کد کالا', 'نام کالا', 'قیمت', 'موجودی' ), $rows, 1 );
+	}
+
+	/**
+	 * @param string $text Text.
+	 * @return string
+	 */
+	public static function extract_labeled_price( $text ) {
+		if ( preg_match( '/قیمت(?:\s*(?:فروش|اصلی|واحد))?\s*[:：]?\s*([0-9۰-۹٠-٩][0-9۰-۹٠-٩,\.٬٫،\' ]*)/u', $text, $m ) ) {
+			$parsed = HPL_Normalizer::price( $m[1] );
+			if ( false !== $parsed && '' !== $parsed ) {
+				return $parsed;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * First Persian title, plus English product line if present.
+	 *
+	 * @param string $text Text.
+	 * @return string
+	 */
+	public static function extract_ad_name( $text ) {
+		$lines = preg_split( "/\r\n|\n|\r/u", $text );
+		$fa    = '';
+		$en    = '';
+		foreach ( $lines as $line ) {
+			$line = self::strip_decor( $line );
+			if ( '' === $line || self::is_heading( $line ) || self::is_ad_noise( $line ) ) {
+				continue;
+			}
+			if ( self::extract_labeled_price( $line ) ) {
+				continue;
+			}
+			if ( self::is_latin_title( $line ) ) {
+				if ( '' === $en ) {
+					$en = $line;
+				}
+				continue;
+			}
+			if ( '' === $fa ) {
+				$fa = $line;
+			}
+			if ( $fa && $en ) {
+				break;
+			}
+		}
+		$name = trim( $fa . ( $en ? ' ' . $en : '' ) );
+		return HPL_Normalizer::to_string( $name );
+	}
+
+	/**
+	 * @param string $line Line.
+	 * @return string
+	 */
+	public static function strip_decor( $line ) {
+		$line = trim( (string) $line );
+		$line = preg_replace( '/[\x{1F000}-\x{1FFFF}\x{2600}-\x{27BF}\x{FE0F}\x{200D}\x{20E3}]/u', '', $line );
+		$line = preg_replace( '/^[\s✅✔✨⭐💎🔥🎀🎁❤♥🌷🌹🌸🌼🌿🍃🔹🔸▪️•·]+/u', '', $line );
+		$line = trim( preg_replace( '/\s+/u', ' ', $line ) );
+		return $line;
+	}
+
+	/**
+	 * @param string $line Line.
+	 * @return bool
+	 */
+	public static function is_ad_noise( $line ) {
+		$n = HPL_Normalizer::name( $line );
+		if ( '' === $n ) {
+			return true;
+		}
+		if ( preg_match( '/^(قیمت|خرید|ارسال|سفارش|دایرکت|واتساپ|تماس|موجود|انگلیس|کد تخفیف)/u', $n ) ) {
+			return true;
+		}
+		if ( preg_match( '/^(اگه |اگر |برای |دارای |قابل |مناسب |ترکیبی |امکان |بافت )/u', $n ) ) {
+			return true;
+		}
+		$len = function_exists( 'mb_strlen' ) ? mb_strlen( $n, 'UTF-8' ) : strlen( $n );
+		if ( $len > 90 ) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @param string $line Line.
+	 * @return bool
+	 */
+	public static function is_latin_title( $line ) {
+		$letters = preg_match_all( '/\p{L}/u', $line );
+		$latin   = preg_match_all( '/[A-Za-z]/', $line );
+		return $letters > 0 && $latin >= 8 && ( $latin / $letters ) >= 0.7;
 	}
 
 	/**
@@ -198,7 +384,7 @@ class HPL_Telegram_Parser {
 			'rest'  => $line,
 		);
 		$patterns = array(
-			'price' => '/(?:قیمت(?:\s*(?:فروش|اصلی|واحد))?|price)\s*[:：]?\s*([0-9۰-۹٠-٩][0-9۰-۹٠-٩,\.٬٫\' ]*)/iu',
+			'price' => '/(?:قیمت(?:\s*(?:فروش|اصلی|واحد))?|price)\s*[:：]?\s*([0-9۰-۹٠-٩][0-9۰-۹٠-٩,\.٬٫،\' ]*)/iu',
 			'stock' => '/(?:موجودی|تعداد|stock|qty)\s*[:：]?\s*([0-9۰-۹٠-٩]+)/iu',
 			'sku'   => '/(?:کد(?:\s*کالا)?|sku)\s*[:：]?\s*([A-Za-z0-9۰-۹٠-٩][A-Za-z0-9۰-۹٠-٩\-_]{0,40})/iu',
 			'name'  => '/(?:نام(?:\s*کالا)?)\s*[:：]?\s*(.+?)(?=\s+(?:کد|sku|قیمت|موجودی|تعداد|price|stock)|$)/iu',
@@ -229,7 +415,7 @@ class HPL_Telegram_Parser {
 	 * @return array{value:string,start:int,end:int}|null
 	 */
 	private static function pick_price( $line ) {
-		if ( ! preg_match_all( '/[0-9۰-۹٠-٩][0-9۰-۹٠-٩,\.٬٫\' ]*[0-9۰-۹٠-٩]|[0-9۰-۹٠-٩]+/u', $line, $matches, PREG_OFFSET_CAPTURE ) ) {
+		if ( ! preg_match_all( '/[0-9۰-۹٠-٩][0-9۰-۹٠-٩,\.٬٫،\' ]*[0-9۰-۹٠-٩]|[0-9۰-۹٠-٩]+/u', $line, $matches, PREG_OFFSET_CAPTURE ) ) {
 			return null;
 		}
 		$best = null;
