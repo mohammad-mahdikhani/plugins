@@ -195,6 +195,99 @@ $row  = array( 'sku' => '', 'product_id' => '', 'barcode' => '', 'name' => 'قن
 $item = ( new HPL_Updater( hpl_catalog() ) )->plan_row( $row );
 hpl_assert( 'changed' === $item['status'] && '14' === $item['product_id'], 'match by name' );
 
+echo "== Telegram text prices ==\n";
+$tg_text = "لیست قیمت ۱۵ مهر ۱۴۰۳\nدستگاه تصفيه آب آکواجوی مدل 401 : ۱۳٬۵۰۰٬۰۰۰ تومان\nSKU-100 روغن مایع 185,000\nآکواجوی 402\n14,000,000\nکد: AQ-500 نام: فیلتر قیمت: 2500000 موجودی: 7\n";
+$tg_sheet = HPL_Telegram_Parser::parse_text( $tg_text );
+hpl_assert( count( $tg_sheet->rows ) >= 4, 'telegram text yields price rows' );
+$names = array();
+foreach ( $tg_sheet->rows as $r ) {
+	$names[] = $r[1];
+}
+$joined = implode( ' ', $names );
+hpl_assert( false !== strpos( $joined, 'آکواجوی' ) || false !== strpos( $joined, 'آکواجوی' ), 'telegram keeps aquajoy name' );
+$prices = array();
+foreach ( $tg_sheet->rows as $r ) {
+	$prices[] = $r[2];
+}
+hpl_assert( in_array( '13500000', $prices, true ), 'telegram persian price with separators' );
+hpl_assert( in_array( '185000', $prices, true ), 'telegram sku line price' );
+hpl_assert( in_array( '14000000', $prices, true ), 'telegram two-line name then price' );
+$sku100 = false;
+foreach ( $tg_sheet->rows as $r ) {
+	if ( 'SKU-100' === $r[0] && '185000' === $r[2] ) {
+		$sku100 = true;
+	}
+}
+hpl_assert( $sku100, 'telegram keeps SKU-100' );
+$labeled_ok = false;
+foreach ( $tg_sheet->rows as $r ) {
+	if ( 'AQ-500' === $r[0] && '2500000' === $r[2] && '7' === $r[3] && false !== strpos( $r[1], 'فیلتر' ) ) {
+		$labeled_ok = true;
+	}
+}
+hpl_assert( $labeled_ok, 'telegram labeled sku/price/stock' );
+hpl_assert( HPL_Telegram_Parser::is_heading( 'لیست قیمت ۱۴۰۳/۰۷/۲۴' ), 'telegram heading skipped' );
+
+HPL_Telegram::$store = array();
+$item = HPL_Telegram::ingest_update(
+	array(
+		'update_id'    => 9,
+		'channel_post' => array(
+			'message_id' => 44,
+			'date'       => 1700000000,
+			'chat'       => array( 'id' => -1001, 'username' => 'pricelist', 'type' => 'channel' ),
+			'text'       => "آکواجوی 401 : 13000000\nSKU-100 روغن 200000",
+		),
+	)
+);
+hpl_assert( $item && 'text' === $item['kind'] && $item['rows_guess'] >= 2, 'telegram ingest channel text' );
+hpl_assert( 1 === count( HPL_Telegram::inbox() ), 'telegram inbox stores post' );
+
+$html = '<div class="tgme_widget_message" data-post="pricelist/12"><div class="tgme_widget_message_text js-message_text">تصفيه آب آکواجوی مدل 401 : 13,500,000</div><div class="tgme_widget_message_footer">';
+$public = HPL_Telegram::parse_public_html( $html, 'pricelist' );
+hpl_assert( 1 === count( $public ) && $public[0]['rows_guess'] >= 1, 'telegram public html text' );
+hpl_assert( 'pricelist' === HPL_Telegram::normalize_channel( 'https://t.me/s/pricelist' ), 'telegram channel link normalized' );
+
+$mapped = HPL_Column_Mapper::detect( $tg_sheet->headers );
+hpl_assert( 0 === $mapped['sku'] && 1 === $mapped['name'] && 2 === $mapped['regular_price'], 'telegram sheet maps columns' );
+$rows = HPL_Column_Mapper::apply( $tg_sheet, $mapped );
+$aqua_up = new HPL_Updater( $aqua );
+$hit = $aqua_up->plan_row( $rows[0] );
+hpl_assert( '31' === $hit['product_id'], 'telegram aquajoy row matches shop product' );
+
+$dior_post = "🌷 پلت هایلایتر  لاکچری و جذاب دیور رنگ 001\n\nDIOR BACKSTAGE GLOW MAXIMIZER PALETTE 001 UNIVERSAL GLOW\n\nاگه عاشق پوست درخشان و گلو طبیعی و جذابی، این پالت از دیور همون چیزیه که برای کامل کردن میکاپت نیاز داری!\n\n✅ دارای ۴ رنگ درخشان و کاربردی برای ایجاد جلوه‌های متفاوت روی پوست\n✅ بافت نرم و لطیف با پیگمنت بالا و جلوه‌ای درخشان\n✅ قابل استفاده برای برجسته کردن گونه‌ها\n\nخرید انگلیس\n\n🌷 قیمت: ۲۴،۵۰۰ تومان\n";
+hpl_assert( HPL_Telegram_Parser::is_product_ad( $dior_post ), 'dior channel post is a product ad' );
+$dior_sheet = HPL_Telegram_Parser::parse_post( $dior_post );
+hpl_assert( 1 === count( $dior_sheet->rows ), 'dior post is one product' );
+hpl_assert( '24500' === $dior_sheet->rows[0][2], 'dior price 24,500 toman' );
+hpl_assert( false !== strpos( $dior_sheet->rows[0][1], 'هایلایتر' ), 'dior keeps persian title' );
+hpl_assert( false !== strpos( $dior_sheet->rows[0][1], 'DIOR BACKSTAGE' ), 'dior keeps english title' );
+hpl_assert( false === strpos( $dior_sheet->rows[0][1], 'اگه عاشق' ), 'dior drops marketing copy' );
+hpl_assert( false === strpos( $dior_sheet->rows[0][1], 'خرید انگلیس' ), 'dior drops buy-uk line' );
+
+$dior_cat = HPL_Catalog::from_products(
+	array(
+		array( 'id' => 41, 'sku' => 'DIOR-001', 'name' => 'پالت هایلایتر دیور رنگ 001', 'regular_price' => '20000', 'sale_price' => '', 'stock' => '3' ),
+	)
+);
+$dior_map = HPL_Column_Mapper::detect( $dior_sheet->headers );
+$dior_rows = HPL_Column_Mapper::apply( $dior_sheet, $dior_map );
+$dior_plan = ( new HPL_Updater( $dior_cat ) )->plan_row( $dior_rows[0] );
+$dior_screen = HPL_Screener::run( $dior_rows, $dior_cat, new HPL_Updater( $dior_cat ) );
+hpl_assert( 1 === $dior_screen['stats']['on_site'] || '41' === $dior_plan['product_id'], 'dior telegram name matches shop product' );
+
+$merged = HPL_Telegram_Parser::from_posts( array( $dior_post, "آکواجوی 401 : 13000000" ) );
+hpl_assert( count( $merged->sheets[0]->rows ) >= 2, 'several channel posts merge into one list' );
+
+$paste = $dior_post . "\n\n🌷 کرم مرطوب‌کننده تست\nقیمت: ۱۲،۰۰۰ تومان\n";
+$split = HPL_Telegram_Parser::split_posts( $paste );
+hpl_assert( count( $split ) >= 2, 'paste splits two priced posts' );
+HPL_Telegram::$store = array();
+$pasted = HPL_Telegram::ingest_pasted( $paste );
+hpl_assert( count( $pasted->sheets[0]->rows ) >= 2, 'pasted posts become a price list' );
+$explained = HPL_Telegram::explain_error( 'cURL error 7: Failed to connect to t.me port 443 after 2 ms: Could not connect to the server' );
+hpl_assert( false === strpos( $explained, 'cURL' ) && false !== strpos( $explained, 'بچسبانید' ), 'curl t.me error is explained in Persian' );
+
 echo "== Sample export ==\n";
 $bin = HPL_Export::sample_xlsx();
 hpl_assert( strlen( $bin ) > 100 && 'PK' === substr( $bin, 0, 2 ), 'sample xlsx is zip' );

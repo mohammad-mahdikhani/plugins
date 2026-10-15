@@ -117,6 +117,53 @@
 	margin-bottom: 16px;
 }
 
+.hpl-or {
+	text-align: center;
+	color: #7a9086;
+	margin: 18px 0;
+	font-size: 13px;
+}
+
+.hpl-telegram {
+	border: 1px solid #d7e4dc;
+	border-radius: 16px;
+	padding: 18px 16px;
+	background: #fbfefc;
+}
+
+.hpl-telegram-head {
+	margin-bottom: 12px;
+}
+
+.hpl-telegram-head strong {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.hpl-telegram-head span,
+.hpl-subhead + .hpl-hint {
+	color: #5b7268;
+	font-size: 13px;
+	line-height: 1.7;
+}
+
+.hpl-subhead {
+	margin: 22px 0 8px;
+	font-size: 16px;
+}
+
+#hpl-telegram-paste {
+	width: 100%;
+	min-height: 140px;
+	border: 1px solid #c5d7cd;
+	border-radius: 10px;
+	padding: 10px 12px;
+	font-family: inherit;
+	font-size: 13px;
+	line-height: 1.7;
+	resize: vertical;
+}
+
 .hpl-btn {
 	appearance: none;
 	border: 1px solid #c5d7cd;

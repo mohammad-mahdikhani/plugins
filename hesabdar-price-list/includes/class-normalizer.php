@@ -101,6 +101,7 @@ class HPL_Normalizer {
 		$string = self::name( $value );
 		$noise  = self::name_noise_pattern();
 		$string = preg_replace( '/\b' . $noise . '\b/u', ' ', $string );
+		$string = preg_replace( '/\s+و\s+/u', ' ', $string );
 		$string = preg_replace( '/\s+/u', ' ', $string );
 		return trim( $string );
 	}
@@ -146,7 +147,7 @@ class HPL_Normalizer {
 	 * @return string
 	 */
 	public static function name_noise_pattern() {
-		return '(دستگاه|مدل|مدلهای|خانگی|اصل|اورجینال|اصلی|جدید|کالا|محصول|برند|نوع|کیلوگرم|کیلو|kg|گرم|لیتر|میلی[\s]?لیتر|ml|ltr|عدد|بسته|کارتن|جفت|رول|متر)';
+		return '(دستگاه|مدل|مدلهای|خانگی|اصل|اورجینال|اصلی|جدید|کالا|محصول|برند|نوع|لاکچری|جذاب|رنگ|کیلوگرم|کیلو|kg|گرم|لیتر|میلی[\s]?لیتر|ml|ltr|عدد|بسته|کارتن|جفت|رول|متر)';
 	}
 
 	/**
@@ -164,6 +165,7 @@ class HPL_Normalizer {
 		);
 		$string = preg_replace( '/[\x{064B}-\x{065F}\x{0670}\x{200C}\x{200F}\x{0640}\x{00A0}]/u', ' ', $string );
 		$string = preg_replace( '/[^\p{L}\p{N}\s]+/u', ' ', $string );
+		$string = preg_replace( '/\bپلت\b/u', 'پالت', $string );
 		$string = preg_replace( '/\s+/u', ' ', $string );
 		return trim( mb_strtolower( $string, 'UTF-8' ) );
 	}

@@ -16,6 +16,8 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}hpl_changes" ); // phpcs:igno
 
 delete_option( 'hpl_settings' );
 delete_option( 'hpl_db_version' );
+delete_option( 'hpl_telegram_inbox' );
+delete_option( 'hpl_telegram_offset' );
 
 $upload = wp_upload_dir();
 $dir    = trailingslashit( $upload['basedir'] ) . 'hesabdar-price-list';

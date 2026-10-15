@@ -32,6 +32,7 @@ class HPL_Admin {
 		add_action( 'admin_post_hpl_sample_xlsx', array( $this, 'sample_xlsx' ) );
 		add_action( 'admin_post_hpl_sample_csv', array( $this, 'sample_csv' ) );
 		add_action( 'admin_post_hpl_save_settings', array( $this, 'save_settings' ) );
+		add_action( 'admin_post_hpl_telegram_webhook', array( $this, 'telegram_webhook' ) );
 	}
 
 	public function menu() {
@@ -101,9 +102,12 @@ class HPL_Admin {
 			'hpl-admin',
 			'HPL',
 			array(
-				'ajax'  => admin_url( 'admin-ajax.php' ),
-				'nonce' => wp_create_nonce( 'hpl_nonce' ),
-				'i18n'  => array(
+				'ajax'      => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( 'hpl_nonce' ),
+				'telegram'  => HPL_Telegram::configured(),
+				'posts'     => HPL_Telegram::inbox_preview(),
+				'settings'  => admin_url( 'admin.php?page=hesabdar-price-list-settings' ),
+				'i18n'      => array(
 					'uploading'  => 'در حال بارگذاری فایل…',
 					'parsing'    => 'در حال خواندن لیست قیمت…',
 					'previewing' => 'در حال تطبیق با محصولات فروشگاه…',
@@ -112,6 +116,7 @@ class HPL_Admin {
 					'error'      => 'خطا رخ داد.',
 					'drop'       => 'فایل اکسل یا PDF را اینجا رها کنید',
 					'choose'     => 'انتخاب فایل',
+					'telegram'   => 'در حال خواندن قیمت‌ها از تلگرام…',
 				),
 			)
 		);
@@ -157,17 +162,39 @@ class HPL_Admin {
 			wp_die( 'دسترسی ندارید.' );
 		}
 		check_admin_referer( 'hpl_save_settings' );
+		$current = HPL_Plugin::settings();
+		$token   = isset( $_POST['telegram_bot_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_bot_token'] ) ) : '';
+		if ( '' === $token ) {
+			$token = isset( $current['telegram_bot_token'] ) ? $current['telegram_bot_token'] : '';
+		}
 		HPL_Plugin::save_settings(
 			array(
-				'update_regular'   => ! empty( $_POST['update_regular'] ),
-				'update_sale'      => ! empty( $_POST['update_sale'] ),
-				'update_stock'     => ! empty( $_POST['update_stock'] ),
-				'skip_empty_price' => ! empty( $_POST['skip_empty_price'] ),
-				'zero_clears_sale' => ! empty( $_POST['zero_clears_sale'] ),
-				'match_order'      => isset( $_POST['match_order'] ) ? sanitize_text_field( wp_unslash( $_POST['match_order'] ) ) : 'sku,product_id,barcode,name',
+				'update_regular'      => ! empty( $_POST['update_regular'] ),
+				'update_sale'         => ! empty( $_POST['update_sale'] ),
+				'update_stock'        => ! empty( $_POST['update_stock'] ),
+				'skip_empty_price'    => ! empty( $_POST['skip_empty_price'] ),
+				'zero_clears_sale'    => ! empty( $_POST['zero_clears_sale'] ),
+				'match_order'         => isset( $_POST['match_order'] ) ? sanitize_text_field( wp_unslash( $_POST['match_order'] ) ) : 'sku,product_id,barcode,name',
+				'telegram_bot_token'  => $token,
+				'telegram_channel'    => isset( $_POST['telegram_channel'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_channel'] ) ) : '',
 			)
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=hesabdar-price-list-settings&updated=1' ) );
+		exit;
+	}
+
+	public function telegram_webhook() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		check_admin_referer( 'hpl_telegram_webhook' );
+		try {
+			HPL_Telegram::register_webhook();
+			wp_safe_redirect( admin_url( 'admin.php?page=hesabdar-price-list-settings&updated=1&webhook=1' ) );
+		} catch ( Exception $e ) {
+			HPL_Telegram::store_error( $e->getMessage() );
+			wp_safe_redirect( admin_url( 'admin.php?page=hesabdar-price-list-settings&webhook_error=1' ) );
+		}
 		exit;
 	}
 

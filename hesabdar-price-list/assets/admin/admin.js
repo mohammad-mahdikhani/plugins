@@ -121,11 +121,7 @@
       .replace(/"/g, "&quot;");
   }
 
-  async function uploadFile(file) {
-    toast(HPL.i18n.uploading);
-    const fd = new FormData();
-    fd.append("file", file);
-    const data = await post("hpl_upload", fd);
+  function acceptParsed(data) {
     state.token = data.token;
     state.sheets = data.sheets || [];
     state.labels = data.labels || {};
@@ -143,7 +139,137 @@
       warn.hidden = true;
     }
     fillMap();
+    if (String(data.type) === "telegram") {
+      const stock = $("#hpl-update-stock");
+      if (stock) stock.checked = false;
+    }
     setStep(2);
+  }
+
+  async function uploadFile(file) {
+    toast(HPL.i18n.uploading);
+    const fd = new FormData();
+    fd.append("file", file);
+    const data = await post("hpl_upload", fd);
+    acceptParsed(data);
+  }
+
+  function kindLabel(kind) {
+    return (
+      {
+        document: "فایل",
+        public_file: "فایل کانال",
+        text: "متن قیمت",
+      }[kind] || kind
+    );
+  }
+
+  function formatWhen(ts) {
+    if (!ts) return "";
+    try {
+      return new Date(Number(ts) * 1000).toLocaleString("fa-IR");
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function renderTelegramPosts(posts) {
+    const body = $("#hpl-telegram-list");
+    const wrap = $("#hpl-telegram-list-wrap");
+    if (!body || !wrap) return;
+    const list = posts || [];
+    if (!list.length) {
+      wrap.hidden = true;
+      body.innerHTML = "";
+      return;
+    }
+    wrap.hidden = false;
+    body.innerHTML = list
+      .map((p) => {
+        const title = p.filename || p.preview || "پست تلگرام";
+        return (
+          "<tr><td>" +
+          escapeHtml(title) +
+          "<div class='hpl-cand'>" +
+          escapeHtml(formatWhen(p.date)) +
+          "</div></td><td>" +
+          escapeHtml(kindLabel(p.kind)) +
+          "</td><td>" +
+          (p.rows_guess ? fmt(p.rows_guess) : "—") +
+          "</td><td><button type='button' class='hpl-btn hpl-btn-primary hpl-tg-open' data-id='" +
+          escapeHtml(p.id) +
+          "'>خواندن</button></td></tr>"
+        );
+      })
+      .join("");
+    $$(".hpl-tg-open", body).forEach((btn) => {
+      btn.onclick = () =>
+        post("hpl_telegram_open", { id: btn.getAttribute("data-id") })
+          .then(acceptParsed)
+          .catch((err) => toast(err.message));
+    });
+  }
+
+  function bindTelegram() {
+    const box = $("#hpl-telegram");
+    if (!box) return;
+    const help = $("#hpl-telegram-help");
+    if (!HPL.telegram) {
+      if (help) {
+        help.innerHTML =
+          'برای خواندن کانال، توکن ربات و نام کانال را در <a href="' +
+          escapeHtml(HPL.settings || "admin.php?page=hesabdar-price-list-settings") +
+          '">تنظیمات لیست قیمت</a> وارد کنید.';
+      }
+    } else if (help) {
+      help.textContent =
+        "اگر دکمه کانال خطا داد، کل پست را از تلگرام کپی کنید و بچسبانید. سرور بعضی هاست‌ها به t.me وصل نمی‌شود.";
+    }
+    renderTelegramPosts(HPL.posts || []);
+    const latest = $("#hpl-telegram-latest");
+    if (latest) {
+      latest.addEventListener("click", () => {
+        if (!HPL.telegram) {
+          toast("ابتدا کانال تلگرام را در تنظیمات وارد کنید.");
+          return;
+        }
+        toast(HPL.i18n.telegram || "در حال خواندن از تلگرام…");
+        post("hpl_telegram_open", { id: "" })
+          .then(acceptParsed)
+          .catch((err) => toast(err.message));
+      });
+    }
+    const pasteBtn = $("#hpl-telegram-paste-btn");
+    if (pasteBtn) {
+      pasteBtn.addEventListener("click", () => {
+        const text = ($("#hpl-telegram-paste") && $("#hpl-telegram-paste").value) || "";
+        if (!text.trim()) {
+          toast("ابتدا متن پست را از تلگرام کپی و اینجا بچسبانید.");
+          return;
+        }
+        toast("در حال خواندن نام و قیمت از متن پست…");
+        post("hpl_telegram_paste", { text: text })
+          .then(acceptParsed)
+          .catch((err) => toast(err.message));
+      });
+    }
+    const refresh = $("#hpl-telegram-refresh");
+    if (refresh) {
+      refresh.addEventListener("click", () => {
+        if (!HPL.telegram) {
+          toast("ابتدا کانال تلگرام را در تنظیمات وارد کنید.");
+          return;
+        }
+        toast("در حال دریافت پست‌های کانال…");
+        post("hpl_telegram_fetch", {})
+          .then((data) => {
+            HPL.posts = data.posts || [];
+            renderTelegramPosts(HPL.posts);
+            toast((HPL.posts.length || 0) + " پست پیدا شد");
+          })
+          .catch((err) => toast(err.message));
+      });
+    }
   }
 
   function renderScreen(data) {
@@ -427,6 +553,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     if (typeof HPL === "undefined") return;
     bindUpload();
+    bindTelegram();
     bindWizard();
     bindHistory();
   });

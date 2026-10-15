@@ -4,7 +4,7 @@
 
 ## hesabdar-price-list
 
-به‌روزرسانی قیمت محصولات ووکامرس با آپلود لیست قیمت اکسل (xlsx/xls/csv) یا PDF.
+به‌روزرسانی قیمت محصولات ووکامرس با آپلود اکسل/PDF یا خواندن کانال تلگرام.
 
 **فایل نصب:** [`dist/hesabdar-price-list.zip`](dist/hesabdar-price-list.zip)
 

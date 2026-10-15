@@ -11,7 +11,7 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 	<div class="hpl-hero">
 		<div>
 			<h1>لیست قیمت حسابدار</h1>
-			<p>فایل اکسل یا PDF لیست قیمت جدید را آپلود کنید تا قیمت همه محصولات مطابق لیست جدید به‌روز شود.</p>
+			<p>لیست قیمت را از اکسل، PDF یا پست‌های کانال تلگرام بخوانید. برای تلگرام نام کالا و قیمت کافی است.</p>
 		</div>
 		<div class="hpl-hero-actions">
 			<a class="hpl-btn hpl-btn-ghost" href="<?php echo esc_url( $sample_xlsx ); ?>">دانلود نمونه اکسل</a>
@@ -21,7 +21,7 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 	</div>
 
 	<ol class="hpl-steps">
-		<li class="is-active" data-step="1">آپلود فایل</li>
+		<li class="is-active" data-step="1">منبع لیست قیمت</li>
 		<li data-step="2">تطبیق ستون‌ها</li>
 		<li data-step="3">غربالگری هوشمند</li>
 		<li data-step="4">اعمال قیمت و موجودی</li>
@@ -35,7 +35,34 @@ $export_current = admin_url( 'admin-post.php?action=hpl_export_current&_wpnonce=
 			<span>xlsx ، xls ، csv یا pdf — حداکثر ۲۰ مگابایت</span>
 			<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-browse">انتخاب فایل</button>
 		</div>
-		<p class="hpl-hint">موتور غربالگری تمام ردیف‌های فایل را با تمام محصولات سایت می‌سنجد: موجودها را برای قیمت و موجودی جدا می‌کند، غایب‌ها را غربال می‌کند و می‌توانید همان‌جا در سایت ست‌شان کنید.</p>
+		<div class="hpl-or">یا</div>
+		<div class="hpl-telegram" id="hpl-telegram">
+			<div class="hpl-telegram-head">
+				<strong>خواندن از کانال تلگرام</strong>
+				<span>هر پست یک کالا است؛ نام و قیمت از متن پست خوانده می‌شود.</span>
+			</div>
+			<div class="hpl-actions">
+				<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-telegram-latest">خواندن همه پست‌های کانال</button>
+				<button type="button" class="hpl-btn" id="hpl-telegram-refresh">نمایش پست‌ها</button>
+			</div>
+			<p class="hpl-hint" id="hpl-telegram-help">اگر سرور به تلگرام وصل نشود، کل پست را از اپ تلگرام کپی کنید و در کادر زیر بچسبانید.</p>
+			<label class="hpl-field">
+				<span>چسباندن پست تلگرام</span>
+				<textarea id="hpl-telegram-paste" rows="7" placeholder="عنوان کالا&#10;&#10;قیمت: ۲۴،۵۰۰ تومان"></textarea>
+			</label>
+			<div class="hpl-actions">
+				<button type="button" class="hpl-btn hpl-btn-primary" id="hpl-telegram-paste-btn">خواندن متن چسبانده‌شده</button>
+			</div>
+			<div class="hpl-table-wrap" id="hpl-telegram-list-wrap" hidden>
+				<table class="hpl-table">
+					<thead>
+						<tr><th>پست</th><th>نوع</th><th>قیمت‌ها</th><th></th></tr>
+					</thead>
+					<tbody id="hpl-telegram-list"></tbody>
+				</table>
+			</div>
+		</div>
+		<p class="hpl-hint">موتور غربالگری تمام ردیف‌ها را با تمام محصولات سایت می‌سنجد: موجودها را برای قیمت و موجودی جدا می‌کند، غایب‌ها را غربال می‌کند و می‌توانید همان‌جا در سایت ست‌شان کنید.</p>
 	</div>
 
 	<div class="hpl-card is-hidden" id="hpl-step-2">
