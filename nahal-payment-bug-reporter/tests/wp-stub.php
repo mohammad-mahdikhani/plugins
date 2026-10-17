@@ -35,6 +35,8 @@ namespace {
 		$GLOBALS['npbr_actions'][ $hook ][] = $cb;
 	}
 	function add_shortcode( $tag, $cb ) {}
+	function sanitize_email( $v ) { return (string) $v; }
+	function sanitize_text_field( $v ) { return is_string( $v ) ? trim( $v ) : ''; }
 	function do_action( $hook ) {
 		if ( empty( $GLOBALS['npbr_actions'][ $hook ] ) ) {
 			return;

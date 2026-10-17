@@ -120,13 +120,31 @@ class NPBR_Ajax {
 		$mailed = NPBR_Mailer::send( $data, $id );
 		update_post_meta( $id, '_npbr_emailed', $mailed ? '1' : '0' );
 
+		$telegram = false;
+		if ( class_exists( 'NPBR_Telegram' ) && NPBR_Telegram::enabled() ) {
+			$telegram = NPBR_Telegram::send( $data, $id );
+			update_post_meta( $id, '_npbr_telegram', $telegram ? '1' : '0' );
+		}
+
+		$parts = array();
+		if ( $mailed ) {
+			$parts[] = 'برای مدیر ایمیل شد';
+		}
+		if ( $telegram ) {
+			$parts[] = 'همزمان به تلگرام ارسال شد';
+		}
+		if ( ! $parts ) {
+			$message = 'گزارش در پیشخوان ذخیره شد، اما ایمیل/تلگرام ارسال نشد. فایل را دانلود کنید و خودتان بفرستید.';
+		} else {
+			$message = 'گزارش ' . implode( ' و ', $parts ) . '. اگر بخواهید همان فایل را هم دانلود کنید.';
+		}
+
 		wp_send_json_success(
 			array(
-				'message' => $mailed
-					? 'گزارش برای مدیر ارسال شد. اگر بخواهید همان فایل را هم دانلود کنید.'
-					: 'گزارش در پیشخوان ذخیره شد، اما ایمیل مدیر ارسال نشد. فایل را دانلود کنید و خودتان بفرستید.',
-				'id'      => $id,
-				'emailed' => $mailed,
+				'message'  => $message,
+				'id'       => $id,
+				'emailed'  => $mailed,
+				'telegram' => $telegram,
 			)
 		);
 	}

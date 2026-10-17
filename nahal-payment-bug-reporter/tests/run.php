@@ -108,6 +108,27 @@ $json = NPBR_Report::public_json( $ok['data'] );
 npbr_assert( empty( $json['screenshot'] ), 'public json drops screenshot bytes' );
 npbr_assert( ! empty( $json['hasScreenshot'] ), 'public json flags screenshot' );
 
+echo "== Telegram text ==\n";
+$tg = NPBR_Telegram::text( $ok['data'] );
+npbr_assert( false !== strpos( $tg, 'فیلدهای کارت' ), 'telegram includes note' );
+npbr_assert( false !== strpos( $tg, 'checkout.min.js' ), 'telegram includes failed url' );
+npbr_assert( false !== strpos( $tg, 'کنسول' ), 'telegram has console section' );
+npbr_assert( false === NPBR_Telegram::enabled(), 'telegram disabled without settings' );
+
+$http400 = NPBR_Sanitizer::failed_resources(
+	array(
+		array(
+			'url'     => 'https://trustseal.enamad.ir/logo.aspx?id=592152&Code=abc',
+			'kind'    => 'resource',
+			'status'  => '400',
+			'message' => 'Failed to load resource: the server responded with a status of 400',
+			'tag'     => 'img',
+		),
+	)
+);
+npbr_assert( 1 === count( $http400 ), 'keeps enamad 400 url' );
+npbr_assert( '400' === $http400[0]['status'], 'keeps http 400 status' );
+
 echo "== Zip ==\n";
 $zip_path = sys_get_temp_dir() . '/npbr-test-' . getmypid() . '.zip';
 npbr_assert( NPBR_Zip::write( $ok['data'], $zip_path ), 'writes zip' );

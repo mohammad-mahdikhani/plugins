@@ -56,15 +56,18 @@ class NPBR_Plugin {
 	 */
 	public static function defaults() {
 		return array(
-			'manager_email'      => '',
-			'show_on_checkout'   => true,
-			'show_on_order_pay'  => true,
-			'show_on_cart'       => false,
-			'show_on_thankyou'   => true,
-			'show_near_payment'  => true,
-			'show_floating'      => true,
-			'require_description'=> true,
-			'button_label'       => 'گزارش خطا',
+			'manager_email'       => '',
+			'show_on_checkout'    => true,
+			'show_on_order_pay'   => true,
+			'show_on_cart'        => false,
+			'show_on_thankyou'    => true,
+			'show_near_payment'   => true,
+			'show_floating'       => true,
+			'require_description' => true,
+			'button_label'        => 'گزارش خطا',
+			'telegram_enabled'    => false,
+			'telegram_bot_token'  => '',
+			'telegram_chat_id'    => '',
 		);
 	}
 
@@ -77,11 +80,13 @@ class NPBR_Plugin {
 			$stored = array();
 		}
 		$merged = array_merge( self::defaults(), $stored );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_thankyou', 'show_near_payment', 'show_floating', 'require_description' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_thankyou', 'show_near_payment', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
-		$merged['manager_email'] = sanitize_email( (string) $merged['manager_email'] );
-		$merged['button_label']  = $merged['button_label'] ? sanitize_text_field( (string) $merged['button_label'] ) : 'گزارش خطا';
+		$merged['manager_email']      = sanitize_email( (string) $merged['manager_email'] );
+		$merged['button_label']       = $merged['button_label'] ? sanitize_text_field( (string) $merged['button_label'] ) : 'گزارش خطا';
+		$merged['telegram_bot_token'] = self::sanitize_token( isset( $merged['telegram_bot_token'] ) ? $merged['telegram_bot_token'] : '' );
+		$merged['telegram_chat_id']   = self::sanitize_chat_id( isset( $merged['telegram_chat_id'] ) ? $merged['telegram_chat_id'] : '' );
 		return $merged;
 	}
 
@@ -91,12 +96,18 @@ class NPBR_Plugin {
 	public static function save_settings( array $settings ) {
 		$current = self::settings();
 		$merged  = array_merge( $current, $settings );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_thankyou', 'show_near_payment', 'show_floating', 'require_description' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_thankyou', 'show_near_payment', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email'] = sanitize_email( isset( $merged['manager_email'] ) ? (string) $merged['manager_email'] : '' );
 		$label                   = isset( $merged['button_label'] ) ? sanitize_text_field( (string) $merged['button_label'] ) : 'گزارش خطا';
 		$merged['button_label']  = $label ? $label : 'گزارش خطا';
+		if ( isset( $settings['telegram_bot_token'] ) && '' === trim( (string) $settings['telegram_bot_token'] ) ) {
+			$merged['telegram_bot_token'] = $current['telegram_bot_token'];
+		} else {
+			$merged['telegram_bot_token'] = self::sanitize_token( isset( $merged['telegram_bot_token'] ) ? $merged['telegram_bot_token'] : '' );
+		}
+		$merged['telegram_chat_id'] = self::sanitize_chat_id( isset( $merged['telegram_chat_id'] ) ? $merged['telegram_chat_id'] : '' );
 		update_option( 'npbr_settings', $merged );
 	}
 
@@ -109,5 +120,21 @@ class NPBR_Plugin {
 			return $settings['manager_email'];
 		}
 		return (string) get_option( 'admin_email' );
+	}
+
+	/**
+	 * @param mixed $token Token.
+	 * @return string
+	 */
+	public static function sanitize_token( $token ) {
+		return preg_replace( '/[^A-Za-z0-9:_-]/', '', (string) $token );
+	}
+
+	/**
+	 * @param mixed $chat Chat id.
+	 * @return string
+	 */
+	public static function sanitize_chat_id( $chat ) {
+		return preg_replace( '/[^A-Za-z0-9_\-@]/', '', (string) $chat );
 	}
 }

@@ -3,7 +3,7 @@
  * Plugin Name: Nahal Payment Bug Reporter
  * Plugin URI:  https://nahal.website
  * Description: گزارشگر خطای پرداخت نهال — دکمه گزارش در صفحات و فیلدهای پرداخت، اسکرین صفحه و ارسال برای مدیر.
- * Version:     1.0.2
+ * Version:     1.0.3
  * Author:      nahal.website
  * Author URI:  https://nahal.website
  * Text Domain: nahal-payment-bug-reporter
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'NPBR_VERSION' ) ) {
-	define( 'NPBR_VERSION', '1.0.2' );
+	define( 'NPBR_VERSION', '1.0.3' );
 }
 if ( ! defined( 'NPBR_FILE' ) ) {
 	define( 'NPBR_FILE', __FILE__ );
@@ -41,6 +41,7 @@ $npbr_includes = array(
 	'includes/class-report.php',
 	'includes/class-zip.php',
 	'includes/class-mailer.php',
+	'includes/class-telegram.php',
 	'includes/class-install.php',
 	'includes/class-frontend.php',
 	'includes/class-admin.php',

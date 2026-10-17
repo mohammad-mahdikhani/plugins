@@ -23,22 +23,8 @@
 		.hint { font-size: 13px; color: #4b6358; line-height: 1.8; }
 		img.logo { width: 40px; height: 40px; object-fit: contain; background: #fff; border-radius: 8px; }
 	</style>
+	<script src="../assets/frontend/collector.js"></script>
 	<script>
-		window.NPBRBuffer = { failed: [], errors: [] };
-		(function (b) {
-			function push(list, item, max) { if (list.length >= max) return; list.push(item); }
-			window.addEventListener('error', function (ev) {
-				var t = ev.target || ev.srcElement;
-				if (t && (t.src || t.href) && t.tagName) {
-					push(b.failed, { url: t.src || t.href, kind: 'resource', tag: (t.tagName || '').toLowerCase(), id: t.id || '', status: 'load-error', message: 'resource failed', time: new Date().toISOString(), payment: true }, 80);
-					return;
-				}
-				push(b.errors, { message: ev.message || 'error', source: ev.filename || '', line: String(ev.lineno || ''), type: 'error' }, 40);
-			}, true);
-			window.addEventListener('unhandledrejection', function (ev) {
-				push(b.errors, { message: String(ev.reason || 'unhandledrejection'), source: '', line: '', type: 'unhandledrejection' }, 40);
-			});
-		})(window.NPBRBuffer);
 		window.NPBR_CFG = {
 			ajax: '',
 			nonce: 'preview',
@@ -48,7 +34,10 @@
 			requireNote: true,
 			site: 'https://nahal.website/'
 		};
+		console.error('Failed to load resource: the server responded with a status of 400 (https://trustseal.enamad.ir/logo.aspx?id=592152)');
+		fetch('./http-400.php');
 	</script>
+	<img src="./http-400.php" alt="" width="1" height="1" style="position:absolute;opacity:0">
 	<script id="broken-digipay" src="./missing-digipay-fields.js"></script>
 	<script id="broken-checkout" src="./missing-checkout.min.js"></script>
 	<link rel="stylesheet" href="./missing-payment.css">
@@ -109,7 +98,7 @@
 			</div>
 			<footer class="npbr-actions">
 				<button type="button" class="npbr-btn npbr-btn-light" data-npbr-download>دانلود گزارش و اسکرین</button>
-				<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر</button>
+				<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر و تلگرام</button>
 			</footer>
 		</section>
 	</div>

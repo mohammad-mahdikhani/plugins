@@ -38,15 +38,13 @@ class NPBR_Frontend {
 		if ( is_admin() || ! $this->should_load() ) {
 			return;
 		}
+		$path = NPBR_DIR . 'assets/frontend/collector.js';
+		if ( ! is_readable( $path ) ) {
+			return;
+		}
 		echo "<script id=\"npbr-collector\">\n";
-		echo "window.NPBRBuffer=window.NPBRBuffer||{failed:[],errors:[]};\n";
-		echo "(function(b){function push(list,item,max){if(list.length>=max)return;list.push(item);}";
-		echo "function rec(ev){var t=ev.target||ev.srcElement;if(t&&(t.src||t.href)&&t.tagName){push(b.failed,{url:t.src||t.href,kind:'resource',tag:(t.tagName||'').toLowerCase(),id:t.id||'',status:'load-error',message:'resource failed',time:new Date().toISOString(),payment:false},80);return;}";
-		echo "push(b.errors,{message:ev.message||'error',source:ev.filename||'',line:String(ev.lineno||''),type:'error'},40);}";
-		echo "window.addEventListener('error',rec,true);";
-		echo "window.addEventListener('unhandledrejection',function(ev){var m=(ev.reason&&ev.reason.message)||String(ev.reason||'unhandledrejection');push(b.errors,{message:m,source:'',line:'',type:'unhandledrejection'},40);});";
-		echo "})(window.NPBRBuffer);\n";
-		echo "</script>\n";
+		echo file_get_contents( $path ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- plugin JS
+		echo "\n</script>\n";
 	}
 
 	public function assets() {
@@ -100,7 +98,7 @@ class NPBR_Frontend {
 		echo '<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>';
 		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطای پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
 		echo '<div class="npbr-body">';
-		echo '<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. اسکرین صفحه و کدهای لودنشده همراه گزارش ذخیره می‌شود.</p>';
+		echo '<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. خطاهای کنسول (مثل ۴۰۰ اینماد) و اسکرین صفحه ثبت می‌شود و با ارسال، همزمان برای مدیر و تلگرام می‌رود.</p>';
 		echo '<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>';
 		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: فیلدهای کارت دیجی‌پی خالی ماند / دکمه پرداخت کار نکرد / صفحه سفید شد"></textarea>';
 		echo '<div class="npbr-grid">';
@@ -115,7 +113,7 @@ class NPBR_Frontend {
 		echo '</div>';
 		echo '<footer class="npbr-actions">';
 		echo '<button type="button" class="npbr-btn npbr-btn-light" data-npbr-download>دانلود گزارش و اسکرین</button>';
-		echo '<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر</button>';
+		echo '<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر و تلگرام</button>';
 		echo '</footer>';
 		echo '</section></div>';
 	}

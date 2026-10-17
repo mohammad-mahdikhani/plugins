@@ -131,6 +131,9 @@ class NPBR_Admin {
 				'show_near_payment'   => ! empty( $_POST['show_near_payment'] ),
 				'show_floating'       => ! empty( $_POST['show_floating'] ),
 				'require_description' => ! empty( $_POST['require_description'] ),
+				'telegram_enabled'    => ! empty( $_POST['telegram_enabled'] ),
+				'telegram_bot_token'  => isset( $_POST['telegram_bot_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_bot_token'] ) ) : '',
+				'telegram_chat_id'    => isset( $_POST['telegram_chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_chat_id'] ) ) : '',
 			)
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=npbr-settings&saved=1' ) );

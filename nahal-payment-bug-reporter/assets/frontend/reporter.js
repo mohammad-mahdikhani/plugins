@@ -78,6 +78,25 @@
 		return 'other';
 	}
 
+	function dedupeFailed(list) {
+		var map = {};
+		list.forEach(function (row) {
+			if (!row || !row.url || /\/favicon\.ico(\?|$)/i.test(row.url)) {
+				return;
+			}
+			var key = row.url.replace(/#.*$/, '');
+			var prev = map[key];
+			if (!prev) {
+				map[key] = row;
+				return;
+			}
+			if (/^\d+$/.test(row.status || '') && !/^\d+$/.test(prev.status || '')) {
+				map[key] = row;
+			}
+		});
+		return Object.keys(map).map(function (k) { return map[k]; });
+	}
+
 	function harvestPerformance() {
 		var buf = buffer();
 		if (!window.performance || !performance.getEntriesByType) {
@@ -90,21 +109,23 @@
 			}
 		});
 		performance.getEntriesByType('resource').forEach(function (entry) {
-			var failed = entry.transferSize === 0 && entry.decodedBodySize === 0 && entry.duration < 20;
-			if (!failed || seen[entry.name]) {
+			var status = entry.responseStatus ? String(entry.responseStatus) : '';
+			var httpFail = entry.responseStatus && entry.responseStatus >= 400;
+			var emptyFail = entry.transferSize === 0 && entry.decodedBodySize === 0 && entry.duration < 20;
+			if ( (!httpFail && !emptyFail) || seen[entry.name] || seen[entry.name + '|' + status] ) {
 				return;
 			}
-			if (/\.(html|htm)(\?|$)/i.test(entry.name)) {
+			if (/\.(html|htm)(\?|$)/i.test(entry.name) && !httpFail) {
 				return;
 			}
-			seen[entry.name] = true;
+			seen[entry.name + '|' + status] = true;
 			buf.failed.push({
 				url: entry.name,
 				kind: 'resource',
 				tag: entry.initiatorType || '',
 				id: '',
-				status: 'empty-transfer',
-				message: 'resource did not load',
+				status: httpFail ? status : 'empty-transfer',
+				message: httpFail ? ('HTTP ' + status) : 'resource did not load',
 				time: new Date().toISOString(),
 				payment: isPaymentUrl(entry.name),
 			});
@@ -216,7 +237,7 @@
 		harvestPerformance();
 		scanBrokenNodes();
 		var buf = buffer();
-		var failed = buf.failed.slice();
+		var failed = dedupeFailed(buf.failed.slice());
 		failed.forEach(function (row) {
 			row.payment = !!row.payment || isPaymentUrl(row.url) || isPaymentUrl(row.id);
 		});
