@@ -8,3 +8,4 @@ define( 'NPBR_VERSION', '1.0.0' );
 
 require __DIR__ . '/../includes/class-sanitizer.php';
 require __DIR__ . '/../includes/class-report.php';
+require __DIR__ . '/../includes/class-zip.php';

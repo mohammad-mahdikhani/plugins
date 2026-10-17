@@ -70,7 +70,7 @@ class NPBR_Frontend {
 		wp_enqueue_script(
 			'npbr-reporter',
 			NPBR_URL . 'assets/frontend/reporter.js',
-			array( 'npbr-html2canvas' ),
+			array(),
 			NPBR_VERSION,
 			true
 		);
@@ -109,6 +109,8 @@ class NPBR_Frontend {
 		echo '</div>';
 		echo '<div id="npbr-diag" class="npbr-diag"></div>';
 		echo '<figure class="npbr-shot-wrap"><figcaption>پیش‌نمایش اسکرین‌شات</figcaption><img id="npbr-shot" alt="اسکرین‌شات صفحه" hidden><p id="npbr-shot-empty">هنوز گرفته نشده. با دانلود یا ارسال، اسکرین همین صفحه ذخیره می‌شود.</p></figure>';
+		echo '<div id="npbr-downloads" class="npbr-downloads" hidden></div>';
+		echo '<iframe id="npbr-dl-iframe" name="npbr-dl-iframe" title="دانلود" hidden></iframe>';
 		echo '<p id="npbr-status" class="npbr-status" role="status"></p>';
 		echo '</div>';
 		echo '<footer class="npbr-actions">';

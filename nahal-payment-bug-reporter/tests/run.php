@@ -108,6 +108,17 @@ $json = NPBR_Report::public_json( $ok['data'] );
 npbr_assert( empty( $json['screenshot'] ), 'public json drops screenshot bytes' );
 npbr_assert( ! empty( $json['hasScreenshot'] ), 'public json flags screenshot' );
 
+echo "== Zip ==\n";
+$zip_path = sys_get_temp_dir() . '/npbr-test-' . getmypid() . '.zip';
+npbr_assert( NPBR_Zip::write( $ok['data'], $zip_path ), 'writes zip' );
+$z = new ZipArchive();
+npbr_assert( true === $z->open( $zip_path ), 'opens zip' );
+npbr_assert( false !== $z->locateName( 'report.json' ), 'has report.json' );
+npbr_assert( false !== $z->locateName( 'report.html' ), 'has report.html' );
+npbr_assert( false !== $z->locateName( 'screenshot.png' ) || false !== $z->locateName( 'screenshot.jpg' ), 'has screenshot' );
+$z->close();
+@unlink( $zip_path );
+
 $escaped = NPBR_Report::html(
 	array(
 		'note'      => '<img src=x onerror=alert(1)>',

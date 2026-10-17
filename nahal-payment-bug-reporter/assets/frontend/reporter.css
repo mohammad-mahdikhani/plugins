@@ -236,6 +236,18 @@
 	color: #fff;
 }
 
+.npbr-downloads {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 8px 0 12px;
+}
+
+.npbr-downloads a {
+	display: inline-block;
+	text-decoration: none;
+}
+
 @media (max-width: 640px) {
 	.npbr-grid {
 		grid-template-columns: 1fr;

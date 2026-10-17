@@ -27,6 +27,55 @@ class NPBR_Ajax {
 	public function init() {
 		add_action( 'wp_ajax_npbr_submit', array( $this, 'submit' ) );
 		add_action( 'wp_ajax_nopriv_npbr_submit', array( $this, 'submit' ) );
+		add_action( 'wp_ajax_npbr_download', array( $this, 'download' ) );
+		add_action( 'wp_ajax_nopriv_npbr_download', array( $this, 'download' ) );
+	}
+
+	/**
+	 * Force a real HTTP ZIP download so mobile browsers do not block blob saves.
+	 */
+	public function download() {
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'npbr_report' ) ) {
+			wp_die( 'نشست منقضی شده. صفحه را تازه کنید و دوباره دانلود کنید.', 'خطا', array( 'response' => 403 ) );
+		}
+
+		$data = $this->payload_from_request();
+		if ( is_wp_error( $data ) ) {
+			wp_die( esc_html( $data->get_error_message() ), 'خطا', array( 'response' => 400 ) );
+		}
+
+		$tmp = wp_tempnam( 'npbr-report.zip' );
+		if ( ! $tmp || ! NPBR_Zip::write( $data, $tmp ) ) {
+			wp_die( 'ساخت فایل دانلود ممکن نشد.', 'خطا', array( 'response' => 500 ) );
+		}
+
+		nocache_headers();
+		header( 'Content-Type: application/zip' );
+		header( 'Content-Disposition: attachment; filename="nahal-payment-bug-report.zip"' );
+		header( 'Content-Length: ' . (string) filesize( $tmp ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		readfile( $tmp );
+		@unlink( $tmp );
+		exit;
+	}
+
+	/**
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	private function payload_from_request() {
+		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$decoded = is_string( $raw ) && $raw ? json_decode( $raw, true ) : array();
+		if ( ! is_array( $decoded ) ) {
+			return new WP_Error( 'npbr_bad', 'گزارش ناقص است.' );
+		}
+		if ( empty( $decoded['screenshot'] ) && ! empty( $_POST['screenshot'] ) ) {
+			$decoded['screenshot'] = wp_unslash( $_POST['screenshot'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		}
+		$normalized = NPBR_Sanitizer::normalize_payload( $decoded );
+		if ( ! $normalized['ok'] ) {
+			return new WP_Error( 'npbr_bad', $normalized['error'] );
+		}
+		return $normalized['data'];
 	}
 
 	public function submit() {
@@ -36,21 +85,10 @@ class NPBR_Ajax {
 			wp_send_json_error( array( 'message' => 'چند گزارش پشت سر هم ارسال شده. کمی بعد دوباره تلاش کنید.' ), 429 );
 		}
 
-		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		if ( is_string( $raw ) && $raw ) {
-			$decoded = json_decode( $raw, true );
-		} else {
-			$decoded = array();
+		$data = $this->payload_from_request();
+		if ( is_wp_error( $data ) ) {
+			wp_send_json_error( array( 'message' => $data->get_error_message() ), 400 );
 		}
-		if ( ! is_array( $decoded ) ) {
-			wp_send_json_error( array( 'message' => 'گزارش ناقص است.' ), 400 );
-		}
-
-		$normalized = NPBR_Sanitizer::normalize_payload( $decoded );
-		if ( ! $normalized['ok'] ) {
-			wp_send_json_error( array( 'message' => $normalized['error'] ), 400 );
-		}
-		$data = $normalized['data'];
 
 		$id = wp_insert_post(
 			array(

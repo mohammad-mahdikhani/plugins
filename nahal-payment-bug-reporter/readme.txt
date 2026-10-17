@@ -3,7 +3,7 @@ Contributors: nahal
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. از منوی «خطای پرداخت» ایمیل مدیر را بگذارید.
 
 == Changelog ==
+
+= 1.0.1 =
+* دانلود ZIP و اسکرین با لینک قابل‌کلیک و دانلود سمت سرور، برای مرورگرهایی که ذخیرهٔ خودکار را می‌بندند.
 
 = 1.0.0 =
 * نسخه نخست: گزارش، اسکرین، دانلود، ارسال برای مدیر.

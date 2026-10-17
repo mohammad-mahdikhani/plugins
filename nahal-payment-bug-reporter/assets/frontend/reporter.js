@@ -466,6 +466,86 @@
 			'</body></html>';
 	}
 
+	function downloadBlob(blob, filename) {
+		var url = URL.createObjectURL(blob);
+		clickDownload(url, filename);
+		return url;
+	}
+
+	function clickDownload(url, filename) {
+		var a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		a.rel = 'noopener';
+		a.style.display = 'none';
+		document.body.appendChild(a);
+		a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+		setTimeout(function () {
+			if (a.parentNode) {
+				a.parentNode.removeChild(a);
+			}
+		}, 4000);
+	}
+
+	function showDownloadLinks(zipUrl, zipName, shotUrl, htmlUrl) {
+		var box = $('#npbr-downloads');
+		if (!box) {
+			return;
+		}
+		box.hidden = false;
+		box.innerHTML =
+			'<a class="npbr-btn npbr-btn-dark" id="npbr-zip-link" href="' + zipUrl + '" download="' + zipName + '">دانلود فایل ZIP</a>' +
+			(shotUrl ? '<a class="npbr-btn npbr-btn-light" id="npbr-shot-link" href="' + shotUrl + '" download="nahal-payment-screenshot.jpg">دانلود اسکرین صفحه</a>' : '') +
+			(htmlUrl ? '<a class="npbr-btn npbr-btn-light" id="npbr-html-link" href="' + htmlUrl + '" target="_blank" rel="noopener">باز کردن گزارش</a>' : '');
+	}
+
+	function downloadViaServer(data) {
+		if (!cfg.ajax) {
+			return false;
+		}
+		var iframe = document.getElementById('npbr-dl-iframe');
+		if (!iframe) {
+			iframe = document.createElement('iframe');
+			iframe.id = 'npbr-dl-iframe';
+			iframe.name = 'npbr-dl-iframe';
+			iframe.setAttribute('hidden', 'hidden');
+			document.body.appendChild(iframe);
+		}
+		var form = document.getElementById('npbr-dl-form');
+		if (form && form.parentNode) {
+			form.parentNode.removeChild(form);
+		}
+		form = document.createElement('form');
+		form.id = 'npbr-dl-form';
+		form.method = 'POST';
+		form.action = cfg.ajax;
+		form.target = 'npbr-dl-iframe';
+		form.acceptCharset = 'UTF-8';
+		form.style.display = 'none';
+		function add(name, value) {
+			var input = document.createElement('input');
+			input.type = 'hidden';
+			input.name = name;
+			input.value = value;
+			form.appendChild(input);
+		}
+		add('action', 'npbr_download');
+		add('nonce', cfg.nonce || '');
+		var copy = {};
+		Object.keys(data).forEach(function (key) {
+			if (key !== 'screenshot') {
+				copy[key] = data[key];
+			}
+		});
+		add('payload', JSON.stringify(copy));
+		if (data.screenshot) {
+			add('screenshot', data.screenshot);
+		}
+		document.body.appendChild(form);
+		form.submit();
+		return true;
+	}
+
 	function downloadZip(data) {
 		var files = [
 			{ name: 'report.json', data: strBytes(JSON.stringify(data, null, 2)) },
@@ -475,15 +555,19 @@
 			files.push({ name: 'screenshot.jpg', data: dataUriToBytes(data.screenshot) });
 		}
 		var zip = zipStore(files);
-		var blob = new Blob([zip], { type: 'application/zip' });
-		var a = document.createElement('a');
-		var stamp = (data.capturedAt || '').replace(/[:.]/g, '-');
-		a.href = URL.createObjectURL(blob);
-		a.download = 'nahal-payment-bug-' + stamp + '.zip';
-		document.body.appendChild(a);
-		a.click();
-		a.remove();
-		setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+		var blob = new Blob([zip], { type: 'application/octet-stream' });
+		var stamp = (data.capturedAt || 'report').replace(/[:.]/g, '-');
+		var zipName = 'nahal-payment-bug-' + stamp + '.zip';
+		var zipUrl = downloadBlob(blob, zipName);
+		var shotUrl = '';
+		if (data.screenshot) {
+			shotUrl = data.screenshot;
+			clickDownload(shotUrl, 'nahal-payment-screenshot.jpg');
+		}
+		var htmlUrl = URL.createObjectURL(new Blob([reportHtml(data)], { type: 'text/html;charset=utf-8' }));
+		showDownloadLinks(zipUrl, zipName, shotUrl, htmlUrl);
+		downloadViaServer(data);
+		return zipUrl;
 	}
 
 	function setStatus(text, isError) {
@@ -626,12 +710,16 @@
 				closeModal();
 			}
 			if (ev.target.closest && ev.target.closest('[data-npbr-download]')) {
+				ev.preventDefault();
+				ev.stopPropagation();
 				withShot(function (data) {
 					downloadZip(data);
-					setStatus('گزارش و اسکرین صفحه دانلود شد. می‌توانید همان فایل را برای مدیر بفرستید.');
+					setStatus('اگر دانلود شروع نشد، لینک‌های آبی/سبز زیر اسکرین را بزنید.');
 				});
 			}
 			if (ev.target.closest && ev.target.closest('[data-npbr-send]')) {
+				ev.preventDefault();
+				ev.stopPropagation();
 				withShot(sendToManager);
 			}
 		});
