@@ -1,0 +1,18 @@
+/* theme / elementor-like faces */
+@font-face {
+	font-family: 'IRANSans';
+	src: url('iransans.woff2') format('woff2');
+	font-weight: 400;
+	font-display: auto;
+}
+@font-face{
+	font-family:"Vazirmatn";
+	src:url(vazir.woff2);
+	font-display:block
+}
+@font-face {
+	font-family: 'Elementor Icons';
+	src: url('../fonts/eicons.woff2');
+}
+.button { display: block; color: #111; }
+@import url('https://fonts.googleapis.com/css?family=Roboto:400,700');
