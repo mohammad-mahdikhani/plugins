@@ -32,6 +32,7 @@ class NFDS_Plugin {
 		add_filter( 'wp_get_custom_css', array( 'NFDS_Rewriter', 'css' ), 999 );
 		add_filter( 'safecss', array( 'NFDS_Rewriter', 'css' ), 999 );
 
+		NFDS_Overflow::init();
 		add_action( 'template_redirect', array( __CLASS__, 'buffer' ), 0 );
 		add_action( 'elementor/core/files/clear_cache', array( __CLASS__, 'convert_elementor_css' ) );
 		add_action( 'shutdown', array( __CLASS__, 'maybe_convert_elementor_css' ), 20 );

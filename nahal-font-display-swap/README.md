@@ -1,6 +1,6 @@
 # فونت Display Swap نهال
 
-نوع `font-display` فونت‌های قالب، المنتور و گوگل‌فونت را اجباراً به `swap` تبدیل می‌کند.
+نوع `font-display` فونت‌های قالب، المنتور و گوگل‌فونت را اجباراً به `swap` تبدیل می‌کند و اسکرول افقی المنتور را می‌بندد.
 
 فایل نصب: [`../dist/nahal-font-display-swap.zip`](../dist/nahal-font-display-swap.zip)
 

@@ -113,7 +113,7 @@ class NFDS_Admin {
 		}
 		echo '<div class="wrap" dir="rtl">';
 		echo '<h1>فونت Display Swap</h1>';
-		echo '<p>این افزونه <code>font-display</code> را برای فونت‌های قالب، المنتور، گوگل‌فونت و هر @font-face دیگر اجباراً روی <strong>swap</strong> می‌گذارد تا متن موقع لود فونت مخفی نماند.</p>';
+		echo '<p>این افزونه <code>font-display</code> را برای فونت‌های قالب، المنتور، گوگل‌فونت و هر @font-face دیگر اجباراً روی <strong>swap</strong> می‌گذارد تا متن موقع لود فونت مخفی نماند. اسکرول افقی ناشی از سکشن کشیدهٔ المنتور و <code>100vw</code> هم بسته می‌شود.</p>';
 		echo '<ul style="list-style:disc;padding-right:20px;line-height:1.9">';
 		echo '<li>خروجی HTML و لینک گوگل‌فونت در لحظه بازنویسی می‌شود.</li>';
 		echo '<li>تنظیم «Google Fonts Load» المنتور روی swap قفل است.</li>';

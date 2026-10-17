@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Nahal Font Display Swap
  * Plugin URI:  https://nahal.website
- * Description: نوع font-display فونت‌های قالب، المنتور و هر منبع دیگر را اجباراً به swap تبدیل می‌کند.
- * Version:     1.0.0
+ * Description: font-display را به swap تبدیل می‌کند و اسکرول افقی قالب/المنتور را می‌بندد.
+ * Version:     1.0.1
  * Author:      nahal.website
  * Author URI:  https://nahal.website
  * Text Domain: nahal-font-display-swap
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'NFDS_VERSION' ) ) {
-	define( 'NFDS_VERSION', '1.0.0' );
+	define( 'NFDS_VERSION', '1.0.1' );
 }
 if ( ! defined( 'NFDS_FILE' ) ) {
 	define( 'NFDS_FILE', __FILE__ );
@@ -32,6 +32,7 @@ if ( ! defined( 'NFDS_BASENAME' ) ) {
 
 require_once NFDS_DIR . 'includes/class-rewriter.php';
 require_once NFDS_DIR . 'includes/class-files.php';
+require_once NFDS_DIR . 'includes/class-overflow.php';
 require_once NFDS_DIR . 'includes/class-admin.php';
 require_once NFDS_DIR . 'includes/class-plugin.php';
 

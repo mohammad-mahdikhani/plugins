@@ -7,6 +7,7 @@
 
 require __DIR__ . '/../includes/class-rewriter.php';
 require __DIR__ . '/../includes/class-files.php';
+require __DIR__ . '/../includes/class-overflow.php';
 
 $failed = 0;
 $passed = 0;
@@ -104,10 +105,15 @@ nfds_assert( 0 === $again['changed'], 'second pass is no-op' );
 echo "== Plugin header ==\n";
 $main = file_get_contents( __DIR__ . '/../nahal-font-display-swap.php' );
 $plug = file_get_contents( __DIR__ . '/../includes/class-plugin.php' );
-nfds_assert( false !== strpos( $main, "NFDS_VERSION', '1.0.0'" ), 'version 1.0.0' );
+nfds_assert( false !== strpos( $main, "NFDS_VERSION', '1.0.1'" ), 'version 1.0.1' );
 nfds_assert( false !== strpos( $plug, 'pre_option_elementor_font_display' ), 'locks elementor google font display' );
 nfds_assert( false !== strpos( $plug, 'elementor_pro/custom_fonts/font_display' ), 'locks elementor pro custom fonts' );
 nfds_assert( false !== strpos( $plug, "ob_start( array( 'NFDS_Rewriter', 'html' ) )" ), 'buffers html' );
+nfds_assert( false !== strpos( $plug, 'NFDS_Overflow::init' ), 'loads overflow fixer' );
+$ov = NFDS_Overflow::css();
+nfds_assert( false !== strpos( $ov, 'overflow-x:hidden' ), 'overflow css hides x scroll' );
+nfds_assert( false !== strpos( $ov, 'elementor-section-stretched' ), 'fixes elementor stretched sections' );
+nfds_assert( false !== strpos( $ov, 'max-width:100%' ), 'caps width at 100%' );
 
 echo "\n$passed passed, $failed failed\n";
 exit( $failed ? 1 : 0 );
