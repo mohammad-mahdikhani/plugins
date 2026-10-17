@@ -16,9 +16,15 @@ class NPBR_Install {
 			add_option( 'npbr_settings', NPBR_Plugin::defaults() );
 		}
 		update_option( 'npbr_version', NPBR_VERSION );
+		if ( class_exists( 'NPBR_Stats', false ) ) {
+			NPBR_Stats::init_cron();
+		}
 	}
 
 	public static function deactivate() {
+		if ( class_exists( 'NPBR_Stats', false ) ) {
+			NPBR_Stats::clear_cron();
+		}
 	}
 
 	public static function maybe_upgrade() {
@@ -34,6 +40,13 @@ class NPBR_Install {
 				$s['show_on_product'] = true;
 				$s['show_sitewide']   = true;
 				$s['show_near_cart']  = true;
+				update_option( 'npbr_settings', $s );
+			}
+		}
+		if ( $stored && version_compare( (string) $stored, '1.0.8', '<' ) ) {
+			$s = get_option( 'npbr_settings', array() );
+			if ( is_array( $s ) && ! isset( $s['digest_email'] ) ) {
+				$s['digest_email'] = true;
 				update_option( 'npbr_settings', $s );
 			}
 		}

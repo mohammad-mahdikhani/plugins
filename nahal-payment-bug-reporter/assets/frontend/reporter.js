@@ -6,8 +6,6 @@
 	var modal = null;
 	var overlay = null;
 	var statusEl = null;
-	var shotImg = null;
-	var shotEmpty = null;
 	var lastShot = '';
 	var busy = false;
 
@@ -538,13 +536,6 @@
 				setReporterHidden(false);
 				restoreMasked(changed);
 				lastShot = uri || '';
-				if (shotImg && lastShot) {
-					shotImg.src = lastShot;
-					shotImg.hidden = false;
-					if (shotEmpty) {
-						shotEmpty.hidden = true;
-					}
-				}
 				return lastShot;
 			});
 	}
@@ -946,8 +937,8 @@
 			return;
 		}
 		busy = true;
-		setStatus('اسکرین صفحه در حال تهیه است…');
-		$all('[data-npbr-download], [data-npbr-send], [data-npbr-prompt]').forEach(function (b) { b.disabled = true; });
+		setStatus('در حال ارسال گزارش…');
+		$all('[data-npbr-send]').forEach(function (b) { b.disabled = true; });
 		captureShot()
 			.then(function () {
 				data = buildPayload();
@@ -958,15 +949,14 @@
 			})
 			.then(function () {
 				busy = false;
-				$all('[data-npbr-download], [data-npbr-send], [data-npbr-prompt]').forEach(function (b) { b.disabled = false; });
+				$all('[data-npbr-send]').forEach(function (b) { b.disabled = false; });
 			});
 	}
 
 	function sendToManager(data) {
-		setStatus('در حال ارسال برای مدیر…');
+		setStatus('در حال ارسال گزارش…');
 		if (!cfg.ajax) {
-			downloadZip(data);
-			setStatus('حالت پیش‌نمایش: گزارش دانلود شد. روی سایت واقعی برای مدیر ایمیل می‌شود.');
+			setStatus('شرح ثبت شد. روی سایت واقعی همین گزارش برای پشتیبانی ارسال می‌شود.');
 			return Promise.resolve();
 		}
 		var body = new URLSearchParams();
@@ -983,12 +973,10 @@
 				if (!res.ok || !json || !json.success) {
 					throw new Error((json && json.data && json.data.message) || 'ارسال ناموفق بود');
 				}
-				showAgentPrompt(data);
-				setStatus((json.data.message || 'ارسال شد.') + ' پرامپت ایجنت آماده کپی است.');
+				setStatus(json.data.message || 'گزارش برای پشتیبانی ارسال شد.');
 			});
 		}).catch(function (err) {
-			downloadZip(data);
-			setStatus((err && err.message ? err.message + ' — ' : '') + 'گزارش روی دستگاه شما دانلود شد تا بتوانید خودتان برای مدیر بفرستید.', true);
+			setStatus((err && err.message ? err.message + ' — ' : '') + 'ارسال نشد. کمی بعد دوباره «گزارش خطا» را بزنید.', true);
 		});
 	}
 
@@ -1185,8 +1173,6 @@
 		modal = $('.npbr-modal', root);
 		overlay = $('.npbr-overlay', root);
 		statusEl = $('#npbr-status', root);
-		shotImg = $('#npbr-shot', root);
-		shotEmpty = $('#npbr-shot-empty', root);
 		root.hidden = false;
 		if (cfg.showFloating === false) {
 			var fab = $('.npbr-fab', root);
@@ -1214,43 +1200,10 @@
 			if (ev.target.closest && ev.target.closest('[data-npbr-close]')) {
 				closeModal();
 			}
-			if (ev.target.closest && ev.target.closest('[data-npbr-download]')) {
-				ev.preventDefault();
-				ev.stopPropagation();
-				withShot(function (data) {
-					downloadZip(data);
-					setStatus('اگر دانلود شروع نشد، لینک‌های آبی/سبز زیر اسکرین را بزنید.');
-				});
-			}
 			if (ev.target.closest && ev.target.closest('[data-npbr-send]')) {
 				ev.preventDefault();
 				ev.stopPropagation();
 				withShot(sendToManager);
-			}
-			if (ev.target.closest && ev.target.closest('[data-npbr-prompt]')) {
-				ev.preventDefault();
-				ev.stopPropagation();
-				withShot(function (data) {
-					var text = showAgentPrompt(data);
-					if (data.screenshot) {
-						clickDownload(data.screenshot, 'nahal-payment-screenshot.jpg');
-					}
-					var promptBlob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
-					downloadBlob(promptBlob, 'agent-prompt.md');
-					return copyPromptText(text).then(function () {
-						setStatus('پرامپت ایجنت کپی شد. اسکرین همان صفحه را هم برای ایجنت بفرستید.');
-					}).catch(function () {
-						setStatus('پرامپت آماده است؛ دکمه کپی را بزنید یا از کادر زیر انتخاب کنید.');
-					});
-				});
-			}
-			if (ev.target.closest && ev.target.closest('[data-npbr-copy-prompt]')) {
-				ev.preventDefault();
-				copyPromptText().then(function () {
-					setStatus('پرامپت کپی شد. همراه اسکرین برای ایجنت بفرستید.');
-				}).catch(function () {
-					setStatus('کپی خودکار ممکن نشد؛ متن کادر را دستی انتخاب کنید.', true);
-				});
 			}
 		});
 		document.addEventListener('keydown', function (ev) {

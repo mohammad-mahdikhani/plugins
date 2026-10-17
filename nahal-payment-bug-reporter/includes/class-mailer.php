@@ -128,4 +128,40 @@ class NPBR_Mailer {
 		$html[] = '</div>';
 		return implode( "\n", $html );
 	}
+
+	/**
+	 * @param string               $subject Subject.
+	 * @param array<string, mixed> $sum     Summary.
+	 * @param array<string, mixed> $period  Period.
+	 * @return bool
+	 */
+	public static function send_digest( $subject, array $sum, array $period ) {
+		$to = NPBR_Plugin::manager_email();
+		if ( ! $to || ! is_email( $to ) ) {
+			return false;
+		}
+		$list = admin_url( 'admin.php?page=npbr-digest' );
+		$html   = array();
+		$html[] = '<div style="font-family:Tahoma,Vazirmatn,sans-serif;direction:rtl;text-align:right;color:#14221c;max-width:720px">';
+		$html[] = '<h1 style="font-size:18px;margin:0 0 12px">' . esc_html( $subject ) . '</h1>';
+		$html[] = '<p style="color:#3d5349">بازه: ' . esc_html( isset( $period['label'] ) ? $period['label'] : '' ) . '</p>';
+		$html[] = '<p><strong>ثبت‌شده:</strong> ' . (int) $sum['total']
+			. ' — <strong>باز:</strong> ' . (int) $sum['open']
+			. ' — <strong>رفع‌شده:</strong> ' . (int) $sum['resolved'] . '</p>';
+		$issues = isset( $sum['issues'] ) && is_array( $sum['issues'] ) ? $sum['issues'] : array();
+		if ( $issues ) {
+			$html[] = '<ol style="line-height:1.9;padding-right:22px">';
+			foreach ( array_slice( $issues, 0, 25 ) as $issue ) {
+				$state = ! empty( $issue['open'] ) ? 'باز' : 'رفع‌شده';
+				$html[] = '<li>' . esc_html( ( isset( $issue['label'] ) ? $issue['label'] : '' ) . ' — ' . (int) $issue['count'] . ' بار — ' . $state ) . '</li>';
+			}
+			$html[] = '</ol>';
+		} else {
+			$html[] = '<p>در این بازه گزارشی نبود.</p>';
+		}
+		$html[] = '<p><a href="' . esc_url( $list ) . '">مشاهده گزارش دوره‌ای در پیشخوان</a></p>';
+		$html[] = '</div>';
+		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
+		return (bool) wp_mail( $to, $subject, implode( "\n", $html ), $headers );
+	}
 }

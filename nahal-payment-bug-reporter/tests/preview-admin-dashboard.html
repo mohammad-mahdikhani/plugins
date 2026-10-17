@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fa-IR" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>پیشخوان ‹ نهال نیشابور</title>
+	<link rel="stylesheet" href="../assets/admin/admin.css">
+	<style>
+		body { margin: 0; font-family: Tahoma, Vazirmatn, sans-serif; background: #f0f0f1; color: #1d2327; }
+		.wp-bar { background: #1d2327; color: #fff; display: flex; justify-content: space-between; padding: 8px 16px; font-size: 13px; }
+		.wp-bar a { color: #fff; text-decoration: none; }
+		.layout { display: grid; grid-template-columns: 180px 1fr; min-height: 100vh; }
+		.side { background: #1d2327; color: #fff; padding: 16px 0; }
+		.side a { display: block; color: #fff; text-decoration: none; padding: 10px 16px; }
+		.side a.is-on { background: #2271b1; }
+		.awaiting-mod { background: #d63638; color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px; margin-right: 6px; }
+		.content { padding: 20px 24px 60px; }
+		h1 { margin: 0 0 16px; font-size: 23px; }
+		.notice { background: #fff; border: 1px solid #c3c4c7; border-right: 4px solid #dba617; padding: 8px 12px; margin: 0 0 16px; }
+		.notice a { color: #2271b1; }
+		.widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+		.postbox { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 12px 16px; }
+		.postbox h2 { margin: 0 0 10px; font-size: 14px; }
+		.postbox ul { margin: 0 0 12px; padding-right: 18px; line-height: 1.8; }
+		.button { display: inline-block; background: #f6f7f7; border: 1px solid #c3c4c7; border-radius: 3px; padding: 4px 10px; text-decoration: none; color: #2c3338; }
+		.button-primary { background: #2271b1; border-color: #2271b1; color: #fff; }
+		@media (max-width: 782px) { .layout, .widgets { grid-template-columns: 1fr; } .side { display: none; } }
+	</style>
+</head>
+<body>
+	<div class="wp-bar">
+		<div>نهال نیشابور</div>
+		<a href="preview-admin-reports.html">خطای خرید (۲)</a>
+	</div>
+	<div class="layout">
+		<nav class="side">
+			<a href="preview-admin-dashboard.html" class="is-on">پیشخوان</a>
+			<a href="preview-admin-reports.html">خطای پرداخت <span class="awaiting-mod">2</span></a>
+			<a href="preview-admin-digest.html">هفتگی / ماهانه</a>
+		</nav>
+		<main class="content">
+			<h1>پیشخوان</h1>
+			<div class="notice notice-warning">
+				<p><strong>خطای خرید نهال:</strong> ۲ گزارش خطای خرید جدید رسیده.</p>
+				<p><a href="preview-admin-reports.html">مشاهده فهرست</a> — <a href="preview-admin-digest.html">گزارش هفتگی و ماهانه</a></p>
+			</div>
+			<div class="widgets">
+				<div class="postbox" id="npbr-dashboard">
+					<h2>خطاهای خرید و پرداخت نهال</h2>
+					<p>گزارش‌های باز: <strong>۲</strong> — ۷ روز گذشته: <strong>۳</strong> ثبت، <strong>۱</strong> رفع‌شده.</p>
+					<ul>
+						<li>اسکریپت checkout لود نشد (۲ — باز)</li>
+						<li>سبد خرید به‌روز نشد (۱ — باز)</li>
+					</ul>
+					<p>
+						<a class="button button-primary" href="preview-admin-reports.html">فهرست خطاها</a>
+						<a class="button" href="preview-admin-digest.html">گزارش هفتگی و ماهانه</a>
+					</p>
+				</div>
+				<div class="postbox">
+					<h2>در یک نگاه</h2>
+					<p>پیش‌نمایش نوتیف و ویجت پیشخوان افزونه گزارشگر خطا.</p>
+				</div>
+			</div>
+		</main>
+	</div>
+</body>
+</html>

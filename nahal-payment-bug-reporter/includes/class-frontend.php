@@ -107,7 +107,7 @@ class NPBR_Frontend {
 		echo '<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>';
 		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطا در خرید و پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
 		echo '<div class="npbr-body">';
-		echo '<p class="npbr-lead">اگر سبد خرید، دکمه خرید، فروشگاه، صفحه محصول یا درگاه پرداخت لود نشد همین مورد را بنویسید. اگر المان حیاتی لود نشود، گزارش فهرست‌شده همراه مشخصات تماس و دستگاه برای مدیر می‌رود.</p>';
+		echo '<p class="npbr-lead">اگر سبد خرید، دکمه خرید، فروشگاه، صفحه محصول یا درگاه پرداخت لود نشد همین مورد را بنویسید تا برای پشتیبانی ارسال شود.</p>';
 		echo '<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>';
 		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: سبد خرید خالی ماند / دکمه خرید کار نکرد / فیلدهای کارت لود نشد"></textarea>';
 		echo '<div class="npbr-grid npbr-grid-3">';
@@ -116,21 +116,10 @@ class NPBR_Frontend {
 		echo '<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr" autocomplete="tel"></label>';
 		echo '</div>';
 		echo '<div id="npbr-diag" class="npbr-diag"></div>';
-		echo '<figure class="npbr-shot-wrap"><figcaption>پیش‌نمایش اسکرین‌شات</figcaption><img id="npbr-shot" alt="اسکرین‌شات صفحه" hidden><p id="npbr-shot-empty">هنوز گرفته نشده. با دانلود یا ارسال، اسکرین همین صفحه ذخیره می‌شود.</p></figure>';
-		echo '<div id="npbr-downloads" class="npbr-downloads" hidden></div>';
-		echo '<div id="npbr-prompt-wrap" class="npbr-prompt-wrap" hidden>';
-		echo '<label class="npbr-label" for="npbr-prompt">پرامپت آماده برای ایجنت هوش مصنوعی</label>';
-		echo '<textarea id="npbr-prompt" class="npbr-prompt" rows="10" readonly></textarea>';
-		echo '<p class="npbr-prompt-hint">این متن را کپی کنید و همراه اسکرین همان صفحه برای ایجنت بفرستید تا خطا را روی همان URL بررسی کند.</p>';
-		echo '<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-copy-prompt>کپی پرامپت</button>';
-		echo '</div>';
-		echo '<iframe id="npbr-dl-iframe" name="npbr-dl-iframe" title="دانلود" hidden></iframe>';
 		echo '<p id="npbr-status" class="npbr-status" role="status"></p>';
 		echo '</div>';
 		echo '<footer class="npbr-actions">';
-		echo '<button type="button" class="npbr-btn npbr-btn-light" data-npbr-download>دانلود گزارش و اسکرین</button>';
-		echo '<button type="button" class="npbr-btn npbr-btn-light" data-npbr-prompt>پرامپت ایجنت</button>';
-		echo '<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر و تلگرام</button>';
+		echo '<button type="button" class="npbr-btn npbr-btn-dark npbr-btn-block" data-npbr-send>' . esc_html( $label ) . '</button>';
 		echo '</footer>';
 		echo '</section></div>';
 	}

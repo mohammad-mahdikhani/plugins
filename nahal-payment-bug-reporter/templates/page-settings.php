@@ -92,6 +92,7 @@ if ( ! isset( $tg_test ) ) {
 			<label><input type="checkbox" name="show_near_cart" value="1" <?php checked( ! empty( $settings['show_near_cart'] ) ); ?>> دکمه کمکی کنار سبد، دکمه خرید و ادامه تسویه (نه داخل باکس درگاه)</label>
 			<label><input type="checkbox" name="show_floating" value="1" <?php checked( $settings['show_floating'] ); ?>> دکمه شناور</label>
 			<label><input type="checkbox" name="require_description" value="1" <?php checked( $settings['require_description'] ); ?>> نوشتن شرح خطا اجباری باشد</label>
+			<label><input type="checkbox" name="digest_email" value="1" <?php checked( ! empty( $settings['digest_email'] ) ); ?>> گزارش هفتگی و ماهانه برای ایمیل مدیر ارسال شود</label>
 		</fieldset>
 
 		<p><button type="submit" class="button button-primary">ذخیره تنظیمات</button></p>

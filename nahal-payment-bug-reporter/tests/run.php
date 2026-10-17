@@ -245,6 +245,66 @@ $auto_noise = NPBR_Sanitizer::normalize_payload(
 );
 npbr_assert( false === $auto_noise['ok'], 'auto report ignored when only enamad failed' );
 
+echo "== Weekly / monthly digest ==\n";
+$key_a = NPBR_Stats::issue_key( $ok['data'] );
+$key_b = NPBR_Stats::issue_key(
+	array(
+		'failed'  => array(
+			array(
+				'url'     => 'https://nahal.website/wp-content/plugins/woocommerce/assets/js/frontend/checkout.min.js?ver=2',
+				'payment' => true,
+			),
+		),
+		'pageUrl' => 'https://nahal.website/checkout/?foo=1',
+	)
+);
+npbr_assert( $key_a === $key_b, 'same checkout.js groups together' );
+$week = NPBR_Stats::period( 'week', strtotime( '2026-10-17 12:00:00' ) );
+npbr_assert( $week['end'] - $week['start'] === 7 * 86400, 'week is 7 days' );
+$month = NPBR_Stats::period( 'month', strtotime( '2026-10-17 12:00:00' ) );
+npbr_assert( date( 'Y-m-d', $month['start'] ) === '2026-10-01', 'month starts on 1st' );
+$prev = NPBR_Stats::period( 'last_month', strtotime( '2026-10-17 12:00:00' ) );
+npbr_assert( date( 'Y-m', $prev['start'] ) === '2026-09', 'last month is September' );
+$digest = NPBR_Stats::summarize(
+	array(
+		array(
+			'status'     => 'open',
+			'auto'       => true,
+			'date'       => '2026-10-16 10:00:00',
+			'pageUrl'    => 'https://nahal.website/checkout/',
+			'issueKey'   => $key_a,
+			'issueLabel' => 'اسکریپت checkout لود نشد',
+		),
+		array(
+			'status'     => 'resolved',
+			'auto'       => false,
+			'date'       => '2026-10-15 10:00:00',
+			'pageUrl'    => 'https://nahal.website/checkout/',
+			'issueKey'   => $key_a,
+			'issueLabel' => 'اسکریپت checkout لود نشد',
+		),
+		array(
+			'status'     => 'open',
+			'auto'       => false,
+			'date'       => '2026-10-14 10:00:00',
+			'pageUrl'    => 'https://nahal.website/cart/',
+			'issueKey'   => 'page:https://nahal.website/cart/|سبد خالی',
+			'issueLabel' => 'سبد خرید به‌روز نشد',
+		),
+	)
+);
+npbr_assert( 3 === $digest['total'], 'digest total' );
+npbr_assert( 2 === $digest['open'], 'digest open' );
+npbr_assert( 1 === $digest['resolved'], 'digest resolved' );
+npbr_assert( 2 === count( $digest['issues'] ), 'two grouped issues' );
+npbr_assert( 2 === (int) $digest['issues'][0]['count'], 'checkout issue counted twice' );
+$text = NPBR_Stats::digest_text( $digest, 'گزارش هفتگی خطای خرید نهال' );
+npbr_assert( false !== strpos( $text, 'رفع‌شده: 1' ), 'digest text has resolved' );
+npbr_assert( false !== strpos( $text, 'سبد خرید' ), 'digest text has cart issue' );
+npbr_assert( false !== strpos( $text, '2 بار — باز' ), 'grouped mixed issue stays open' );
+$month_text = NPBR_Stats::digest_text( $digest, 'گزارش ماهانه خطای خرید نهال' );
+npbr_assert( false !== strpos( $month_text, 'گزارش ماهانه' ), 'monthly digest title' );
+
 echo "== Telegram text ==\n";
 $tg = NPBR_Telegram::text( $ok['data'] );
 npbr_assert( false !== strpos( $tg, 'فیلدهای کارت' ), 'telegram includes note' );

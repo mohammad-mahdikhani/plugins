@@ -67,7 +67,9 @@
 	transform: translate(-50%, -50%);
 	width: min(640px, calc(100vw - 24px));
 	max-height: calc(100vh - 32px);
-	overflow: auto;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 	background: #fff;
 	color: #14221c;
 	border-radius: 18px;
@@ -85,6 +87,7 @@
 
 .npbr-head {
 	border-bottom: 1px solid #e4eee8;
+	flex-shrink: 0;
 }
 
 .npbr-head h2 {
@@ -103,6 +106,9 @@
 
 .npbr-body {
 	padding: 16px 18px 8px;
+	overflow: auto;
+	flex: 1;
+	min-height: 0;
 }
 
 .npbr-lead {
@@ -220,6 +226,8 @@
 .npbr-actions {
 	border-top: 1px solid #e4eee8;
 	flex-wrap: wrap;
+	flex-shrink: 0;
+	background: #fff;
 }
 
 .npbr-btn {
@@ -245,6 +253,10 @@
 .npbr-btn-dark {
 	background: #3f5d45;
 	color: #fff;
+}
+
+.npbr-btn-block {
+	width: 100%;
 }
 
 .npbr-downloads {

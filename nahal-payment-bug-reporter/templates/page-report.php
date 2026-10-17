@@ -27,8 +27,29 @@ $payment = isset( $payload['payment'] ) && is_array( $payload['payment'] ) ? $pa
 		<div>
 			<h1><?php echo esc_html( get_the_title( $post ) ); ?></h1>
 			<p><?php echo esc_html( (string) get_post_meta( $id, '_npbr_summary', true ) ); ?></p>
+			<?php
+			$st = class_exists( 'NPBR_Stats', false ) ? NPBR_Stats::status( $id ) : 'open';
+			echo 'resolved' === $st ? '<span class="npbr-badge is-done">رفع‌شده</span>' : '<span class="npbr-badge is-open">باز</span>';
+			?>
 		</div>
 	</div>
+	<?php if ( isset( $_GET['status_saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+		<div class="notice notice-success is-dismissible"><p>وضعیت گزارش ذخیره شد.</p></div>
+	<?php endif; ?>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="npbr-card">
+		<?php wp_nonce_field( 'npbr_set_status' ); ?>
+		<input type="hidden" name="action" value="npbr_set_status">
+		<input type="hidden" name="report_id" value="<?php echo esc_attr( (string) $id ); ?>">
+		<?php if ( 'resolved' === $st ) : ?>
+			<input type="hidden" name="status" value="open">
+			<p>این خطا رفع‌شده علامت خورده است.</p>
+			<button type="submit" class="button">برگرداندن به باز</button>
+		<?php else : ?>
+			<input type="hidden" name="status" value="resolved">
+			<p>بعد از اصلاح، این مورد را رفع‌شده کنید تا در گزارش ماهانه در ستون رفع‌شده بیاید.</p>
+			<button type="submit" class="button button-primary">علامت به‌عنوان رفع‌شده</button>
+		<?php endif; ?>
+	</form>
 
 	<div class="npbr-card">
 		<h2>شرح کاربر</h2>

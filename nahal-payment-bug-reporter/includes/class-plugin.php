@@ -34,6 +34,9 @@ class NPBR_Plugin {
 		NPBR_Frontend::instance()->init();
 		NPBR_Admin::instance()->init();
 		NPBR_Ajax::instance()->init();
+		if ( class_exists( 'NPBR_Stats', false ) ) {
+			NPBR_Stats::init_cron();
+		}
 
 		if ( ! $this->wc_active ) {
 			add_action( 'admin_notices', array( $this, 'missing_wc_notice' ) );
@@ -74,6 +77,7 @@ class NPBR_Plugin {
 			'telegram_chat_id'     => '',
 			'telegram_api_base'    => '',
 			'telegram_http_proxy'  => '',
+			'digest_email'         => true,
 		);
 	}
 
@@ -86,7 +90,7 @@ class NPBR_Plugin {
 			$stored = array();
 		}
 		$merged = array_merge( self::defaults(), $stored );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled', 'digest_email' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email']      = sanitize_email( (string) $merged['manager_email'] );
@@ -105,7 +109,7 @@ class NPBR_Plugin {
 	public static function save_settings( array $settings ) {
 		$current = self::settings();
 		$merged  = array_merge( $current, $settings );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled', 'digest_email' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email'] = sanitize_email( isset( $merged['manager_email'] ) ? (string) $merged['manager_email'] : '' );

@@ -61,6 +61,13 @@ namespace {
 		return true;
 	}
 	function flush_rewrite_rules( $hard = true ) {}
+	function wp_next_scheduled( $hook ) {
+		return false;
+	}
+	function wp_schedule_event( $timestamp, $recurrence, $hook ) {
+		return true;
+	}
+	function wp_clear_scheduled_hook( $hook ) {}
 	function is_admin() {
 		return false;
 	}
@@ -89,6 +96,14 @@ namespace {
 	}
 	if ( ! class_exists( 'NPBR_Customer', false ) ) {
 		fwrite( STDERR, "NPBR_Customer missing after include\n" );
+		exit( 1 );
+	}
+	if ( ! class_exists( 'NPBR_Stats', false ) ) {
+		fwrite( STDERR, "NPBR_Stats missing after include\n" );
+		exit( 1 );
+	}
+	if ( empty( $GLOBALS['npbr_options']['npbr_settings']['digest_email'] ) ) {
+		fwrite( STDERR, "digest_email not defaulted on activate\n" );
 		exit( 1 );
 	}
 

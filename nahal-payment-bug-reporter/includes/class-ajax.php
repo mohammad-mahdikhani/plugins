@@ -115,6 +115,12 @@ class NPBR_Ajax {
 		update_post_meta( $id, '_npbr_summary', NPBR_Report::summary( $data ) );
 		update_post_meta( $id, '_npbr_failed_count', count( $data['failed'] ) );
 		update_post_meta( $id, '_npbr_ip', $this->ip() );
+		update_post_meta( $id, '_npbr_status', 'open' );
+		if ( class_exists( 'NPBR_Stats', false ) ) {
+			update_post_meta( $id, '_npbr_issue_key', NPBR_Stats::issue_key( $data ) );
+			update_post_meta( $id, '_npbr_issue_label', NPBR_Stats::issue_label( $data ) );
+			NPBR_Stats::bump_unread();
+		}
 		if ( ! empty( $data['phone'] ) ) {
 			update_post_meta( $id, '_npbr_phone', $data['phone'] );
 		}
@@ -138,20 +144,10 @@ class NPBR_Ajax {
 			}
 		}
 
-		$parts = array();
-		if ( $mailed ) {
-			$parts[] = 'برای مدیر ایمیل شد';
-		}
-		if ( $telegram ) {
-			$parts[] = 'همزمان به تلگرام ارسال شد';
-		}
-		if ( ! $parts ) {
-			$message = 'گزارش در پیشخوان ذخیره شد، اما ایمیل/تلگرام ارسال نشد. فایل را دانلود کنید و خودتان بفرستید.';
+		if ( $mailed || $telegram ) {
+			$message = 'گزارش شما برای پشتیبانی ارسال شد.';
 		} else {
-			$message = 'گزارش ' . implode( ' و ', $parts ) . '. اگر بخواهید همان فایل را هم دانلود کنید.';
-		}
-		if ( class_exists( 'NPBR_Telegram' ) && NPBR_Telegram::enabled() && ! $telegram ) {
-			$message .= ' تلگرام نرسید — روی هاست ایران api.telegram.org فیلتر است؛ آدرس Worker را در تنظیمات بگذارید.';
+			$message = 'گزارش ثبت شد. پشتیبانی آن را می‌بیند.';
 		}
 
 		wp_send_json_success(
