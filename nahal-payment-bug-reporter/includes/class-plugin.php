@@ -68,7 +68,7 @@ class NPBR_Plugin {
 			'show_on_thankyou'    => true,
 			'show_sitewide'       => true,
 			'show_near_payment'   => false,
-			'show_near_cart'      => true,
+			'show_near_cart'      => false,
 			'show_floating'       => true,
 			'require_description' => true,
 			'button_label'        => 'گزارش خطا',
@@ -102,6 +102,7 @@ class NPBR_Plugin {
 		$merged['telegram_api_base']   = self::sanitize_api_base( isset( $merged['telegram_api_base'] ) ? $merged['telegram_api_base'] : '' );
 		$merged['telegram_http_proxy'] = self::sanitize_http_proxy( isset( $merged['telegram_http_proxy'] ) ? $merged['telegram_http_proxy'] : '' );
 		$merged['show_near_payment']   = false;
+		$merged['show_near_cart']      = false;
 		return $merged;
 	}
 
@@ -126,6 +127,7 @@ class NPBR_Plugin {
 		$merged['telegram_api_base']   = self::sanitize_api_base( isset( $merged['telegram_api_base'] ) ? $merged['telegram_api_base'] : '' );
 		$merged['telegram_http_proxy'] = self::sanitize_http_proxy( isset( $merged['telegram_http_proxy'] ) ? $merged['telegram_http_proxy'] : '' );
 		$merged['show_near_payment']   = false;
+		$merged['show_near_cart']      = false;
 		update_option( 'npbr_settings', $merged );
 	}
 

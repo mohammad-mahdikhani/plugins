@@ -356,11 +356,13 @@ $http400 = NPBR_Sanitizer::failed_resources(
 npbr_assert( 1 === count( $http400 ), 'keeps enamad 400 url' );
 npbr_assert( '400' === $http400[0]['status'], 'keeps http 400 status' );
 
-echo "== Mobile FAB 1.0.11 ==\n";
+echo "== Single report button 1.0.12 ==\n";
 $plugin_php = file_get_contents( __DIR__ . '/../nahal-payment-bug-reporter.php' );
 $css        = file_get_contents( __DIR__ . '/../assets/frontend/reporter.css' );
 $js         = file_get_contents( __DIR__ . '/../assets/frontend/reporter.js' );
-npbr_assert( false !== strpos( $plugin_php, "NPBR_VERSION', '1.0.11'" ), 'plugin version 1.0.11' );
+$plugin_inc = file_get_contents( __DIR__ . '/../includes/class-plugin.php' );
+$frontend   = file_get_contents( __DIR__ . '/../includes/class-frontend.php' );
+npbr_assert( false !== strpos( $plugin_php, "NPBR_VERSION', '1.0.12'" ), 'plugin version 1.0.12' );
 npbr_assert( false !== strpos( $css, 'calc(96px + env(safe-area-inset-bottom' ), 'mobile FAB spaced from bottom' );
 npbr_assert( false !== strpos( $css, 'z-index: 2147483000' ), 'FAB above sticky bars' );
 npbr_assert( false !== strpos( $js, 'document.body.appendChild(fab)' ), 'FAB moved to body so theme overflow cannot clip it' );
@@ -368,6 +370,11 @@ npbr_assert( false !== strpos( $js, 'ignoreElements' ), 'screenshot ignores repo
 npbr_assert( false === strpos( $js, 'fab.style.visibility' ), 'does not hide live FAB during screenshot' );
 npbr_assert( false !== strpos( $js, 'npbr-fab-away' ), 'hides FAB while modal is open' );
 npbr_assert( false !== strpos( $css, 'z-index: 2147483002' ), 'modal sits above FAB' );
+npbr_assert( false === strpos( $js, "className = 'npbr-hint-btn'" ), 'does not inject extra report buttons' );
+npbr_assert( false !== strpos( $js, 'stripExtraReportButtons' ), 'strips leftover extra report buttons' );
+npbr_assert( false !== strpos( $css, '.npbr-hint-btn' ) && false !== strpos( $css, 'display: none !important' ), 'CSS hides leftover hint buttons' );
+npbr_assert( false !== strpos( $plugin_inc, "'show_near_cart'      => false" ) || false !== strpos( $plugin_inc, "'show_near_cart' => false" ), 'near-cart default off' );
+npbr_assert( false !== strpos( $frontend, "'showNearCart' => false" ), 'frontend never enables near-cart buttons' );
 
 echo "== Zip ==\n";
 $zip_path = sys_get_temp_dir() . '/npbr-test-' . getmypid() . '.zip';

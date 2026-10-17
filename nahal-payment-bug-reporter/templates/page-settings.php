@@ -89,8 +89,7 @@ if ( ! isset( $tg_test ) ) {
 			<label><input type="checkbox" name="show_on_checkout" value="1" <?php checked( $settings['show_on_checkout'] ); ?>> صفحه تسویه / پرداخت تا درگاه</label>
 			<label><input type="checkbox" name="show_on_order_pay" value="1" <?php checked( $settings['show_on_order_pay'] ); ?>> پرداخت سفارش (order-pay)</label>
 			<label><input type="checkbox" name="show_on_thankyou" value="1" <?php checked( $settings['show_on_thankyou'] ); ?>> صفحه تشکر بعد از پرداخت</label>
-			<label><input type="checkbox" name="show_near_cart" value="1" <?php checked( ! empty( $settings['show_near_cart'] ) ); ?>> دکمه کمکی کنار سبد، دکمه خرید و ادامه تسویه (نه داخل باکس درگاه)</label>
-			<label><input type="checkbox" name="show_floating" value="1" <?php checked( $settings['show_floating'] ); ?>> دکمه شناور</label>
+			<label><input type="checkbox" name="show_floating" value="1" <?php checked( $settings['show_floating'] ); ?>> دکمه شناور «گزارش خطا» (فقط همین یک دکمه)</label>
 			<label><input type="checkbox" name="require_description" value="1" <?php checked( $settings['require_description'] ); ?>> نوشتن شرح خطا اجباری باشد</label>
 			<label><input type="checkbox" name="require_login" value="1" <?php checked( ! empty( $settings['require_login'] ) ); ?>> فقط کاربر لاگین‌شده بتواند گزارش بفرستد</label>
 			<label><input type="checkbox" name="require_verified" value="1" <?php checked( ! empty( $settings['require_verified'] ) ); ?>> موبایل حساب باید تأییدشده باشد (ورود با موبایل)</label>

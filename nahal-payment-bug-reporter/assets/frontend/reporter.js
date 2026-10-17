@@ -1168,53 +1168,20 @@
 		return true;
 	}
 
-	function mountJourneyHints() {
-		if (cfg.showNearCart === false) {
-			return;
-		}
-		$all('.npbr-hint-btn').forEach(function (el) {
+	function stripExtraReportButtons() {
+		$all('.npbr-hint-btn, .npbr-pay-btn, .npbr-pay-slot').forEach(function (el) {
 			if (el && el.parentNode) {
 				el.parentNode.removeChild(el);
 			}
 		});
-		var label = cfg.buttonLabel || 'گزارش خطا';
-		var selectors = [
-			'.wc-proceed-to-checkout',
-			'button[name="update_cart"]',
-			'.single_add_to_cart_button',
-			'button[name="add-to-cart"]',
-			'.checkout-button',
-		];
-		var seen = [];
-		selectors.forEach(function (sel) {
-			$all(sel).forEach(function (el) {
-				if (!el || el.closest && el.closest('#payment')) {
-					return;
-				}
-				if (!el.parentNode) {
-					return;
-				}
-				if (sel === '.checkout-button' && el.closest && el.closest('.wc-proceed-to-checkout')) {
-					return;
-				}
-				if (sel === 'button[name="add-to-cart"]' && el.classList && el.classList.contains('single_add_to_cart_button')) {
-					return;
-				}
-				if (seen.indexOf(el) !== -1) {
-					return;
-				}
-				seen.push(el);
-				var btn = document.createElement('button');
-				btn.type = 'button';
-				btn.className = 'npbr-hint-btn';
-				btn.setAttribute('data-npbr-open', '1');
-				btn.textContent = label;
-				if (el.nextSibling) {
-					el.parentNode.insertBefore(btn, el.nextSibling);
-				} else {
-					el.parentNode.appendChild(btn);
-				}
-			});
+		var fabs = $all('.npbr-fab');
+		fabs.forEach(function (el, i) {
+			if (i === 0) {
+				return;
+			}
+			if (el && el.parentNode) {
+				el.parentNode.removeChild(el);
+			}
 		});
 	}
 
@@ -1264,7 +1231,7 @@
 		if ($('#npbr-phone') && cust.phone && !$('#npbr-phone').value) {
 			$('#npbr-phone').value = cust.phone;
 		}
-		mountJourneyHints();
+		stripExtraReportButtons();
 		document.addEventListener('click', function (ev) {
 			var open = ev.target.closest && ev.target.closest('[data-npbr-open]');
 			if (open) {
@@ -1293,12 +1260,12 @@
 		});
 		removePaySlot();
 		setTimeout(removePaySlot, 1200);
-		setTimeout(mountJourneyHints, 1200);
+		setTimeout(stripExtraReportButtons, 1200);
 		scheduleAuto();
 		if (window.jQuery) {
 			window.jQuery(document.body).on('updated_checkout payment_method_selected updated_cart_totals added_to_cart', function () {
 				removePaySlot();
-				mountJourneyHints();
+				stripExtraReportButtons();
 			});
 		}
 	}

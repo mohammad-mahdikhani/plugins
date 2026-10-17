@@ -45,15 +45,7 @@
 	font-weight: 700;
 }
 
-.npbr-hint-btn {
-	display: inline-block;
-	margin: 8px 6px 0 0;
-	vertical-align: middle;
-	border: 0;
-	cursor: pointer;
-	font-family: inherit;
-}
-
+.npbr-hint-btn,
 .npbr-pay-slot,
 .npbr-pay-btn {
 	display: none !important;

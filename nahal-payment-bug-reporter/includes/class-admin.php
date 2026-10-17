@@ -182,7 +182,7 @@ class NPBR_Admin {
 				'show_on_thankyou'    => ! empty( $_POST['show_on_thankyou'] ),
 				'show_sitewide'       => ! empty( $_POST['show_sitewide'] ),
 				'show_near_payment'   => false,
-				'show_near_cart'      => ! empty( $_POST['show_near_cart'] ),
+				'show_near_cart'      => false,
 				'show_floating'       => ! empty( $_POST['show_floating'] ),
 				'require_description' => ! empty( $_POST['require_description'] ),
 				'telegram_enabled'     => ! empty( $_POST['telegram_enabled'] ),

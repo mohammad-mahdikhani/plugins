@@ -58,6 +58,14 @@ class NPBR_Install {
 				update_option( 'npbr_settings', $s );
 			}
 		}
+		if ( $stored && version_compare( (string) $stored, '1.0.12', '<' ) ) {
+			$s = get_option( 'npbr_settings', array() );
+			if ( is_array( $s ) ) {
+				$s['show_near_cart']    = false;
+				$s['show_near_payment'] = false;
+				update_option( 'npbr_settings', $s );
+			}
+		}
 		update_option( 'npbr_version', NPBR_VERSION );
 	}
 

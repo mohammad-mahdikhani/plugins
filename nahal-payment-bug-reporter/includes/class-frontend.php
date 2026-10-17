@@ -91,7 +91,7 @@ class NPBR_Frontend {
 				'buttonLabel'  => $settings['button_label'],
 				'showFloating' => ! empty( $settings['show_floating'] ),
 				'showNearPay'  => false,
-				'showNearCart' => ! empty( $settings['show_near_cart'] ),
+				'showNearCart' => false,
 				'autoWatch'    => $auto_watch,
 				'pageKind'     => $page_kind,
 				'requireNote'     => ! empty( $settings['require_description'] ),
