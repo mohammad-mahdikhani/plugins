@@ -1,0 +1,92 @@
+.nm-wrap {
+	font-family: Vazirmatn, Tahoma, sans-serif;
+	max-width: 760px;
+	color: #14221c;
+}
+
+.nm-hero {
+	margin: 12px 0 20px;
+}
+
+.nm-hero h1 {
+	margin: 0 0 8px;
+	font-size: 24px;
+}
+
+.nm-hero p {
+	margin: 0;
+	color: #4b6358;
+	line-height: 1.8;
+	max-width: 680px;
+}
+
+.nm-card {
+	background: #fff;
+	border: 1px solid #d7e4dc;
+	border-radius: 16px;
+	padding: 22px;
+	margin-bottom: 16px;
+	box-shadow: 0 8px 24px rgba(15, 107, 76, 0.05);
+}
+
+.nm-field {
+	display: block;
+	margin: 0 0 16px;
+}
+
+.nm-field span {
+	display: block;
+	font-weight: 700;
+	margin-bottom: 6px;
+}
+
+.nm-field input[type="text"],
+.nm-field input[type="url"],
+.nm-field input[type="number"],
+.nm-field textarea {
+	width: min(520px, 100%);
+}
+
+.nm-field small {
+	display: block;
+	color: #5b7268;
+	margin-top: 4px;
+	line-height: 1.7;
+}
+
+.nm-checks {
+	border: 0;
+	padding: 0;
+	margin: 8px 0 18px;
+}
+
+.nm-checks legend {
+	font-weight: 700;
+	margin-bottom: 8px;
+}
+
+.nm-checks label {
+	display: block;
+	margin: 6px 0;
+}
+
+.nm-help {
+	background: #f4faf6;
+	border: 1px solid #d7e4dc;
+	border-radius: 12px;
+	padding: 12px 16px;
+	line-height: 1.8;
+	color: #3d5349;
+}
+
+.nm-help ol {
+	margin: 8px 0 0;
+	padding-right: 22px;
+}
+
+.nm-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
