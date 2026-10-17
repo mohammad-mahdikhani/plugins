@@ -11,27 +11,31 @@
 
 .npbr-fab {
 	position: fixed;
-	left: 18px;
+	right: 18px;
+	left: auto;
 	bottom: 18px;
 	z-index: 99980;
-	background: #3f5d45;
+	background: #f97316;
 	color: #fff;
 	border-radius: 999px;
 	padding: 12px 18px;
 	font-size: 14px;
 	font-weight: 700;
-	box-shadow: 0 10px 24px rgba(63, 93, 69, 0.28);
+	box-shadow: 0 10px 24px rgba(249, 115, 22, 0.38);
 }
 
 .npbr-fab:hover,
-.npbr-btn-dark:hover {
-	background: #2f4634;
+.npbr-btn-dark:hover,
+.npbr-inline-btn:hover,
+.npbr-hint-btn:hover {
+	background: #ea580c;
+	color: #fff;
 }
 
 .npbr-inline-btn,
 .npbr-hint-btn {
-	background: #afd136;
-	color: #1b2a22;
+	background: #f97316;
+	color: #fff;
 	border-radius: 10px;
 	padding: 8px 12px;
 	font-size: 13px;
@@ -57,6 +61,11 @@
 	inset: 0;
 	background: rgba(20, 34, 28, 0.45);
 	z-index: 99990;
+}
+
+.npbr-overlay[hidden],
+.npbr-modal[hidden] {
+	display: none !important;
 }
 
 .npbr-modal {
@@ -251,7 +260,7 @@
 }
 
 .npbr-btn-dark {
-	background: #3f5d45;
+	background: #f97316;
 	color: #fff;
 }
 
@@ -308,7 +317,8 @@
 	}
 
 	.npbr-fab {
-		left: 12px;
+		right: 12px;
+		left: auto;
 		bottom: 12px;
 	}
 }

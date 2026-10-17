@@ -513,6 +513,15 @@
 	function captureShot() {
 		var changed = maskSensitive();
 		setReporterHidden(true);
+		var restored = false;
+		function restore() {
+			if (restored) {
+				return;
+			}
+			restored = true;
+			setReporterHidden(false);
+			restoreMasked(changed);
+		}
 		var target = document.body;
 		var opts = {
 			useCORS: true,
@@ -525,7 +534,19 @@
 		var run = window.html2canvas
 			? window.html2canvas(target, opts)
 			: Promise.reject(new Error('html2canvas missing'));
-		return run
+		var timed = new Promise(function (resolve, reject) {
+			var t = setTimeout(function () {
+				reject(new Error('screenshot timeout'));
+			}, 4000);
+			run.then(function (v) {
+				clearTimeout(t);
+				resolve(v);
+			}, function (err) {
+				clearTimeout(t);
+				reject(err);
+			});
+		});
+		return timed
 			.then(function (canvas) {
 				return canvas.toDataURL('image/jpeg', 0.72);
 			})
@@ -533,10 +554,13 @@
 				return fallbackShot();
 			})
 			.then(function (uri) {
-				setReporterHidden(false);
-				restoreMasked(changed);
+				restore();
 				lastShot = uri || '';
 				return lastShot;
+			}, function () {
+				restore();
+				lastShot = '';
+				return '';
 			});
 	}
 
@@ -743,35 +767,28 @@
 		return lines.join('\n');
 	}
 
-	function showAgentPrompt(data) {
-		var wrap = $('#npbr-prompt-wrap');
-		var ta = $('#npbr-prompt');
-		var text = agentPrompt(data);
-		if (ta) {
-			ta.value = text;
+	function removeEl(el) {
+		if (el && el.parentNode) {
+			el.parentNode.removeChild(el);
 		}
-		if (wrap) {
-			wrap.hidden = false;
-		}
-		return text;
 	}
 
-	function copyPromptText(text) {
-		var value = text || ( $('#npbr-prompt') && $('#npbr-prompt').value ) || '';
-		if (!value) {
-			return Promise.reject(new Error('پرامپت خالی است'));
+	function lockCustomerUi() {
+		$all('.npbr-shot-wrap, #npbr-downloads, #npbr-prompt-wrap, #npbr-prompt, #npbr-shot, #npbr-shot-empty, [data-npbr-prompt], [data-npbr-download], [data-npbr-copy-prompt]').forEach(removeEl);
+		if (!root) {
+			return;
 		}
-		if (navigator.clipboard && navigator.clipboard.writeText) {
-			return navigator.clipboard.writeText(value);
+		var footer = $('.npbr-actions', root);
+		if (!footer) {
+			return;
 		}
-		var ta = $('#npbr-prompt');
-		if (!ta) {
-			return Promise.reject(new Error('کادر پرامپت پیدا نشد'));
-		}
-		ta.focus();
-		ta.select();
-		document.execCommand('copy');
-		return Promise.resolve();
+		var btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'npbr-btn npbr-btn-dark npbr-btn-block';
+		btn.setAttribute('data-npbr-send', '');
+		btn.textContent = cfg.buttonLabel || 'گزارش خطا';
+		footer.innerHTML = '';
+		footer.appendChild(btn);
 	}
 
 	function reportHtml(data) {
@@ -814,18 +831,7 @@
 		}, 4000);
 	}
 
-	function showDownloadLinks(zipUrl, zipName, shotUrl, htmlUrl) {
-		var box = $('#npbr-downloads');
-		if (!box) {
-			return;
-		}
-		box.hidden = false;
-		box.innerHTML =
-			'<a class="npbr-btn npbr-btn-dark" id="npbr-zip-link" href="' + zipUrl + '" download="' + zipName + '">دانلود فایل ZIP</a>' +
-			(shotUrl ? '<a class="npbr-btn npbr-btn-light" id="npbr-shot-link" href="' + shotUrl + '" download="nahal-payment-screenshot.jpg">دانلود اسکرین صفحه</a>' : '') +
-			'<a class="npbr-btn npbr-btn-light" id="npbr-prompt-link" href="#" download="agent-prompt.md">دانلود پرامپت ایجنت</a>' +
-			(htmlUrl ? '<a class="npbr-btn npbr-btn-light" id="npbr-html-link" href="' + htmlUrl + '" target="_blank" rel="noopener">باز کردن گزارش</a>' : '');
-	}
+	function showDownloadLinks() {}
 
 	function downloadViaServer(data) {
 		if (!cfg.ajax) {
@@ -874,36 +880,8 @@
 		return true;
 	}
 
-	function downloadZip(data) {
-		var promptText = agentPrompt(data);
-		var files = [
-			{ name: 'report.json', data: strBytes(JSON.stringify(data, null, 2)) },
-			{ name: 'report.html', data: strBytes(reportHtml(data)) },
-			{ name: 'agent-prompt.md', data: strBytes(promptText) },
-		];
-		if (data.screenshot) {
-			files.push({ name: 'screenshot.jpg', data: dataUriToBytes(data.screenshot) });
-		}
-		var zip = zipStore(files);
-		var blob = new Blob([zip], { type: 'application/octet-stream' });
-		var stamp = (data.capturedAt || 'report').replace(/[:.]/g, '-');
-		var zipName = 'nahal-payment-bug-' + stamp + '.zip';
-		var zipUrl = downloadBlob(blob, zipName);
-		var shotUrl = '';
-		if (data.screenshot) {
-			shotUrl = data.screenshot;
-			clickDownload(shotUrl, 'nahal-payment-screenshot.jpg');
-		}
-		var htmlUrl = URL.createObjectURL(new Blob([reportHtml(data)], { type: 'text/html;charset=utf-8' }));
-		var promptUrl = URL.createObjectURL(new Blob([promptText], { type: 'text/markdown;charset=utf-8' }));
-		showDownloadLinks(zipUrl, zipName, shotUrl, htmlUrl);
-		var promptLink = $('#npbr-prompt-link');
-		if (promptLink) {
-			promptLink.href = promptUrl;
-		}
-		showAgentPrompt(data);
-		downloadViaServer(data);
-		return zipUrl;
+	function downloadZip() {
+		return '';
 	}
 
 	function setStatus(text, isError) {
@@ -1174,6 +1152,7 @@
 		overlay = $('.npbr-overlay', root);
 		statusEl = $('#npbr-status', root);
 		root.hidden = false;
+		lockCustomerUi();
 		if (cfg.showFloating === false) {
 			var fab = $('.npbr-fab', root);
 			if (fab) {
@@ -1203,6 +1182,12 @@
 			if (ev.target.closest && ev.target.closest('[data-npbr-send]')) {
 				ev.preventDefault();
 				ev.stopPropagation();
+				withShot(sendToManager);
+			}
+			if (ev.target.closest && (ev.target.closest('[data-npbr-prompt]') || ev.target.closest('[data-npbr-download]') || ev.target.closest('[data-npbr-copy-prompt]'))) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				lockCustomerUi();
 				withShot(sendToManager);
 			}
 		});

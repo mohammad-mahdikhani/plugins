@@ -3,7 +3,7 @@ Contributors: nahal
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.0.8
+Stable tag: 1.0.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. از منوی «خطای پرداخت» ایمیل مدیر را بگذارید.
 
 == Changelog ==
+
+= 1.0.9 =
+* سه دکمه مودال در یک دکمه «گزارش خطا» خلاصه شد. دکمه شناور سمت راست صفحه و نارنجی است.
 
 = 1.0.8 =
 * مشتری فقط یک دکمه «گزارش خطا» می‌بیند. اسکرین و پرامپت ایجنت از صفحه برداشته شد و فقط برای مدیر ارسال می‌شود.
