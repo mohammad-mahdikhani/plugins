@@ -115,6 +115,23 @@ npbr_assert( false !== strpos( $tg, 'checkout.min.js' ), 'telegram includes fail
 npbr_assert( false !== strpos( $tg, 'کنسول' ), 'telegram has console section' );
 npbr_assert( false === NPBR_Telegram::enabled(), 'telegram disabled without settings' );
 
+echo "== Telegram filter bypass ==\n";
+npbr_assert( NPBR_Telegram::build_url( 'https://npbr.example.workers.dev', '123:ABC', 'sendMessage' ) === 'https://npbr.example.workers.dev/bot123:ABC/sendMessage', 'worker base url' );
+npbr_assert( NPBR_Telegram::build_url( 'https://api.telegram.org/', '1:x', 'sendPhoto' ) === 'https://api.telegram.org/bot1:x/sendPhoto', 'official url strips slash' );
+npbr_assert( NPBR_Telegram::sanitize_api_base( 'https://foo.workers.dev/' ) === 'https://foo.workers.dev', 'strips trailing slash' );
+npbr_assert( NPBR_Telegram::sanitize_api_base( 'https://foo.workers.dev/bot123:tok' ) === 'https://foo.workers.dev', 'strips pasted bot path' );
+npbr_assert( NPBR_Telegram::sanitize_api_base( 'foo.workers.dev' ) === 'https://foo.workers.dev', 'adds https' );
+npbr_assert( NPBR_Telegram::sanitize_api_base( 'javascript:alert(1)' ) === '', 'rejects javascript' );
+npbr_assert( NPBR_Telegram::sanitize_api_base( 'https://user:pass@evil.example/' ) === '', 'rejects userinfo' );
+npbr_assert( NPBR_Telegram::redact_url( 'https://api.telegram.org/bot123:SECRET/sendMessage' ) === 'https://api.telegram.org/bot***/sendMessage', 'redacts token in url' );
+npbr_assert( NPBR_Telegram::sanitize_http_proxy( '127.0.0.1:8080' ) === '127.0.0.1:8080', 'host:port proxy' );
+npbr_assert( NPBR_Telegram::sanitize_http_proxy( 'http://u:p@10.0.0.8:3128' ) === 'u:p@10.0.0.8:3128', 'user:pass proxy' );
+npbr_assert( NPBR_Telegram::sanitize_http_proxy( 'not a proxy' ) === '', 'rejects junk proxy' );
+$bases = NPBR_Telegram::api_bases( 'https://foo.workers.dev/' );
+npbr_assert( isset( $bases[0] ) && 'https://foo.workers.dev' === $bases[0], 'custom base first' );
+npbr_assert( in_array( 'https://api.telegram.org', $bases, true ), 'official fallback remains' );
+npbr_assert( 2 === count( $bases ), 'no duplicate bases' );
+
 $http400 = NPBR_Sanitizer::failed_resources(
 	array(
 		array(

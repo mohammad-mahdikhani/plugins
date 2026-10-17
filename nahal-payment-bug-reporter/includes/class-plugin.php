@@ -65,9 +65,11 @@ class NPBR_Plugin {
 			'show_floating'       => true,
 			'require_description' => true,
 			'button_label'        => 'گزارش خطا',
-			'telegram_enabled'    => false,
-			'telegram_bot_token'  => '',
-			'telegram_chat_id'    => '',
+			'telegram_enabled'     => false,
+			'telegram_bot_token'   => '',
+			'telegram_chat_id'     => '',
+			'telegram_api_base'    => '',
+			'telegram_http_proxy'  => '',
 		);
 	}
 
@@ -85,8 +87,10 @@ class NPBR_Plugin {
 		}
 		$merged['manager_email']      = sanitize_email( (string) $merged['manager_email'] );
 		$merged['button_label']       = $merged['button_label'] ? sanitize_text_field( (string) $merged['button_label'] ) : 'گزارش خطا';
-		$merged['telegram_bot_token'] = self::sanitize_token( isset( $merged['telegram_bot_token'] ) ? $merged['telegram_bot_token'] : '' );
-		$merged['telegram_chat_id']   = self::sanitize_chat_id( isset( $merged['telegram_chat_id'] ) ? $merged['telegram_chat_id'] : '' );
+		$merged['telegram_bot_token']  = self::sanitize_token( isset( $merged['telegram_bot_token'] ) ? $merged['telegram_bot_token'] : '' );
+		$merged['telegram_chat_id']    = self::sanitize_chat_id( isset( $merged['telegram_chat_id'] ) ? $merged['telegram_chat_id'] : '' );
+		$merged['telegram_api_base']   = self::sanitize_api_base( isset( $merged['telegram_api_base'] ) ? $merged['telegram_api_base'] : '' );
+		$merged['telegram_http_proxy'] = self::sanitize_http_proxy( isset( $merged['telegram_http_proxy'] ) ? $merged['telegram_http_proxy'] : '' );
 		return $merged;
 	}
 
@@ -107,7 +111,9 @@ class NPBR_Plugin {
 		} else {
 			$merged['telegram_bot_token'] = self::sanitize_token( isset( $merged['telegram_bot_token'] ) ? $merged['telegram_bot_token'] : '' );
 		}
-		$merged['telegram_chat_id'] = self::sanitize_chat_id( isset( $merged['telegram_chat_id'] ) ? $merged['telegram_chat_id'] : '' );
+		$merged['telegram_chat_id']    = self::sanitize_chat_id( isset( $merged['telegram_chat_id'] ) ? $merged['telegram_chat_id'] : '' );
+		$merged['telegram_api_base']   = self::sanitize_api_base( isset( $merged['telegram_api_base'] ) ? $merged['telegram_api_base'] : '' );
+		$merged['telegram_http_proxy'] = self::sanitize_http_proxy( isset( $merged['telegram_http_proxy'] ) ? $merged['telegram_http_proxy'] : '' );
 		update_option( 'npbr_settings', $merged );
 	}
 
@@ -136,5 +142,27 @@ class NPBR_Plugin {
 	 */
 	public static function sanitize_chat_id( $chat ) {
 		return preg_replace( '/[^A-Za-z0-9_\-@]/', '', (string) $chat );
+	}
+
+	/**
+	 * @param mixed $url API base.
+	 * @return string
+	 */
+	public static function sanitize_api_base( $url ) {
+		if ( class_exists( 'NPBR_Telegram', false ) ) {
+			return NPBR_Telegram::sanitize_api_base( $url );
+		}
+		return '';
+	}
+
+	/**
+	 * @param mixed $proxy HTTP proxy.
+	 * @return string
+	 */
+	public static function sanitize_http_proxy( $proxy ) {
+		if ( class_exists( 'NPBR_Telegram', false ) ) {
+			return NPBR_Telegram::sanitize_http_proxy( $proxy );
+		}
+		return '';
 	}
 }

@@ -41,8 +41,25 @@
 }
 
 .npbr-field input[type="text"],
-.npbr-field input[type="email"] {
-	width: min(420px, 100%);
+.npbr-field input[type="email"],
+.npbr-field input[type="password"],
+.npbr-field input[type="url"] {
+	width: min(520px, 100%);
+}
+
+.npbr-help {
+	background: #f4faf6;
+	border: 1px solid #d7e4dc;
+	border-radius: 12px;
+	padding: 12px 16px;
+	margin: 0 0 18px;
+	line-height: 1.8;
+	color: #3d5349;
+}
+
+.npbr-help ol {
+	margin: 8px 0 0;
+	padding-right: 22px;
 }
 
 .npbr-field small {

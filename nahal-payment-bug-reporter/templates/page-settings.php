@@ -4,10 +4,14 @@
  *
  * @package NahalPaymentBugReporter
  * @var array<string, mixed> $settings
+ * @var array{ok:bool,message:string}|null $tg_test
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
+if ( ! isset( $tg_test ) ) {
+	$tg_test = null;
 }
 ?>
 <div class="wrap npbr-wrap">
@@ -20,6 +24,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<?php if ( isset( $_GET['saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 		<div class="notice notice-success is-dismissible"><p>تنظیمات ذخیره شد.</p></div>
+	<?php endif; ?>
+
+	<?php if ( is_array( $tg_test ) ) : ?>
+		<div class="notice <?php echo ! empty( $tg_test['ok'] ) ? 'notice-success' : 'notice-error'; ?> is-dismissible">
+			<p><?php echo esc_html( isset( $tg_test['message'] ) ? $tg_test['message'] : '' ); ?></p>
+		</div>
 	<?php endif; ?>
 
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="npbr-card">
@@ -51,6 +61,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<input type="text" name="telegram_chat_id" value="<?php echo esc_attr( $settings['telegram_chat_id'] ); ?>" dir="ltr" placeholder="-100... یا @channel">
 			<small>آیدی عددی گروه/شخص یا یوزرنیم کانال. ربات باید عضو کانال/گروه باشد.</small>
 		</label>
+		<label class="npbr-field">
+			<span>آدرس پروکسی API تلگرام (برای هاست ایران)</span>
+			<input type="url" name="telegram_api_base" value="<?php echo esc_attr( $settings['telegram_api_base'] ); ?>" dir="ltr" placeholder="https://npbr-tg.YOUR-SUBDOMAIN.workers.dev">
+			<small>روی هاست ایران <code>api.telegram.org</code> فیلتر است. Worker خودتان را از فایل <code>telegram-proxy-worker.js</code> داخل افزونه روی Cloudflare بسازید و آدرس workers.dev را اینجا بگذارید. از پروکسی عمومی دیگران استفاده نکنید؛ توکن ربات دیده می‌شود.</small>
+		</label>
+		<label class="npbr-field">
+			<span>پروکسی HTTP اختیاری</span>
+			<input type="text" name="telegram_http_proxy" value="<?php echo esc_attr( $settings['telegram_http_proxy'] ); ?>" dir="ltr" placeholder="host:port یا http://user:pass@host:port">
+			<small>اگر سرور HTTP CONNECT دارد، اینجا بگذارید. در غیر این صورت خالی بماند؛ مسیر اصلی همان Worker است.</small>
+		</label>
+		<div class="npbr-help">
+			<strong>اگر تلگرام فیلتر است:</strong>
+			<ol>
+				<li>در Cloudflare: Workers &amp; Pages ← Create ← کد <code>telegram-proxy-worker.js</code> را جایگزین کنید و Deploy.</li>
+				<li>آدرس <code>https://….workers.dev</code> را در فیلد بالا ذخیره کنید.</li>
+				<li>بعد از ذخیره، دکمه «ارسال پیام تست به تلگرام» را بزنید.</li>
+			</ol>
+		</div>
 
 		<fieldset class="npbr-checks">
 			<legend>نمایش دکمه</legend>
@@ -64,5 +92,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</fieldset>
 
 		<p><button type="submit" class="button button-primary">ذخیره تنظیمات</button></p>
+	</form>
+
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="npbr-card">
+		<?php wp_nonce_field( 'npbr_test_telegram' ); ?>
+		<input type="hidden" name="action" value="npbr_test_telegram">
+		<p>اول تنظیمات را ذخیره کنید، بعد اتصال تلگرام را از همین سرور تست کنید. افزونه اول Worker شما را امتحان می‌کند و اگر نرسید همان <code>api.telegram.org</code> را.</p>
+		<p><button type="submit" class="button">ارسال پیام تست به تلگرام</button></p>
 	</form>
 </div>

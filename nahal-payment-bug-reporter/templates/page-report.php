@@ -37,6 +37,19 @@ $payment = isset( $payload['payment'] ) && is_array( $payload['payment'] ) ? $pa
 			موبایل: <?php echo esc_html( isset( $payload['phone'] ) && $payload['phone'] ? $payload['phone'] : '—' ); ?></p>
 		<p dir="ltr">URL: <?php echo esc_html( isset( $payload['pageUrl'] ) ? $payload['pageUrl'] : '' ); ?></p>
 		<p>مرورگر: <?php echo esc_html( isset( $payload['userAgent'] ) ? $payload['userAgent'] : '' ); ?></p>
+		<?php
+		$tg_flag = get_post_meta( $id, '_npbr_telegram', true );
+		$tg_err  = (string) get_post_meta( $id, '_npbr_telegram_error', true );
+		if ( '1' === $tg_flag ) {
+			echo '<p>تلگرام: ارسال شد.</p>';
+		} elseif ( '0' === $tg_flag ) {
+			echo '<p>تلگرام: نرسید';
+			if ( $tg_err ) {
+				echo ' — ' . esc_html( $tg_err );
+			}
+			echo '</p>';
+		}
+		?>
 	</div>
 
 	<div class="npbr-card">

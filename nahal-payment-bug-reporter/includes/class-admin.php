@@ -29,6 +29,7 @@ class NPBR_Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 		add_filter( 'plugin_action_links_' . NPBR_BASENAME, array( $this, 'action_links' ) );
 		add_action( 'admin_post_npbr_save_settings', array( $this, 'save_settings' ) );
+		add_action( 'admin_post_npbr_test_telegram', array( $this, 'test_telegram' ) );
 		add_action( 'admin_post_npbr_delete_report', array( $this, 'delete_report' ) );
 	}
 
@@ -112,6 +113,12 @@ class NPBR_Admin {
 			wp_die( 'دسترسی ندارید.' );
 		}
 		$settings = NPBR_Plugin::settings();
+		$tg_test  = get_transient( 'npbr_tg_test_' . get_current_user_id() );
+		if ( is_array( $tg_test ) ) {
+			delete_transient( 'npbr_tg_test_' . get_current_user_id() );
+		} else {
+			$tg_test = null;
+		}
 		include NPBR_DIR . 'templates/page-settings.php';
 	}
 
@@ -131,12 +138,28 @@ class NPBR_Admin {
 				'show_near_payment'   => ! empty( $_POST['show_near_payment'] ),
 				'show_floating'       => ! empty( $_POST['show_floating'] ),
 				'require_description' => ! empty( $_POST['require_description'] ),
-				'telegram_enabled'    => ! empty( $_POST['telegram_enabled'] ),
-				'telegram_bot_token'  => isset( $_POST['telegram_bot_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_bot_token'] ) ) : '',
-				'telegram_chat_id'    => isset( $_POST['telegram_chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_chat_id'] ) ) : '',
+				'telegram_enabled'     => ! empty( $_POST['telegram_enabled'] ),
+				'telegram_bot_token'   => isset( $_POST['telegram_bot_token'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_bot_token'] ) ) : '',
+				'telegram_chat_id'     => isset( $_POST['telegram_chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_chat_id'] ) ) : '',
+				'telegram_api_base'    => isset( $_POST['telegram_api_base'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_api_base'] ) ) : '',
+				'telegram_http_proxy'  => isset( $_POST['telegram_http_proxy'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_http_proxy'] ) ) : '',
 			)
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=npbr-settings&saved=1' ) );
+		exit;
+	}
+
+	public function test_telegram() {
+		if ( ! current_user_can( $this->cap() ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		check_admin_referer( 'npbr_test_telegram' );
+		$result = class_exists( 'NPBR_Telegram', false ) ? NPBR_Telegram::test() : array(
+			'ok'      => false,
+			'message' => 'کلاس تلگرام بارگذاری نشد.',
+		);
+		set_transient( 'npbr_tg_test_' . get_current_user_id(), $result, 120 );
+		wp_safe_redirect( admin_url( 'admin.php?page=npbr-settings' ) );
 		exit;
 	}
 
