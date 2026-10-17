@@ -30,8 +30,12 @@
 			autoWatch: true,
 			pageKind: 'cart',
 			requireNote: true,
+			requireLogin: true,
+			requireVerified: true,
+			canReport: true,
+			loginUrl: '/my-account/',
 			site: 'https://nahal.website/',
-			customer: { loggedIn: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
+			customer: { loggedIn: true, verified: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
 		};
 	</script>
 	<script src="./missing-cart-fragments.js"></script>

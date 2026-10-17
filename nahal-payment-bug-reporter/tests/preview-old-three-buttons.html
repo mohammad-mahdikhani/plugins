@@ -20,8 +20,12 @@
 			autoWatch: false,
 			pageKind: 'checkout',
 			requireNote: true,
+			requireLogin: true,
+			requireVerified: true,
+			canReport: true,
+			loginUrl: '/my-account/',
 			site: 'https://nahal.website/',
-			customer: { loggedIn: true, firstName: 'علی', lastName: 'محمدی', phone: '09120000000' }
+			customer: { loggedIn: true, verified: true, firstName: 'علی', lastName: 'محمدی', phone: '09120000000' }
 		};
 	</script>
 </head>

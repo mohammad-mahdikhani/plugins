@@ -26,15 +26,16 @@ class NPBR_Ajax {
 
 	public function init() {
 		add_action( 'wp_ajax_npbr_submit', array( $this, 'submit' ) );
-		add_action( 'wp_ajax_nopriv_npbr_submit', array( $this, 'submit' ) );
 		add_action( 'wp_ajax_npbr_download', array( $this, 'download' ) );
-		add_action( 'wp_ajax_nopriv_npbr_download', array( $this, 'download' ) );
 	}
 
 	/**
 	 * Force a real HTTP ZIP download so mobile browsers do not block blob saves.
 	 */
 	public function download() {
+		if ( ! is_user_logged_in() ) {
+			wp_die( 'برای دانلود باید وارد حساب شده باشید.', 'خطا', array( 'response' => 403 ) );
+		}
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'npbr_report' ) ) {
 			wp_die( 'نشست منقضی شده. صفحه را تازه کنید و دوباره دانلود کنید.', 'خطا', array( 'response' => 403 ) );
 		}
@@ -84,6 +85,19 @@ class NPBR_Ajax {
 
 	public function submit() {
 		check_ajax_referer( 'npbr_report', 'nonce' );
+
+		if ( class_exists( 'NPBR_Customer', false ) ) {
+			$gate = NPBR_Customer::can_report();
+			if ( empty( $gate['ok'] ) ) {
+				wp_send_json_error(
+					array(
+						'message'  => isset( $gate['message'] ) ? $gate['message'] : 'برای گزارش خطا باید وارد حساب شوید.',
+						'loginUrl' => isset( $gate['loginUrl'] ) ? $gate['loginUrl'] : '',
+					),
+					403
+				);
+			}
+		}
 
 		if ( $this->rate_limited() ) {
 			wp_send_json_error( array( 'message' => 'چند گزارش پشت سر هم ارسال شده. کمی بعد دوباره تلاش کنید.' ), 429 );

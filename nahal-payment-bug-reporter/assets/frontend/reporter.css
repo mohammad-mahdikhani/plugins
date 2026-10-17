@@ -127,6 +127,36 @@
 	font-size: 13px;
 }
 
+.npbr-auth-gate {
+	background: #fff7ed;
+	border: 1px solid #fdba74;
+	border-radius: 12px;
+	padding: 14px 16px;
+	margin: 0 0 12px;
+}
+
+.npbr-auth-msg {
+	margin: 0 0 12px;
+	line-height: 1.8;
+	color: #9a3412;
+	font-size: 14px;
+}
+
+.npbr-identity {
+	margin: 0 0 12px;
+	padding: 10px 12px;
+	background: #fff7ed;
+	border-radius: 10px;
+	color: #9a3412;
+	font-size: 13px;
+	line-height: 1.7;
+}
+
+.npbr-grid input[readonly] {
+	background: #f4f4f5;
+	color: #3f3f46;
+}
+
 .npbr-label {
 	display: block;
 	font-weight: 700;

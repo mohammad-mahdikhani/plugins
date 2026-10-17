@@ -305,6 +305,17 @@ npbr_assert( false !== strpos( $text, '2 بار — باز' ), 'grouped mixed is
 $month_text = NPBR_Stats::digest_text( $digest, 'گزارش ماهانه خطای خرید نهال' );
 npbr_assert( false !== strpos( $month_text, 'گزارش ماهانه' ), 'monthly digest title' );
 
+echo "== Login / verified gate ==\n";
+$req = array( 'require_login' => true, 'require_verified' => true );
+$guest_gate = NPBR_Customer::can_report( array( 'loggedIn' => false, 'phone' => '' ), $req );
+npbr_assert( false === $guest_gate['ok'] && 'guest' === $guest_gate['reason'], 'guest cannot report' );
+$nophone = NPBR_Customer::can_report( array( 'loggedIn' => true, 'phone' => '' ), $req );
+npbr_assert( false === $nophone['ok'] && 'unverified' === $nophone['reason'], 'logged in without phone blocked' );
+$ok_user = NPBR_Customer::can_report( array( 'loggedIn' => true, 'phone' => '09120000000' ), $req );
+npbr_assert( ! empty( $ok_user['ok'] ) && ! empty( $ok_user['verified'] ), 'logged in verified phone can report' );
+npbr_assert( NPBR_Customer::has_verified_phone( '0912-000-0000' ), 'phone digits count as verified' );
+npbr_assert( ! NPBR_Customer::has_verified_phone( '123' ), 'short phone is not verified' );
+
 echo "== Telegram text ==\n";
 $tg = NPBR_Telegram::text( $ok['data'] );
 npbr_assert( false !== strpos( $tg, 'فیلدهای کارت' ), 'telegram includes note' );

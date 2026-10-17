@@ -106,6 +106,10 @@ namespace {
 		fwrite( STDERR, "digest_email not defaulted on activate\n" );
 		exit( 1 );
 	}
+	if ( empty( $GLOBALS['npbr_options']['npbr_settings']['require_login'] ) || empty( $GLOBALS['npbr_options']['npbr_settings']['require_verified'] ) ) {
+		fwrite( STDERR, "login/verified gate not defaulted on activate\n" );
+		exit( 1 );
+	}
 
 	echo "activate-stub OK\n";
 }

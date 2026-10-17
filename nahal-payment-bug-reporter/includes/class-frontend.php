@@ -57,6 +57,11 @@ class NPBR_Frontend {
 		if ( isset( $_GET['npbr_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$auto_watch = true;
 		}
+		$gate = class_exists( 'NPBR_Customer', false ) ? NPBR_Customer::can_report() : array(
+			'ok'       => false,
+			'loginUrl' => '',
+			'message'  => '',
+		);
 		wp_enqueue_style(
 			'npbr-reporter',
 			NPBR_URL . 'assets/frontend/reporter.css',
@@ -89,9 +94,14 @@ class NPBR_Frontend {
 				'showNearCart' => ! empty( $settings['show_near_cart'] ),
 				'autoWatch'    => $auto_watch,
 				'pageKind'     => $page_kind,
-				'requireNote'  => ! empty( $settings['require_description'] ),
-				'site'         => home_url( '/' ),
-				'customer'     => class_exists( 'NPBR_Customer', false ) ? NPBR_Customer::preview() : array(),
+				'requireNote'     => ! empty( $settings['require_description'] ),
+				'requireLogin'    => ! empty( $settings['require_login'] ),
+				'requireVerified' => ! empty( $settings['require_verified'] ),
+				'canReport'       => ! empty( $gate['ok'] ),
+				'authMessage'     => isset( $gate['message'] ) ? (string) $gate['message'] : '',
+				'loginUrl'        => isset( $gate['loginUrl'] ) ? (string) $gate['loginUrl'] : '',
+				'site'            => home_url( '/' ),
+				'customer'        => class_exists( 'NPBR_Customer', false ) ? NPBR_Customer::preview() : array(),
 			)
 		);
 	}
@@ -101,25 +111,35 @@ class NPBR_Frontend {
 			return;
 		}
 		$label = NPBR_Plugin::settings()['button_label'];
+		$gate  = class_exists( 'NPBR_Customer', false ) ? NPBR_Customer::can_report() : array( 'ok' => false, 'message' => 'برای گزارش خطا باید وارد حساب شوید.', 'loginUrl' => '/my-account/' );
+		$ok    = ! empty( $gate['ok'] );
 		echo '<div id="npbr-root" class="npbr-root" hidden>';
 		echo '<button type="button" class="npbr-fab" data-npbr-open>' . esc_html( $label ) . '</button>';
 		echo '<div class="npbr-overlay" data-npbr-close hidden></div>';
 		echo '<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>';
 		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطا در خرید و پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
 		echo '<div class="npbr-body">';
+		echo '<div id="npbr-auth-gate" class="npbr-auth-gate"' . ( $ok ? ' hidden' : '' ) . '>';
+		echo '<p class="npbr-auth-msg">' . esc_html( isset( $gate['message'] ) ? $gate['message'] : 'برای گزارش خطا باید از قبل وارد حساب شده باشید.' ) . '</p>';
+		echo '</div>';
+		echo '<div id="npbr-report-form"' . ( $ok ? '' : ' hidden' ) . '>';
 		echo '<p class="npbr-lead">اگر سبد خرید، دکمه خرید، فروشگاه، صفحه محصول یا درگاه پرداخت لود نشد همین مورد را بنویسید تا برای پشتیبانی ارسال شود.</p>';
+		echo '<p id="npbr-identity" class="npbr-identity"></p>';
 		echo '<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>';
 		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: سبد خرید خالی ماند / دکمه خرید کار نکرد / فیلدهای کارت لود نشد"></textarea>';
 		echo '<div class="npbr-grid npbr-grid-3">';
-		echo '<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80" autocomplete="given-name"></label>';
-		echo '<label>نام خانوادگی (اختیاری)<input type="text" id="npbr-last" maxlength="80" autocomplete="family-name"></label>';
-		echo '<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr" autocomplete="tel"></label>';
+		echo '<label>نام<input type="text" id="npbr-name" maxlength="80" autocomplete="given-name" readonly></label>';
+		echo '<label>نام خانوادگی<input type="text" id="npbr-last" maxlength="80" autocomplete="family-name" readonly></label>';
+		echo '<label>موبایل تأییدشده<input type="tel" id="npbr-phone" maxlength="20" dir="ltr" autocomplete="tel" readonly></label>';
 		echo '</div>';
 		echo '<div id="npbr-diag" class="npbr-diag"></div>';
+		echo '</div>';
 		echo '<p id="npbr-status" class="npbr-status" role="status"></p>';
 		echo '</div>';
 		echo '<footer class="npbr-actions">';
-		echo '<button type="button" class="npbr-btn npbr-btn-dark npbr-btn-block" data-npbr-send>' . esc_html( $label ) . '</button>';
+		if ( $ok ) {
+			echo '<button type="button" class="npbr-btn npbr-btn-dark npbr-btn-block" data-npbr-send>' . esc_html( $label ) . '</button>';
+		}
 		echo '</footer>';
 		echo '</section></div>';
 	}

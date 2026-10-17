@@ -5,7 +5,7 @@
  * @package NahalPaymentBugReporter
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if ( ! defined( 'ABSPATH' ) && ! defined( 'NPBR_TEST' ) ) {
 	exit;
 }
 
@@ -20,11 +20,95 @@ class NPBR_Customer {
 		$full = self::current();
 		return array(
 			'loggedIn'    => ! empty( $full['loggedIn'] ),
+			'verified'    => ! empty( $full['loggedIn'] ) && self::has_verified_phone( $full['phone'] ),
 			'firstName'   => $full['firstName'],
 			'lastName'    => $full['lastName'],
 			'displayName' => $full['displayName'],
 			'phone'       => $full['phone'],
 		);
+	}
+
+	/**
+	 * Whether this account may file a report.
+	 *
+	 * @param array<string, mixed>|null $customer Snapshot; current() if null.
+	 * @param array<string, mixed>|null $settings Plugin settings.
+	 * @return array{ok:bool,reason:string,message:string,loginUrl:string,loggedIn:bool,verified:bool}
+	 */
+	public static function can_report( $customer = null, $settings = null ) {
+		if ( null === $customer ) {
+			$customer = self::current();
+		}
+		if ( ! is_array( $customer ) ) {
+			$customer = array();
+		}
+		if ( null === $settings ) {
+			$settings = class_exists( 'NPBR_Plugin', false ) ? NPBR_Plugin::settings() : array( 'require_login' => true, 'require_verified' => true );
+		}
+		$require_login    = ! isset( $settings['require_login'] ) || ! empty( $settings['require_login'] );
+		$require_verified = ! isset( $settings['require_verified'] ) || ! empty( $settings['require_verified'] );
+		$logged_in        = ! empty( $customer['loggedIn'] );
+		$verified         = $logged_in && self::has_verified_phone( isset( $customer['phone'] ) ? $customer['phone'] : '' );
+		$login_url        = self::login_url();
+
+		if ( ( $require_login || $require_verified ) && ! $logged_in ) {
+			return array(
+				'ok'       => false,
+				'reason'   => 'guest',
+				'message'  => 'برای گزارش خطا باید از قبل وارد حساب کاربری شده باشید. مهمان نمی‌تواند گزارش بفرستد.',
+				'loginUrl' => $login_url,
+				'loggedIn' => false,
+				'verified' => false,
+			);
+		}
+		if ( $require_verified && ! $verified ) {
+			return array(
+				'ok'       => false,
+				'reason'   => 'unverified',
+				'message'  => 'حساب شما موبایل تأییدشده ندارد. با همان موبایلی که خرید می‌کنید وارد شوید تا هویت‌تان مشخص باشد.',
+				'loginUrl' => $login_url,
+				'loggedIn' => true,
+				'verified' => false,
+			);
+		}
+		return array(
+			'ok'       => true,
+			'reason'   => 'ok',
+			'message'  => '',
+			'loginUrl' => $login_url,
+			'loggedIn' => $logged_in,
+			'verified' => $verified,
+		);
+	}
+
+	/**
+	 * @param mixed $phone Phone.
+	 * @return bool
+	 */
+	public static function has_verified_phone( $phone ) {
+		$digits = preg_replace( '/\D/', '', class_exists( 'NPBR_Sanitizer', false ) ? NPBR_Sanitizer::phone( $phone ) : (string) $phone );
+		return strlen( (string) $digits ) >= 10;
+	}
+
+	/**
+	 * @return string
+	 */
+	public static function login_url() {
+		$redirect = '';
+		if ( function_exists( 'home_url' ) ) {
+			$uri      = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$redirect = home_url( is_string( $uri ) ? $uri : '/' );
+		}
+		if ( function_exists( 'wc_get_page_permalink' ) ) {
+			$acc = wc_get_page_permalink( 'myaccount' );
+			if ( $acc && '#' !== $acc ) {
+				return $redirect && function_exists( 'add_query_arg' ) ? add_query_arg( 'redirect', $redirect, $acc ) : $acc;
+			}
+		}
+		if ( function_exists( 'wp_login_url' ) ) {
+			return wp_login_url( $redirect );
+		}
+		return '/my-account/';
 	}
 
 	/**

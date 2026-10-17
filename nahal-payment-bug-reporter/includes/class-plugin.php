@@ -78,6 +78,8 @@ class NPBR_Plugin {
 			'telegram_api_base'    => '',
 			'telegram_http_proxy'  => '',
 			'digest_email'         => true,
+			'require_login'        => true,
+			'require_verified'     => true,
 		);
 	}
 
@@ -90,7 +92,7 @@ class NPBR_Plugin {
 			$stored = array();
 		}
 		$merged = array_merge( self::defaults(), $stored );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled', 'digest_email' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled', 'digest_email', 'require_login', 'require_verified' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email']      = sanitize_email( (string) $merged['manager_email'] );
@@ -109,7 +111,7 @@ class NPBR_Plugin {
 	public static function save_settings( array $settings ) {
 		$current = self::settings();
 		$merged  = array_merge( $current, $settings );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled', 'digest_email' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled', 'digest_email', 'require_login', 'require_verified' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email'] = sanitize_email( isset( $merged['manager_email'] ) ? (string) $merged['manager_email'] : '' );

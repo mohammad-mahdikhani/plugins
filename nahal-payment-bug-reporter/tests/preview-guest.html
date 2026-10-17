@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fa-IR" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>مهمان — گزارش خطا نیاز به ورود</title>
+	<link rel="stylesheet" href="../assets/frontend/reporter.css">
+	<style>
+		body { margin: 0; min-height: 100vh; font-family: Tahoma, sans-serif; background: #f7faf6; }
+		.page { padding: 40px 24px; }
+	</style>
+	<script>
+		window.NPBR_CFG = {
+			ajax: '/wp-admin/admin-ajax.php',
+			nonce: 'preview',
+			buttonLabel: 'گزارش خطا',
+			showFloating: true,
+			showNearPay: false,
+			showNearCart: false,
+			autoWatch: true,
+			pageKind: 'checkout',
+			requireNote: true,
+			requireLogin: true,
+			requireVerified: true,
+			canReport: false,
+			authMessage: 'برای گزارش خطا باید از قبل وارد حساب کاربری شده باشید. مهمان نمی‌تواند گزارش بفرستد.',
+			loginUrl: 'https://nahal.website/my-account/',
+			site: 'https://nahal.website/',
+			customer: { loggedIn: false, verified: false, firstName: '', lastName: '', phone: '' }
+		};
+	</script>
+</head>
+<body class="rtl">
+	<div class="page"><p>کاربر مهمان است؛ گزارش خطا باید ورود بخواهد نه ارسال.</p></div>
+	<div id="npbr-root" class="npbr-root" hidden>
+		<button type="button" class="npbr-fab" data-npbr-open>گزارش خطا</button>
+		<div class="npbr-overlay" data-npbr-close hidden></div>
+		<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>
+			<header class="npbr-head"><h2 id="npbr-title">گزارش خطا در خرید و پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>
+			<div class="npbr-body">
+				<div id="npbr-auth-gate" class="npbr-auth-gate">
+					<p class="npbr-auth-msg">برای گزارش خطا باید از قبل وارد حساب کاربری شده باشید. مهمان نمی‌تواند گزارش بفرستد.</p>
+				</div>
+				<div id="npbr-report-form" hidden>
+					<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>
+					<textarea id="npbr-note" class="npbr-note" rows="4"></textarea>
+					<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>گزارش خطا</button>
+				</div>
+				<p id="npbr-status" class="npbr-status" role="status"></p>
+			</div>
+			<footer class="npbr-actions"></footer>
+		</section>
+	</div>
+	<script src="../assets/frontend/html2canvas.min.js"></script>
+	<script src="../assets/frontend/reporter.js"></script>
+</body>
+</html>

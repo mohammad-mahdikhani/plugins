@@ -191,6 +191,8 @@ class NPBR_Admin {
 				'telegram_api_base'    => isset( $_POST['telegram_api_base'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_api_base'] ) ) : '',
 				'telegram_http_proxy'  => isset( $_POST['telegram_http_proxy'] ) ? sanitize_text_field( wp_unslash( $_POST['telegram_http_proxy'] ) ) : '',
 				'digest_email'         => ! empty( $_POST['digest_email'] ),
+				'require_login'        => ! empty( $_POST['require_login'] ),
+				'require_verified'     => ! empty( $_POST['require_verified'] ),
 			)
 		);
 		wp_safe_redirect( admin_url( 'admin.php?page=npbr-settings&saved=1' ) );

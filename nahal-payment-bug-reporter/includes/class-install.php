@@ -50,6 +50,14 @@ class NPBR_Install {
 				update_option( 'npbr_settings', $s );
 			}
 		}
+		if ( $stored && version_compare( (string) $stored, '1.0.10', '<' ) ) {
+			$s = get_option( 'npbr_settings', array() );
+			if ( is_array( $s ) ) {
+				$s['require_login']    = true;
+				$s['require_verified'] = true;
+				update_option( 'npbr_settings', $s );
+			}
+		}
 		update_option( 'npbr_version', NPBR_VERSION );
 	}
 

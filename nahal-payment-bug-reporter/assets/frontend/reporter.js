@@ -88,12 +88,61 @@
 		var preview = cfg.customer || {};
 		return {
 			loggedIn: !!preview.loggedIn,
-			firstName: ($('#npbr-name') && $('#npbr-name').value) || preview.firstName || '',
-			lastName: ($('#npbr-last') && $('#npbr-last').value) || preview.lastName || '',
+			verified: !!preview.verified,
+			firstName: preview.firstName || ($('#npbr-name') && $('#npbr-name').value) || '',
+			lastName: preview.lastName || ($('#npbr-last') && $('#npbr-last').value) || '',
 			displayName: preview.displayName || '',
-			phone: ($('#npbr-phone') && $('#npbr-phone').value) || preview.phone || '',
+			phone: preview.phone || ($('#npbr-phone') && $('#npbr-phone').value) || '',
 			orders: [],
 		};
+	}
+
+	function canReport() {
+		if (cfg.canReport === false) {
+			return false;
+		}
+		if (cfg.canReport === true) {
+			return true;
+		}
+		var c = cfg.customer || {};
+		if (cfg.requireLogin !== false && !c.loggedIn) {
+			return false;
+		}
+		if (cfg.requireVerified !== false && !c.verified) {
+			return false;
+		}
+		return true;
+	}
+
+	function applyAuthGate() {
+		var allowed = canReport();
+		var gate = $('#npbr-auth-gate');
+		var form = $('#npbr-report-form');
+		var msg = $('.npbr-auth-msg', root);
+		var ident = $('#npbr-identity');
+		var login = $('#npbr-login-link');
+		if (gate) {
+			gate.hidden = allowed;
+		}
+		if (form) {
+			form.hidden = !allowed;
+		}
+		if (msg && cfg.authMessage) {
+			msg.textContent = cfg.authMessage;
+		}
+		if (login && cfg.loginUrl) {
+			login.href = cfg.loginUrl;
+		}
+		if (ident) {
+			if (allowed) {
+				var c = cfg.customer || {};
+				var name = c.displayName || ((c.firstName || '') + ' ' + (c.lastName || '')).trim() || 'کاربر';
+				ident.textContent = 'ارسال از حساب تأییدشده: ' + name + (c.phone ? ' — ' + c.phone : '');
+				ident.hidden = false;
+			} else {
+				ident.hidden = true;
+			}
+		}
 	}
 
 	function contactLines(data) {
@@ -778,8 +827,19 @@
 		if (!root) {
 			return;
 		}
+		applyAuthGate();
 		var footer = $('.npbr-actions', root);
 		if (!footer) {
+			return;
+		}
+		footer.innerHTML = '';
+		if (!canReport()) {
+			var a = document.createElement('a');
+			a.className = 'npbr-btn npbr-btn-dark npbr-btn-block';
+			a.id = 'npbr-login-link';
+			a.href = cfg.loginUrl || '/my-account/';
+			a.textContent = 'ورود به حساب';
+			footer.appendChild(a);
 			return;
 		}
 		var btn = document.createElement('button');
@@ -787,7 +847,6 @@
 		btn.className = 'npbr-btn npbr-btn-dark npbr-btn-block';
 		btn.setAttribute('data-npbr-send', '');
 		btn.textContent = cfg.buttonLabel || 'گزارش خطا';
-		footer.innerHTML = '';
 		footer.appendChild(btn);
 	}
 
@@ -910,6 +969,11 @@
 		if (busy) {
 			return;
 		}
+		if (!canReport()) {
+			applyAuthGate();
+			setStatus(cfg.authMessage || 'برای گزارش خطا باید از قبل وارد حساب شده باشید.', true);
+			return;
+		}
 		var data = collect();
 		if (!requireNote(data)) {
 			return;
@@ -965,6 +1029,11 @@
 		root.hidden = false;
 		overlay.hidden = false;
 		modal.hidden = false;
+		applyAuthGate();
+		if (!canReport()) {
+			setStatus('');
+			return;
+		}
 		renderDiag(collect());
 		setStatus('');
 		var note = $('#npbr-note');
@@ -1015,6 +1084,9 @@
 
 	function maybeAutoReport() {
 		if (cfg.autoWatch === false) {
+			return;
+		}
+		if (!canReport()) {
 			return;
 		}
 		if (alreadyAutoSent()) {

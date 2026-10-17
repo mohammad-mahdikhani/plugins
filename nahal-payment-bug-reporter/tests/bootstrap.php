@@ -11,3 +11,4 @@ require __DIR__ . '/../includes/class-report.php';
 require __DIR__ . '/../includes/class-stats.php';
 require __DIR__ . '/../includes/class-zip.php';
 require __DIR__ . '/../includes/class-telegram.php';
+require __DIR__ . '/../includes/class-customer.php';

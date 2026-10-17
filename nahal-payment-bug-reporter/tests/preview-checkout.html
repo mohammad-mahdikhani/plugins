@@ -35,8 +35,12 @@
 			autoWatch: true,
 			pageKind: 'checkout',
 			requireNote: true,
+			requireLogin: true,
+			requireVerified: true,
+			canReport: true,
+			loginUrl: '/my-account/',
 			site: 'https://nahal.website/',
-			customer: { loggedIn: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
+			customer: { loggedIn: true, verified: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
 		};
 		console.error('Failed to load resource: the server responded with a status of 400 (https://trustseal.enamad.ir/logo.aspx?id=592152)');
 		fetch('./http-400.php');
