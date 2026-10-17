@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fa-IR" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>پرداخت دوره — مجموعه نهال نیشابور</title>
+	<link rel="stylesheet" href="../assets/frontend/reporter.css">
+	<style>
+		body { margin: 0; font-family: Tahoma, Vazirmatn, sans-serif; background: #f0f7ff; color: #1b2a22; }
+		header { background: #fff; border-bottom: 1px solid #d7e4dc; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+		.brand { font-weight: 700; color: #3f5d45; }
+		main { max-width: 920px; margin: 24px auto; padding: 0 16px 80px; }
+		.woocommerce-checkout { background: #f0f7ff; border-top: 5px solid #2563eb; padding: 20px; border-radius: 0 0 16px 16px; }
+		.custom-checkout-heading { color: #2563eb; text-align: center; margin: 0 0 20px; }
+		.card { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 16px; border: 1px solid #dbe7f3; }
+		#payment { background: #eef4ff; padding: 16px; border-radius: 12px; }
+		.method { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #d9e6f7; }
+		.broken { color: #b42318; background: #fff4f2; padding: 10px 12px; border-radius: 10px; margin-top: 10px; }
+		.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+		.fields label { display: block; font-size: 13px; color: #4b6358; }
+		.fields input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #c9d9d0; border-radius: 8px; }
+		.pay { margin-top: 16px; background: #3f5d45; color: #fff; border: 0; border-radius: 10px; padding: 12px 18px; font-weight: 700; }
+		.hint { font-size: 13px; color: #4b6358; line-height: 1.8; }
+		img.logo { width: 40px; height: 40px; object-fit: contain; background: #fff; border-radius: 8px; }
+	</style>
+	<script>
+		window.NPBRBuffer = { failed: [], errors: [] };
+		(function (b) {
+			function push(list, item, max) { if (list.length >= max) return; list.push(item); }
+			window.addEventListener('error', function (ev) {
+				var t = ev.target || ev.srcElement;
+				if (t && (t.src || t.href) && t.tagName) {
+					push(b.failed, { url: t.src || t.href, kind: 'resource', tag: (t.tagName || '').toLowerCase(), id: t.id || '', status: 'load-error', message: 'resource failed', time: new Date().toISOString(), payment: true }, 80);
+					return;
+				}
+				push(b.errors, { message: ev.message || 'error', source: ev.filename || '', line: String(ev.lineno || ''), type: 'error' }, 40);
+			}, true);
+			window.addEventListener('unhandledrejection', function (ev) {
+				push(b.errors, { message: String(ev.reason || 'unhandledrejection'), source: '', line: '', type: 'unhandledrejection' }, 40);
+			});
+		})(window.NPBRBuffer);
+		window.NPBR_CFG = {
+			ajax: '',
+			nonce: 'preview',
+			buttonLabel: 'گزارش خطا',
+			showFloating: true,
+			showNearPay: true,
+			requireNote: true,
+			site: 'https://nahal.website/'
+		};
+	</script>
+	<script id="broken-digipay" src="./missing-digipay-fields.js"></script>
+	<script id="broken-checkout" src="./missing-checkout.min.js"></script>
+	<link rel="stylesheet" href="./missing-payment.css">
+</head>
+<body class="rtl woocommerce-checkout checkout-dore">
+	<header>
+		<div class="brand">نهال نیشابور — پیش‌نمایش گزارشگر خطا</div>
+		<div>سبد خرید (۱)</div>
+	</header>
+	<main>
+		<form class="woocommerce-checkout">
+			<h1 class="custom-checkout-heading">پرداخت دوره لگو BTE.3</h1>
+			<div class="card">
+				<p>کلاس آموزش لگو — ۱٬۹۹۰٬۰۰۰ تومان</p>
+				<p class="hint">این صفحه شبیه تسویه nahal.website است. دو اسکریپت درگاه و یک استایل عمداً لود نمی‌شوند تا گزارشگر آن‌ها را ثبت کند.</p>
+			</div>
+			<div class="card">
+				<div id="payment">
+					<h2>انتخاب روش پرداخت</h2>
+					<label class="method">
+						<input type="radio" name="payment_method" id="payment_method_WCDigiPay" value="WCDigiPay" checked>
+						<img class="logo" src="https://nahal.website/wp-content/uploads/2025/03/nahal-website-fav-icon-64x64.png" alt="دیجی‌پی">
+						دیجی‌پی
+					</label>
+					<label class="method">
+						<input type="radio" name="payment_method" id="payment_method_bacs" value="bacs">
+						کارت به کارت
+					</label>
+					<div class="broken">فیلدهای کارت دیجی‌پی لود نشد. اسکریپت درگاه در دسترس نیست.</div>
+					<div class="fields">
+						<label>شماره کارت<input name="digipay_card" id="digipay_card" autocomplete="cc-number" placeholder="لود نشد" disabled></label>
+						<label>CVV2<input type="password" name="digipay_cvv" id="digipay_cvv" autocomplete="cc-csc" disabled></label>
+					</div>
+					<button type="button" class="pay" onclick="alert('پرداخت به خاطر اسکریپت لودنشده انجام نشد')">پرداخت</button>
+				</div>
+			</div>
+		</form>
+	</main>
+
+	<div id="npbr-root" class="npbr-root" hidden>
+		<button type="button" class="npbr-fab" data-npbr-open>گزارش خطا</button>
+		<div class="npbr-overlay" data-npbr-close hidden></div>
+		<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>
+			<header class="npbr-head"><h2 id="npbr-title">گزارش خطای پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>
+			<div class="npbr-body">
+				<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. اسکرین صفحه و کدهای لودنشده همراه گزارش ذخیره می‌شود.</p>
+				<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>
+				<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: فیلدهای کارت دیجی‌پی خالی ماند / دکمه پرداخت کار نکرد / صفحه سفید شد"></textarea>
+				<div class="npbr-grid">
+					<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80"></label>
+					<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr"></label>
+				</div>
+				<div id="npbr-diag" class="npbr-diag"></div>
+				<figure class="npbr-shot-wrap"><figcaption>پیش‌نمایش اسکرین‌شات</figcaption><img id="npbr-shot" alt="اسکرین‌شات صفحه" hidden><p id="npbr-shot-empty">هنوز گرفته نشده. با دانلود یا ارسال، اسکرین همین صفحه ذخیره می‌شود.</p></figure>
+				<p id="npbr-status" class="npbr-status" role="status"></p>
+			</div>
+			<footer class="npbr-actions">
+				<button type="button" class="npbr-btn npbr-btn-light" data-npbr-download>دانلود گزارش و اسکرین</button>
+				<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر</button>
+			</footer>
+		</section>
+	</div>
+
+	<script src="../assets/frontend/html2canvas.min.js"></script>
+	<script src="../assets/frontend/reporter.js"></script>
+	<script>
+		setTimeout(function () {
+			try { missingGateway.init(); } catch (e) { /* expected */ }
+		}, 80);
+	</script>
+</body>
+</html>

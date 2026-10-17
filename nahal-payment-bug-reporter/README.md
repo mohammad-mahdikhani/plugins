@@ -1,0 +1,27 @@
+# گزارشگر خطای پرداخت نهال
+
+افزونه وردپرس / ووکامرس برای صفحات پرداخت [nahal.website](https://nahal.website).
+
+اگر فیلد پرداخت یا اسکریپت درگاه لود نشود، کاربر همان مورد را می‌نویسد، اسکرین صفحه و فهرست کدهای لودنشده را دانلود می‌کند و می‌تواند گزارش را برای مدیر بفرستد.
+
+## نصب
+
+فایل آماده: [`../dist/nahal-payment-bug-reporter.zip`](../dist/nahal-payment-bug-reporter.zip)
+
+در پیشخوان: **افزونه‌ها ← افزودن ← بارگذاری افزونه**. ووکامرس باید فعال باشد.
+
+راهنما: `INSTALL-FA.txt` و `GUIDE-FA.txt`
+
+## تست بدون وردپرس
+
+```bash
+php nahal-payment-bug-reporter/tests/run.php
+```
+
+پیش‌نمایش رابط صفحه پرداخت:
+
+```bash
+php -S 127.0.0.1:8765 -t nahal-payment-bug-reporter
+```
+
+سپس `http://127.0.0.1:8765/tests/preview-checkout.html` را باز کنید.

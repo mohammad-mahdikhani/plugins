@@ -1,0 +1,81 @@
+.npbr-wrap {
+	font-family: Vazirmatn, Tahoma, sans-serif;
+	max-width: 1080px;
+	color: #14221c;
+}
+
+.npbr-hero {
+	margin: 12px 0 20px;
+}
+
+.npbr-hero h1 {
+	margin: 0 0 8px;
+	font-size: 24px;
+}
+
+.npbr-hero p {
+	margin: 0;
+	color: #4b6358;
+	line-height: 1.8;
+	max-width: 720px;
+}
+
+.npbr-card {
+	background: #fff;
+	border: 1px solid #d7e4dc;
+	border-radius: 16px;
+	padding: 22px;
+	margin-bottom: 16px;
+	box-shadow: 0 8px 24px rgba(15, 107, 76, 0.05);
+}
+
+.npbr-field {
+	display: block;
+	margin: 0 0 16px;
+}
+
+.npbr-field span {
+	display: block;
+	font-weight: 700;
+	margin-bottom: 6px;
+}
+
+.npbr-field input[type="text"],
+.npbr-field input[type="email"] {
+	width: min(420px, 100%);
+}
+
+.npbr-field small {
+	display: block;
+	color: #5b7268;
+	margin-top: 4px;
+}
+
+.npbr-checks {
+	border: 0;
+	padding: 0;
+	margin: 8px 0 18px;
+}
+
+.npbr-checks legend {
+	font-weight: 700;
+	margin-bottom: 8px;
+}
+
+.npbr-checks label {
+	display: block;
+	margin: 6px 0;
+}
+
+.npbr-table td,
+.npbr-table th {
+	vertical-align: top;
+}
+
+.npbr-note-box {
+	white-space: pre-wrap;
+	background: #f7faf6;
+	border-radius: 12px;
+	padding: 12px;
+	line-height: 1.8;
+}

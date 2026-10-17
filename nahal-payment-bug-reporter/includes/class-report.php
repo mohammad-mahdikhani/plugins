@@ -1,0 +1,146 @@
+<?php
+/**
+ * Build readable HTML / JSON reports.
+ *
+ * @package NahalPaymentBugReporter
+ */
+
+if ( ! defined( 'ABSPATH' ) && ! defined( 'NPBR_TEST' ) ) {
+	exit;
+}
+
+class NPBR_Report {
+
+	/**
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return string
+	 */
+	public static function html( array $data ) {
+		$failed  = isset( $data['failed'] ) && is_array( $data['failed'] ) ? $data['failed'] : array();
+		$errors  = isset( $data['errors'] ) && is_array( $data['errors'] ) ? $data['errors'] : array();
+		$payment = isset( $data['payment'] ) && is_array( $data['payment'] ) ? $data['payment'] : array();
+		$shot    = isset( $data['screenshot'] ) ? (string) $data['screenshot'] : '';
+
+		$failed_rows = '';
+		if ( $failed ) {
+			foreach ( $failed as $row ) {
+				$badge = ! empty( $row['payment'] ) ? 'پرداخت' : 'عمومی';
+				$failed_rows .= '<tr><td>' . self::e( $badge ) . '</td><td>' . self::e( isset( $row['kind'] ) ? $row['kind'] : '' ) . '</td><td>' . self::e( isset( $row['status'] ) ? $row['status'] : '' ) . '</td><td dir="ltr">' . self::e( isset( $row['url'] ) ? $row['url'] : '' ) . '</td></tr>';
+			}
+		} else {
+			$failed_rows = '<tr><td colspan="4">مورد لودنشده‌ای ثبت نشد.</td></tr>';
+		}
+
+		$error_rows = '';
+		if ( $errors ) {
+			foreach ( $errors as $row ) {
+				$error_rows .= '<tr><td>' . self::e( isset( $row['type'] ) ? $row['type'] : '' ) . '</td><td>' . self::e( isset( $row['message'] ) ? $row['message'] : '' ) . '</td><td dir="ltr">' . self::e( isset( $row['source'] ) ? $row['source'] : '' ) . '</td></tr>';
+			}
+		} else {
+			$error_rows = '<tr><td colspan="3">خطای جاوااسکریپت ثبت نشد.</td></tr>';
+		}
+
+		$methods = '';
+		if ( ! empty( $payment['methods'] ) && is_array( $payment['methods'] ) ) {
+			foreach ( $payment['methods'] as $method ) {
+				$sel      = ! empty( $method['selected'] ) ? 'بله' : 'خیر';
+				$methods .= '<li>' . self::e( ( isset( $method['label'] ) ? $method['label'] : '' ) . ' (' . ( isset( $method['id'] ) ? $method['id'] : '' ) . ') — انتخاب‌شده: ' . $sel ) . '</li>';
+			}
+		} else {
+			$methods = '<li>هیچ درگاه پرداختی در صفحه دیده نشد.</li>';
+		}
+
+		$fields = '';
+		if ( ! empty( $payment['fields'] ) && is_array( $payment['fields'] ) ) {
+			foreach ( $payment['fields'] as $field ) {
+				$state   = array();
+				$state[] = ! empty( $field['visible'] ) ? 'نمایان' : 'مخفی';
+				$state[] = ! empty( $field['empty'] ) ? 'خالی' : 'پر';
+				if ( ! empty( $field['broken'] ) ) {
+					$state[] = 'آسیب‌دیده';
+				}
+				$fields .= '<li>' . self::e( ( isset( $field['name'] ) ? $field['name'] : $field['id'] ) . ' [' . ( isset( $field['type'] ) ? $field['type'] : '' ) . '] — ' . implode( '، ', $state ) ) . '</li>';
+			}
+		} else {
+			$fields = '<li>فیلد پرداختی پیدا نشد.</li>';
+		}
+
+		$shot_html = $shot
+			? '<img class="shot" alt="اسکرین‌شات صفحه پرداخت" src="' . self::e( $shot ) . '" />'
+			: '<p>اسکرین‌شات در دسترس نیست.</p>';
+
+		$payment_flags = array();
+		$payment_flags[] = ! empty( $payment['foundPaymentBox'] ) ? 'باکس پرداخت پیدا شد' : 'باکس پرداخت پیدا نشد';
+		if ( ! empty( $payment['emptyBox'] ) ) {
+			$payment_flags[] = 'باکس پرداخت خالی یا رندر نشده';
+		}
+		if ( ! empty( $payment['noMethods'] ) ) {
+			$payment_flags[] = 'روش پرداختی لود نشد';
+		}
+
+		return '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>گزارش خطای پرداخت</title>'
+			. '<style>body{font-family:Tahoma,Vazirmatn,sans-serif;background:#f4f7f3;color:#1b2a22;margin:0;padding:24px} .wrap{max-width:880px;margin:auto;background:#fff;border:1px solid #d7e4dc;border-radius:16px;padding:24px} h1{margin:0 0 8px} .meta{color:#4b6358;line-height:1.8} table{width:100%;border-collapse:collapse;margin:12px 0 20px} th,td{border:1px solid #e2ece6;padding:8px;text-align:right;font-size:13px} th{background:#edf3ef} .shot{max-width:100%;border:1px solid #d7e4dc;border-radius:12px} .note{white-space:pre-wrap;background:#f7faf6;border-radius:12px;padding:12px}</style>'
+			. '</head><body><div class="wrap"><h1>گزارش خطای پرداخت نهال</h1>'
+			. '<p class="meta">صفحه: ' . self::e( isset( $data['pageTitle'] ) ? $data['pageTitle'] : '' ) . '<br>نشانی: ' . self::e( isset( $data['pageUrl'] ) ? $data['pageUrl'] : '' ) . '<br>زمان: ' . self::e( isset( $data['capturedAt'] ) ? $data['capturedAt'] : '' ) . '<br>مرورگر: ' . self::e( isset( $data['userAgent'] ) ? $data['userAgent'] : '' ) . '<br>ابعاد: ' . self::e( isset( $data['viewport'] ) ? $data['viewport'] : '' ) . '</p>'
+			. '<h2>شرح کاربر</h2><div class="note">' . self::e( isset( $data['note'] ) ? $data['note'] : '' ) . '</div>'
+			. '<p class="meta">نام: ' . self::e( isset( $data['name'] ) ? $data['name'] : '—' ) . ' — موبایل: ' . self::e( isset( $data['phone'] ) ? $data['phone'] : '—' ) . '</p>'
+			. '<h2>وضعیت فیلدهای پرداخت</h2><p>' . self::e( implode( '؛ ', $payment_flags ) ) . '</p><p>نوع صفحه: ' . self::e( isset( $payment['checkoutType'] ) ? $payment['checkoutType'] : '' ) . '</p>'
+			. '<h3>درگاه‌ها</h3><ul>' . $methods . '</ul>'
+			. '<h3>فیلدها</h3><ul>' . $fields . '</ul>'
+			. '<h2>کدها و فایل‌هایی که لود نشدند</h2><table><thead><tr><th>نوع</th><th>جنس</th><th>وضعیت</th><th>نشانی</th></tr></thead><tbody>' . $failed_rows . '</tbody></table>'
+			. '<h2>خطاهای جاوااسکریپت</h2><table><thead><tr><th>نوع</th><th>پیام</th><th>منبع</th></tr></thead><tbody>' . $error_rows . '</tbody></table>'
+			. '<h2>اسکرین‌شات صفحه</h2>' . $shot_html
+			. '</div></body></html>';
+	}
+
+	/**
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return string
+	 */
+	public static function summary( array $data ) {
+		$failed = isset( $data['failed'] ) && is_array( $data['failed'] ) ? $data['failed'] : array();
+		$pay    = 0;
+		foreach ( $failed as $row ) {
+			if ( ! empty( $row['payment'] ) ) {
+				$pay++;
+			}
+		}
+		$errors = isset( $data['errors'] ) && is_array( $data['errors'] ) ? count( $data['errors'] ) : 0;
+		return sprintf(
+			'%d فایل لودنشده (%d مربوط به پرداخت) — %d خطای اسکریپت',
+			count( $failed ),
+			$pay,
+			$errors
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return string
+	 */
+	public static function title( array $data ) {
+		$page = isset( $data['pageTitle'] ) && $data['pageTitle'] ? $data['pageTitle'] : 'صفحه پرداخت';
+		$when = isset( $data['capturedAt'] ) && $data['capturedAt'] ? $data['capturedAt'] : date( 'Y-m-d H:i' );
+		return 'گزارش خطا — ' . $page . ' — ' . $when;
+	}
+
+	/**
+	 * @param array<string, mixed> $data Data.
+	 * @return array<string, mixed>
+	 */
+	public static function public_json( array $data ) {
+		$copy = $data;
+		unset( $copy['screenshot'] );
+		$copy['hasScreenshot'] = ! empty( $data['screenshot'] );
+		$copy['summary']       = self::summary( $data );
+		return $copy;
+	}
+
+	/**
+	 * @param string $value Value.
+	 * @return string
+	 */
+	private static function e( $value ) {
+		return htmlspecialchars( (string) $value, ENT_QUOTES, 'UTF-8' );
+	}
+}
