@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fa-IR" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>سبد خرید — مجموعه نهال نیشابور</title>
+	<link rel="stylesheet" href="../assets/frontend/reporter.css">
+	<style>
+		body { margin: 0; font-family: Tahoma, Vazirmatn, sans-serif; background: #f4f7f3; color: #1b2a22; }
+		header { background: #fff; border-bottom: 1px solid #d7e4dc; padding: 14px 20px; }
+		.brand { font-weight: 700; color: #3f5d45; }
+		main { max-width: 920px; margin: 24px auto; padding: 0 16px 80px; }
+		.card { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 16px; border: 1px solid #d7e4dc; }
+		table { width: 100%; border-collapse: collapse; }
+		th, td { border-bottom: 1px solid #e4eee8; padding: 10px; text-align: right; }
+		.qty { width: 64px; }
+		.update { background: #edf3ef; border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 700; }
+		.checkout-button { display: inline-block; background: #3f5d45; color: #fff; text-decoration: none; border-radius: 10px; padding: 12px 18px; font-weight: 700; }
+		.hint { font-size: 13px; color: #4b6358; line-height: 1.8; }
+		.wc-mobile-bar { display: none; }
+		@media (max-width: 782px) {
+			main { padding-bottom: 180px; }
+			.wc-mobile-bar {
+				display: flex;
+				position: fixed;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				height: 64px;
+				z-index: 40;
+				background: #fff;
+				border-top: 1px solid #d7e4dc;
+				box-shadow: 0 -6px 18px rgba(15, 40, 28, 0.08);
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 16px;
+				font-weight: 700;
+			}
+			.wc-mobile-bar a { background: #3f5d45; color: #fff; text-decoration: none; border-radius: 10px; padding: 10px 16px; }
+		}
+	</style>
+	<script src="../assets/frontend/collector.js"></script>
+	<script>
+		window.NPBR_CFG = {
+			ajax: '',
+			nonce: 'preview',
+			buttonLabel: 'گزارش خطا',
+			showFloating: true,
+			showNearPay: false,
+			showNearCart: false,
+			autoWatch: true,
+			pageKind: 'cart',
+			requireNote: true,
+			requireLogin: true,
+			requireVerified: true,
+			canReport: true,
+			loginUrl: '/my-account/',
+			site: 'https://nahal.website/',
+			customer: { loggedIn: true, verified: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
+		};
+	</script>
+	<script src="./missing-cart-fragments.js"></script>
+</head>
+<body class="rtl woocommerce-cart">
+	<header><div class="brand">نهال نیشابور — پیش‌نمایش سبد خرید</div></header>
+	<main>
+		<div class="card">
+			<h1>سبد خرید</h1>
+			<p class="hint">ویرایش تعداد و ادامه تسویه اینجا است. اسکریپت cart-fragments عمداً لود نمی‌شود.</p>
+			<form class="woocommerce-cart-form">
+				<table class="shop_table cart">
+					<thead><tr><th>محصول</th><th>تعداد</th><th>جمع</th></tr></thead>
+					<tbody>
+						<tr>
+							<td>دوره لگو BTE.3</td>
+							<td><input class="qty" name="cart[abc][qty]" value="1"></td>
+							<td>۱٬۹۹۰٬۰۰۰ تومان</td>
+						</tr>
+					</tbody>
+				</table>
+				<p><button type="button" class="update" name="update_cart">به‌روزرسانی سبد</button><button type="button" class="npbr-hint-btn" data-npbr-open>گزارش خطا</button></p>
+			</form>
+			<div class="wc-proceed-to-checkout cart_totals">
+				<p>جمع کل: ۱٬۹۹۰٬۰۰۰ تومان</p>
+				<a class="checkout-button" href="./preview-checkout.html">ادامه جهت تسویه حساب</a>
+				<button type="button" class="npbr-hint-btn" data-npbr-open>گزارش خطا</button>
+			</div>
+		</div>
+	</main>
+	<div class="wc-mobile-bar" aria-hidden="true"><span>۱٬۹۹۰٬۰۰۰ تومان</span><a href="./preview-checkout.html">تسویه</a></div>
+	<div id="npbr-root" class="npbr-root" hidden>
+		<button type="button" class="npbr-fab" data-npbr-open>گزارش خطا</button>
+		<div class="npbr-overlay" data-npbr-close hidden></div>
+		<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>
+			<header class="npbr-head"><h2 id="npbr-title">گزارش خطا در خرید و پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>
+			<div class="npbr-body">
+				<p class="npbr-lead">اگر سبد خرید، دکمه خرید یا ادامه تسویه کار نکرد، همین مورد را بنویسید.</p>
+				<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>
+				<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: سبد خرید به‌روز نشد"></textarea>
+				<div class="npbr-grid npbr-grid-3">
+					<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80"></label>
+					<label>نام خانوادگی (اختیاری)<input type="text" id="npbr-last" maxlength="80"></label>
+					<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr"></label>
+				</div>
+				<div id="npbr-diag" class="npbr-diag"></div>
+				<p id="npbr-status" class="npbr-status" role="status"></p>
+			</div>
+			<footer class="npbr-actions">
+				<button type="button" class="npbr-btn npbr-btn-dark npbr-btn-block" data-npbr-send>گزارش خطا</button>
+			</footer>
+		</section>
+	</div>
+	<script src="../assets/frontend/html2canvas.min.js"></script>
+	<script src="../assets/frontend/reporter.js"></script>
+</body>
+</html>

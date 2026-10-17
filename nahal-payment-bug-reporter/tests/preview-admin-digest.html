@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fa-IR" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>گزارش هفتگی و ماهانه ‹ نهال نیشابور</title>
+	<link rel="stylesheet" href="../assets/admin/admin.css">
+	<style>
+		body { margin: 0; font-family: Tahoma, Vazirmatn, sans-serif; background: #f0f0f1; color: #1d2327; }
+		.wp-bar { background: #1d2327; color: #fff; display: flex; justify-content: space-between; padding: 8px 16px; font-size: 13px; }
+		.wp-bar a { color: #fff; text-decoration: none; }
+		.layout { display: grid; grid-template-columns: 180px 1fr; min-height: 100vh; }
+		.side { background: #1d2327; color: #fff; padding: 16px 0; }
+		.side a { display: block; color: #fff; text-decoration: none; padding: 10px 16px; }
+		.side a.is-on { background: #2271b1; }
+		.awaiting-mod { background: #d63638; color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px; margin-right: 6px; }
+		.content { padding: 8px 20px 60px; }
+		.button { display: inline-block; background: #f6f7f7; border: 1px solid #c3c4c7; border-radius: 3px; padding: 4px 10px; text-decoration: none; color: #2c3338; }
+		.button-primary { background: #2271b1; border-color: #2271b1; color: #fff; }
+		.widefat { width: 100%; border-collapse: collapse; background: #fff; }
+		.widefat th, .widefat td { border: 1px solid #d7e4dc; padding: 8px 10px; text-align: right; }
+		@media (max-width: 782px) { .layout { grid-template-columns: 1fr; } .side { display: none; } }
+	</style>
+</head>
+<body>
+	<div class="wp-bar">
+		<div>نهال نیشابور</div>
+		<a href="preview-admin-reports.html">خطای خرید (۲)</a>
+	</div>
+	<div class="layout">
+		<nav class="side">
+			<a href="preview-admin-dashboard.html">پیشخوان</a>
+			<a href="preview-admin-reports.html">خطای پرداخت <span class="awaiting-mod">2</span></a>
+			<a href="preview-admin-digest.html" class="is-on">هفتگی / ماهانه</a>
+		</nav>
+		<main class="content">
+			<div class="wrap npbr-wrap">
+				<div class="npbr-hero">
+					<div>
+						<h1>گزارش هفتگی و ماهانه خطاها</h1>
+						<p>چه خطاهایی در این بازه ثبت شده، چند بار تکرار شده و کدام‌ها رفع شده‌اند.</p>
+					</div>
+				</div>
+				<p class="npbr-tabs">
+					<a class="button button-primary" href="#">۷ روز گذشته</a>
+					<a class="button" href="#">این ماه</a>
+					<a class="button" href="#">ماه قبل</a>
+				</p>
+				<p class="npbr-hero"><strong>۷ روز گذشته</strong></p>
+				<div class="npbr-stats">
+					<div class="npbr-stat"><span>3</span>ثبت‌شده</div>
+					<div class="npbr-stat is-open"><span>2</span>باز</div>
+					<div class="npbr-stat is-done"><span>1</span>رفع‌شده</div>
+					<div class="npbr-stat"><span>1</span>خودکار</div>
+				</div>
+				<div class="npbr-card">
+					<h2>خطاهای این بازه</h2>
+					<table class="widefat striped npbr-table">
+						<thead>
+							<tr>
+								<th>خطا</th>
+								<th>تکرار</th>
+								<th>باز</th>
+								<th>رفع‌شده</th>
+								<th>وضعیت</th>
+								<th>آخرین رخداد</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>اسکریپت checkout لود نشد</td>
+								<td>2</td>
+								<td>1</td>
+								<td>1</td>
+								<td><span class="npbr-badge is-open">باز</span></td>
+								<td>2026-10-16 10:00:00</td>
+							</tr>
+							<tr>
+								<td>سبد خرید به‌روز نشد</td>
+								<td>1</td>
+								<td>1</td>
+								<td>0</td>
+								<td><span class="npbr-badge is-open">باز</span></td>
+								<td>2026-10-14 10:00:00</td>
+							</tr>
+						</tbody>
+					</table>
+					<p class="npbr-hero">خطاهای تکراری با هم گروه‌بندی می‌شوند. اگر حداقل یک مورد باز باشد وضعیت «باز» می‌ماند؛ وقتی همهٔ موارد آن خطا رفع‌شده باشند ستون وضعیت سبز می‌شود.</p>
+					<p><a href="preview-admin-reports.html">فهرست کامل گزارش‌ها</a></p>
+				</div>
+			</div>
+		</main>
+	</div>
+</body>
+</html>

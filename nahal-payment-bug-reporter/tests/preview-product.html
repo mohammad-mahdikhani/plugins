@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fa-IR" dir="rtl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>محصول — مجموعه نهال نیشابور</title>
+	<link rel="stylesheet" href="../assets/frontend/reporter.css">
+	<style>
+		body { margin: 0; font-family: Tahoma, Vazirmatn, sans-serif; background: #f4f7f3; color: #1b2a22; }
+		header { background: #fff; border-bottom: 1px solid #d7e4dc; padding: 14px 20px; }
+		.brand { font-weight: 700; color: #3f5d45; }
+		main { max-width: 920px; margin: 24px auto; padding: 0 16px 80px; }
+		.card { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 16px; border: 1px solid #d7e4dc; }
+		.single_add_to_cart_button { background: #3f5d45; color: #fff; border: 0; border-radius: 10px; padding: 12px 18px; font-weight: 700; }
+		.hint { font-size: 13px; color: #4b6358; line-height: 1.8; }
+	</style>
+	<script src="../assets/frontend/collector.js"></script>
+	<script>
+		window.NPBR_CFG = {
+			ajax: '',
+			nonce: 'preview',
+			buttonLabel: 'گزارش خطا',
+			showFloating: true,
+			showNearPay: false,
+			showNearCart: false,
+			autoWatch: true,
+			pageKind: 'product',
+			requireNote: true,
+			requireLogin: true,
+			requireVerified: true,
+			canReport: true,
+			loginUrl: '/my-account/',
+			site: 'https://nahal.website/',
+			customer: { loggedIn: true, verified: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
+		};
+	</script>
+	<script src="./missing-add-to-cart.js"></script>
+</head>
+<body class="rtl single-product">
+	<header><div class="brand">نهال نیشابور — پیش‌نمایش صفحه محصول</div></header>
+	<main>
+		<div class="card product">
+			<h1>دوره لگو BTE.3</h1>
+			<p class="hint">دکمه خرید اینجاست. اسکریپت add-to-cart عمداً لود نمی‌شود.</p>
+			<form class="cart">
+				<button type="button" name="add-to-cart" class="single_add_to_cart_button" value="12">افزودن به سبد خرید</button>
+				<button type="button" class="npbr-hint-btn" data-npbr-open>گزارش خطا</button>
+			</form>
+		</div>
+	</main>
+	<div id="npbr-root" class="npbr-root" hidden>
+		<button type="button" class="npbr-fab" data-npbr-open>گزارش خطا</button>
+		<div class="npbr-overlay" data-npbr-close hidden></div>
+		<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>
+			<header class="npbr-head"><h2 id="npbr-title">گزارش خطا در خرید و پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>
+			<div class="npbr-body">
+				<p class="npbr-lead">اگر دکمه خرید یا افزودن به سبد کار نکرد، همین مورد را بنویسید.</p>
+				<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>
+				<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000"></textarea>
+				<div class="npbr-grid npbr-grid-3">
+					<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80"></label>
+					<label>نام خانوادگی (اختیاری)<input type="text" id="npbr-last" maxlength="80"></label>
+					<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr"></label>
+				</div>
+				<div id="npbr-diag" class="npbr-diag"></div>
+				<p id="npbr-status" class="npbr-status" role="status"></p>
+			</div>
+			<footer class="npbr-actions">
+				<button type="button" class="npbr-btn npbr-btn-dark npbr-btn-block" data-npbr-send>گزارش خطا</button>
+			</footer>
+		</section>
+	</div>
+	<script src="../assets/frontend/html2canvas.min.js"></script>
+	<script src="../assets/frontend/reporter.js"></script>
+</body>
+</html>
