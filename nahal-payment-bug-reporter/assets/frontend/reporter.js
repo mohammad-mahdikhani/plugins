@@ -26,7 +26,7 @@
 
 	function isPaymentUrl(url) {
 		var u = String(url || '').toLowerCase();
-		return /payment|checkout|gateway|digipay|zarinpal|zibal|idpay|nextpay|payping|saman|mellat|parsian|sadad|wc-checkout|order-pay/.test(u);
+		return /payment|checkout|gateway|digipay|zarinpal|shaparak|zibal|idpay|nextpay|payping|saman|mellat|parsian|sadad|wc-checkout|order-pay/.test(u);
 	}
 
 	function visible(el) {
@@ -231,6 +231,77 @@
 			methods: uniq,
 			fields: fields,
 		};
+	}
+
+	function isNoiseUrl(url) {
+		return /enamad|trustseal|namad|samandehi|googletag|google-analytics|gtag\/js|facebook\.net|hotjar|clarity|favicon|fonts\.google|gravatar|doubleclick/i.test(String(url || ''));
+	}
+
+	function isVitalRow(row) {
+		if (!row || !row.url || isNoiseUrl(row.url)) {
+			return false;
+		}
+		return !!row.payment || isPaymentUrl(row.url);
+	}
+
+	function vitalIssues(data) {
+		var issues = [];
+		var p = data.payment || {};
+		if (!p.foundPaymentBox) {
+			issues.push({ title: 'باکس پرداخت (#payment) در صفحه پیدا نشد', status: 'missing', url: '' });
+		}
+		if (p.emptyBox && p.noMethods) {
+			issues.push({ title: 'باکس پرداخت خالی است و هیچ روش پرداختی لود نشده', status: 'empty', url: '' });
+		} else if (p.noMethods) {
+			issues.push({ title: 'هیچ روش پرداختی در صفحه دیده نشد', status: 'no-methods', url: '' });
+		}
+		var seen = {};
+		(data.failed || []).forEach(function (row) {
+			if (!isVitalRow(row) || seen[row.url]) {
+				return;
+			}
+			seen[row.url] = true;
+			issues.push({
+				title: 'اسکریپت یا فایل حیاتی پرداخت لود نشد',
+				status: row.status || '',
+				url: row.url || '',
+			});
+		});
+		(p.fields || []).forEach(function (f) {
+			if (!f || !f.broken) {
+				return;
+			}
+			issues.push({
+				title: 'فیلد پرداخت آسیب‌دیده: ' + (f.name || f.id || 'field'),
+				status: 'broken',
+				url: '',
+			});
+		});
+		return issues;
+	}
+
+	function listedNote(data, issues) {
+		issues = issues || vitalIssues(data);
+		var lines = [
+			'گزارش خودکار — المان حیاتی صفحه پرداخت لود نشد',
+			'',
+			'صفحه: ' + (data.pageTitle || '—'),
+			'نشانی: ' + (data.pageUrl || '—'),
+			'زمان: ' + (data.capturedAt || '—'),
+			'',
+			'فهرست المان‌های حیاتی:',
+		];
+		if (!issues.length) {
+			lines.push('مورد حیاتی جداگانه‌ای ثبت نشد.');
+		} else {
+			issues.forEach(function (row, i) {
+				lines.push((i + 1) + '. ' + row.title + (row.status ? ' [' + row.status + ']' : ''));
+				if (row.url) {
+					lines.push('    ' + row.url);
+				}
+			});
+		}
+		return lines.join('\n');
 	}
 
 	function collect() {
@@ -825,18 +896,100 @@
 		overlay.hidden = true;
 	}
 
-	function placeNearPayment() {
-		if (cfg.showNearPay === false) {
+	function removePaySlot() {
+		$all('.npbr-pay-slot, .npbr-pay-btn').forEach(function (el) {
+			if (el && el.parentNode) {
+				el.parentNode.removeChild(el);
+			}
+		});
+	}
+
+	function autoKey() {
+		return 'npbr_auto:' + location.pathname;
+	}
+
+	function alreadyAutoSent() {
+		try {
+			if (sessionStorage.getItem(autoKey())) {
+				return true;
+			}
+			var t = parseInt(localStorage.getItem(autoKey()) || '0', 10);
+			if (t && Date.now() - t < 30 * 60 * 1000) {
+				return true;
+			}
+		} catch (e) {}
+		return false;
+	}
+
+	function markAutoSent() {
+		try {
+			sessionStorage.setItem(autoKey(), '1');
+			localStorage.setItem(autoKey(), String(Date.now()));
+		} catch (e) {}
+	}
+
+	function maybeAutoReport() {
+		if (cfg.autoWatch === false) {
 			return;
 		}
-		var box = document.getElementById('payment');
-		if (!box || box.querySelector('.npbr-pay-slot')) {
+		if (alreadyAutoSent()) {
 			return;
 		}
-		var slot = document.createElement('div');
-		slot.className = 'npbr-pay-slot';
-		slot.innerHTML = '<button type="button" class="npbr-pay-btn" data-npbr-open>گزارش خطا در فیلد پرداخت</button>';
-		box.insertBefore(slot, box.firstChild);
+		harvestPerformance();
+		scanBrokenNodes();
+		var data = collect();
+		var issues = vitalIssues(data);
+		if (!issues.length) {
+			return;
+		}
+		markAutoSent();
+		var send = function (shot) {
+			data = collect();
+			data.screenshot = shot || lastShot || '';
+			data.auto = true;
+			data.note = listedNote(data);
+			window.NPBR_LAST_AUTO = {
+				issues: vitalIssues(data),
+				note: data.note,
+				prompt: agentPrompt(data),
+			};
+			if (!cfg.ajax) {
+				return;
+			}
+			var body = new URLSearchParams();
+			body.set('action', 'npbr_submit');
+			body.set('nonce', cfg.nonce || '');
+			body.set('payload', JSON.stringify(data));
+			fetch(cfg.ajax, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+				body: body.toString(),
+			}).catch(function () {});
+		};
+		captureShot().then(send).catch(function () {
+			send('');
+		});
+	}
+
+	function scheduleAuto() {
+		var tries = 0;
+		function tick() {
+			tries += 1;
+			var methods = document.querySelectorAll('.wc_payment_method, input[name="payment_method"]');
+			if (methods.length || tries >= 8) {
+				maybeAutoReport();
+				return;
+			}
+			setTimeout(tick, 700);
+		}
+		if (document.readyState === 'complete') {
+			setTimeout(tick, 800);
+		} else {
+			window.addEventListener('load', function () {
+				setTimeout(tick, 800);
+			});
+		}
 	}
 
 	function bind() {
@@ -909,10 +1062,11 @@
 				closeModal();
 			}
 		});
-		placeNearPayment();
-		setTimeout(placeNearPayment, 1200);
+		removePaySlot();
+		setTimeout(removePaySlot, 1200);
+		scheduleAuto();
 		if (window.jQuery) {
-			window.jQuery(document.body).on('updated_checkout payment_method_selected', placeNearPayment);
+			window.jQuery(document.body).on('updated_checkout payment_method_selected', removePaySlot);
 		}
 	}
 

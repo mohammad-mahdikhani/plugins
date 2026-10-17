@@ -51,7 +51,17 @@ class NPBR_Frontend {
 		if ( ! $this->should_load() ) {
 			return;
 		}
-		$settings = NPBR_Plugin::settings();
+		$settings   = NPBR_Plugin::settings();
+		$auto_watch = false;
+		if ( function_exists( 'is_checkout' ) && is_checkout() && ! ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) ) {
+			$auto_watch = true;
+		}
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-pay' ) ) {
+			$auto_watch = true;
+		}
+		if ( isset( $_GET['npbr_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$auto_watch = true;
+		}
 		wp_enqueue_style(
 			'npbr-reporter',
 			NPBR_URL . 'assets/frontend/reporter.css',
@@ -80,7 +90,8 @@ class NPBR_Frontend {
 				'nonce'        => wp_create_nonce( 'npbr_report' ),
 				'buttonLabel'  => $settings['button_label'],
 				'showFloating' => ! empty( $settings['show_floating'] ),
-				'showNearPay'  => ! empty( $settings['show_near_payment'] ),
+				'showNearPay'  => false,
+				'autoWatch'    => $auto_watch,
 				'requireNote'  => ! empty( $settings['require_description'] ),
 				'site'         => home_url( '/' ),
 			)
@@ -98,7 +109,7 @@ class NPBR_Frontend {
 		echo '<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>';
 		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطای پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
 		echo '<div class="npbr-body">';
-		echo '<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. خطاهای کنسول، اسکرین صفحه و یک پرامپت آماده برای ایجنت هوش مصنوعی ساخته می‌شود.</p>';
+		echo '<p class="npbr-lead">اگر فیلد پرداخت لود نشد همین مورد را بنویسید. اگر المان حیاتی صفحه لود نشود، گزارش فهرست‌شده همراه پرامپت ایجنت به‌صورت خودکار برای مدیر می‌رود.</p>';
 		echo '<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>';
 		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: فیلدهای کارت دیجی‌پی خالی ماند / دکمه پرداخت کار نکرد / صفحه سفید شد"></textarea>';
 		echo '<div class="npbr-grid">';

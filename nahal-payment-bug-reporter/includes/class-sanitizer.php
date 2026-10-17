@@ -253,6 +253,7 @@ class NPBR_Sanitizer {
 			'gateway',
 			'digipay',
 			'zarinpal',
+			'shaparak',
 			'zibal',
 			'idpay',
 			'nextpay',
@@ -278,14 +279,8 @@ class NPBR_Sanitizer {
 	 * @return array{ok:bool,error:string,data:array<string,mixed>}
 	 */
 	public static function normalize_payload( array $payload ) {
+		$auto = ! empty( $payload['auto'] );
 		$note = self::note( isset( $payload['note'] ) ? $payload['note'] : '' );
-		if ( '' === $note ) {
-			return array(
-				'ok'    => false,
-				'error' => 'شرح خطا را بنویسید تا مدیر بتواند همین مورد را پیگیری کند.',
-				'data'  => array(),
-			);
-		}
 
 		$page_url = self::url( isset( $payload['pageUrl'] ) ? $payload['pageUrl'] : '' );
 		$failed   = self::failed_resources( isset( $payload['failed'] ) ? $payload['failed'] : array() );
@@ -307,7 +302,28 @@ class NPBR_Sanitizer {
 			'payment'     => $payment,
 			'screenshot'  => $shot,
 			'capturedAt'  => self::text( isset( $payload['capturedAt'] ) ? $payload['capturedAt'] : '', 40 ),
+			'auto'        => $auto,
 		);
+
+		if ( '' === $data['note'] && $auto && class_exists( 'NPBR_Report', false ) ) {
+			$data['note'] = NPBR_Report::listed_note( $data );
+		}
+
+		if ( '' === $data['note'] ) {
+			return array(
+				'ok'    => false,
+				'error' => 'شرح خطا را بنویسید تا مدیر بتواند همین مورد را پیگیری کند.',
+				'data'  => array(),
+			);
+		}
+
+		if ( $auto && class_exists( 'NPBR_Report', false ) && ! NPBR_Report::vital_failures( $data ) ) {
+			return array(
+				'ok'    => false,
+				'error' => 'المان حیاتی لودنشده‌ای برای گزارش خودکار نبود.',
+				'data'  => array(),
+			);
+		}
 
 		return array(
 			'ok'    => true,

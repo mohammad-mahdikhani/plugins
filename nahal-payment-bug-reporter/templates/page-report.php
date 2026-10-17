@@ -37,6 +37,9 @@ $payment = isset( $payload['payment'] ) && is_array( $payload['payment'] ) ? $pa
 			موبایل: <?php echo esc_html( isset( $payload['phone'] ) && $payload['phone'] ? $payload['phone'] : '—' ); ?></p>
 		<p dir="ltr">URL: <?php echo esc_html( isset( $payload['pageUrl'] ) ? $payload['pageUrl'] : '' ); ?></p>
 		<p>مرورگر: <?php echo esc_html( isset( $payload['userAgent'] ) ? $payload['userAgent'] : '' ); ?></p>
+		<?php if ( '1' === (string) get_post_meta( $id, '_npbr_auto', true ) ) : ?>
+			<p><strong>گزارش خودکار:</strong> المان حیاتی صفحه پرداخت لود نشده بود.</p>
+		<?php endif; ?>
 		<?php
 		$tg_flag = get_post_meta( $id, '_npbr_telegram', true );
 		$tg_err  = (string) get_post_meta( $id, '_npbr_telegram_error', true );

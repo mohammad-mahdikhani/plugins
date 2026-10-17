@@ -3,8 +3,7 @@
 }
 
 .npbr-fab,
-.npbr-inline-btn,
-.npbr-pay-btn {
+.npbr-inline-btn {
 	font-family: inherit;
 	cursor: pointer;
 	border: 0;
@@ -29,8 +28,7 @@
 	background: #2f4634;
 }
 
-.npbr-inline-btn,
-.npbr-pay-btn {
+.npbr-inline-btn {
 	background: #afd136;
 	color: #1b2a22;
 	border-radius: 10px;
@@ -39,10 +37,9 @@
 	font-weight: 700;
 }
 
-.npbr-pay-slot {
-	display: flex;
-	justify-content: flex-start;
-	margin: 0 0 12px;
+.npbr-pay-slot,
+.npbr-pay-btn {
+	display: none !important;
 }
 
 .npbr-overlay {

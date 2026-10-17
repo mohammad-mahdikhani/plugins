@@ -200,6 +200,14 @@ class NPBR_Telegram {
 	 * @return string
 	 */
 	public static function text( array $data ) {
+		if ( ! empty( $data['auto'] ) && class_exists( 'NPBR_Report', false ) ) {
+			$listed = NPBR_Report::listed_note( $data );
+			$listed .= "\n\nپرامپت کامل ایجنت هوش مصنوعی در فایل agent-prompt.md پیوست است. اسکرین همان صفحه را همراه آن به ایجنت بدهید.";
+			if ( function_exists( 'mb_substr' ) ) {
+				return mb_substr( $listed, 0, 3500 );
+			}
+			return substr( $listed, 0, 3500 );
+		}
 		$lines   = array();
 		$lines[] = 'گزارش خطای پرداخت نهال';
 		$lines[] = '';

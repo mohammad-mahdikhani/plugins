@@ -135,7 +135,7 @@ class NPBR_Admin {
 				'show_on_order_pay'   => ! empty( $_POST['show_on_order_pay'] ),
 				'show_on_cart'        => ! empty( $_POST['show_on_cart'] ),
 				'show_on_thankyou'    => ! empty( $_POST['show_on_thankyou'] ),
-				'show_near_payment'   => ! empty( $_POST['show_near_payment'] ),
+				'show_near_payment'   => false,
 				'show_floating'       => ! empty( $_POST['show_floating'] ),
 				'require_description' => ! empty( $_POST['require_description'] ),
 				'telegram_enabled'     => ! empty( $_POST['telegram_enabled'] ),

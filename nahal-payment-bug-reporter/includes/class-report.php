@@ -115,13 +115,148 @@ class NPBR_Report {
 	}
 
 	/**
+	 * Ignore widgets/seals that are not required to complete payment.
+	 *
+	 * @param string $url URL.
+	 * @return bool
+	 */
+	public static function is_noise_asset( $url ) {
+		$u = strtolower( (string) $url );
+		return (bool) preg_match(
+			'/enamad|trustseal|namad|samandehi|googletag|google-analytics|gtag\/js|facebook\.net|hotjar|clarity\.ms|favicon|fonts\.google|gravatar|doubleclick|googlesyndication|mc\.yandex/',
+			$u
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Failed resource row.
+	 * @return bool
+	 */
+	public static function is_vital_failure( array $row ) {
+		$url = isset( $row['url'] ) ? (string) $row['url'] : '';
+		if ( '' === $url || self::is_noise_asset( $url ) ) {
+			return false;
+		}
+		if ( ! empty( $row['payment'] ) ) {
+			return true;
+		}
+		return class_exists( 'NPBR_Sanitizer', false ) && NPBR_Sanitizer::is_payment_asset( $url );
+	}
+
+	/**
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return array<int, array<string, string>>
+	 */
+	public static function vital_failures( array $data ) {
+		$out     = array();
+		$payment = isset( $data['payment'] ) && is_array( $data['payment'] ) ? $data['payment'] : array();
+		$failed  = isset( $data['failed'] ) && is_array( $data['failed'] ) ? $data['failed'] : array();
+		$seen    = array();
+
+		if ( empty( $payment['foundPaymentBox'] ) ) {
+			$out[] = array(
+				'title'  => 'باکس پرداخت (#payment) در صفحه پیدا نشد',
+				'status' => 'missing',
+				'url'    => '',
+			);
+		}
+		if ( ! empty( $payment['emptyBox'] ) && ! empty( $payment['noMethods'] ) ) {
+			$out[] = array(
+				'title'  => 'باکس پرداخت خالی است و هیچ روش پرداختی لود نشده',
+				'status' => 'empty',
+				'url'    => '',
+			);
+		} elseif ( ! empty( $payment['noMethods'] ) ) {
+			$out[] = array(
+				'title'  => 'هیچ روش پرداختی در صفحه دیده نشد',
+				'status' => 'no-methods',
+				'url'    => '',
+			);
+		}
+
+		foreach ( $failed as $row ) {
+			if ( ! is_array( $row ) || ! self::is_vital_failure( $row ) ) {
+				continue;
+			}
+			$url = isset( $row['url'] ) ? (string) $row['url'] : '';
+			if ( $url && isset( $seen[ $url ] ) ) {
+				continue;
+			}
+			if ( $url ) {
+				$seen[ $url ] = true;
+			}
+			$out[] = array(
+				'title'  => 'اسکریپت یا فایل حیاتی پرداخت لود نشد',
+				'status' => isset( $row['status'] ) ? (string) $row['status'] : '',
+				'url'    => $url,
+			);
+		}
+
+		if ( ! empty( $payment['fields'] ) && is_array( $payment['fields'] ) ) {
+			foreach ( $payment['fields'] as $field ) {
+				if ( empty( $field['broken'] ) ) {
+					continue;
+				}
+				$name  = isset( $field['name'] ) && $field['name'] ? $field['name'] : ( isset( $field['id'] ) ? $field['id'] : 'field' );
+				$out[] = array(
+					'title'  => 'فیلد پرداخت آسیب‌دیده: ' . $name,
+					'status' => 'broken',
+					'url'    => '',
+				);
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Listed text for the manager (vital failures only, no nested agent prompt).
+	 *
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return string
+	 */
+	public static function listed_note( array $data ) {
+		$vitals = self::vital_failures( $data );
+		$lines  = array();
+		$lines[] = 'گزارش خودکار — المان حیاتی صفحه پرداخت لود نشد';
+		$lines[] = '';
+		$lines[] = 'صفحه: ' . ( isset( $data['pageTitle'] ) && $data['pageTitle'] ? $data['pageTitle'] : '—' );
+		$lines[] = 'نشانی: ' . ( isset( $data['pageUrl'] ) && $data['pageUrl'] ? $data['pageUrl'] : '—' );
+		if ( ! empty( $data['capturedAt'] ) ) {
+			$lines[] = 'زمان: ' . $data['capturedAt'];
+		}
+		$lines[] = '';
+		$lines[] = 'فهرست المان‌های حیاتی:';
+		if ( $vitals ) {
+			foreach ( $vitals as $i => $row ) {
+				$item = ( $i + 1 ) . '. ' . ( isset( $row['title'] ) ? $row['title'] : '' );
+				if ( ! empty( $row['status'] ) ) {
+					$item .= ' [' . $row['status'] . ']';
+				}
+				$lines[] = $item;
+				if ( ! empty( $row['url'] ) ) {
+					$lines[] = '    ' . $row['url'];
+				}
+			}
+		} else {
+			$lines[] = 'مورد حیاتی جداگانه‌ای ثبت نشد.';
+		}
+		$text = implode( "\n", $lines );
+		if ( function_exists( 'mb_substr' ) ) {
+			return mb_substr( $text, 0, 4000 );
+		}
+		return substr( $text, 0, 4000 );
+	}
+
+	/**
 	 * @param array<string, mixed> $data Normalized payload.
 	 * @return string
 	 */
 	public static function title( array $data ) {
-		$page = isset( $data['pageTitle'] ) && $data['pageTitle'] ? $data['pageTitle'] : 'صفحه پرداخت';
-		$when = isset( $data['capturedAt'] ) && $data['capturedAt'] ? $data['capturedAt'] : date( 'Y-m-d H:i' );
-		return 'گزارش خطا — ' . $page . ' — ' . $when;
+		$page   = isset( $data['pageTitle'] ) && $data['pageTitle'] ? $data['pageTitle'] : 'صفحه پرداخت';
+		$when   = isset( $data['capturedAt'] ) && $data['capturedAt'] ? $data['capturedAt'] : date( 'Y-m-d H:i' );
+		$prefix = ! empty( $data['auto'] ) ? 'هشدار خودکار — ' : 'گزارش خطا — ';
+		return $prefix . $page . ' — ' . $when;
 	}
 
 	/**

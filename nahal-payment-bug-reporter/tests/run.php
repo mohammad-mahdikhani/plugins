@@ -118,6 +118,67 @@ npbr_assert( false !== strpos( $prompt, 'ایجنت' ), 'prompt is for an agent'
 npbr_assert( false !== strpos( $prompt, 'nahal.website' ), 'prompt names the site' );
 npbr_assert( false === strpos( $prompt, '<script>' ), 'prompt has no html script' );
 
+echo "== Vital auto report ==\n";
+npbr_assert( NPBR_Report::is_noise_asset( 'https://trustseal.enamad.ir/logo.aspx?id=1' ), 'enamad is noise' );
+npbr_assert( NPBR_Report::is_vital_failure( $ok['data']['failed'][0] ), 'checkout.js is vital' );
+npbr_assert( ! NPBR_Report::is_vital_failure( array( 'url' => 'https://trustseal.enamad.ir/logo.aspx?id=1', 'status' => '400' ) ), 'enamad 400 is not vital' );
+$vitals = NPBR_Report::vital_failures( $ok['data'] );
+npbr_assert( count( $vitals ) >= 1, 'vital list not empty' );
+$listed = NPBR_Report::listed_note( $ok['data'] );
+npbr_assert( false !== strpos( $listed, 'فهرست المان' ), 'listed heading' );
+npbr_assert( false !== strpos( $listed, 'checkout.min.js' ), 'listed has failed url' );
+npbr_assert( false === strpos( $listed, 'پرامپت آماده برای ایجنت' ), 'listed note does not nest prompt' );
+
+$auto_ok = NPBR_Sanitizer::normalize_payload(
+	array(
+		'auto'    => true,
+		'note'    => '',
+		'pageUrl' => 'https://nahal.website/checkout/',
+		'failed'  => array(
+			array(
+				'url'    => 'https://nahal.website/wp-content/plugins/woocommerce-digipay/assets/js/fields.js',
+				'kind'   => 'resource',
+				'status' => '404',
+			),
+		),
+		'errors'  => array(),
+		'payment' => array(
+			'foundPaymentBox' => true,
+			'emptyBox'        => false,
+			'noMethods'       => false,
+			'checkoutType'    => 'product',
+			'methods'         => array( array( 'id' => 'zarinpal', 'label' => 'زرین پال' ) ),
+			'fields'          => array(),
+		),
+	)
+);
+npbr_assert( true === $auto_ok['ok'], 'auto payload without user note accepted' );
+npbr_assert( ! empty( $auto_ok['data']['auto'] ), 'auto flag kept' );
+npbr_assert( false !== strpos( $auto_ok['data']['note'], 'فهرست المان' ), 'auto note is listed' );
+npbr_assert( false !== strpos( $auto_ok['data']['note'], 'fields.js' ), 'auto note has vital url' );
+
+$auto_noise = NPBR_Sanitizer::normalize_payload(
+	array(
+		'auto'    => true,
+		'note'    => '',
+		'pageUrl' => 'https://nahal.website/checkout/',
+		'failed'  => array(
+			array(
+				'url'    => 'https://trustseal.enamad.ir/logo.aspx?id=1',
+				'kind'   => 'resource',
+				'status' => '400',
+			),
+		),
+		'payment' => array(
+			'foundPaymentBox' => true,
+			'emptyBox'        => false,
+			'noMethods'       => false,
+			'methods'         => array( array( 'id' => 'zarinpal' ) ),
+		),
+	)
+);
+npbr_assert( false === $auto_noise['ok'], 'auto report ignored when only enamad failed' );
+
 echo "== Telegram text ==\n";
 $tg = NPBR_Telegram::text( $ok['data'] );
 npbr_assert( false !== strpos( $tg, 'فیلدهای کارت' ), 'telegram includes note' );

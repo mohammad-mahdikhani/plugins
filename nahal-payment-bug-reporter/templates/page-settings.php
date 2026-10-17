@@ -87,7 +87,6 @@ if ( ! isset( $tg_test ) ) {
 			<label><input type="checkbox" name="show_on_thankyou" value="1" <?php checked( $settings['show_on_thankyou'] ); ?>> صفحه تشکر بعد از پرداخت</label>
 			<label><input type="checkbox" name="show_on_cart" value="1" <?php checked( $settings['show_on_cart'] ); ?>> سبد خرید</label>
 			<label><input type="checkbox" name="show_floating" value="1" <?php checked( $settings['show_floating'] ); ?>> دکمه شناور</label>
-			<label><input type="checkbox" name="show_near_payment" value="1" <?php checked( $settings['show_near_payment'] ); ?>> دکمه کنار فیلدهای پرداخت</label>
 			<label><input type="checkbox" name="require_description" value="1" <?php checked( $settings['require_description'] ); ?>> نوشتن شرح خطا اجباری باشد</label>
 		</fieldset>
 

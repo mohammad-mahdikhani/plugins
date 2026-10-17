@@ -22,7 +22,8 @@ class NPBR_Mailer {
 			return false;
 		}
 
-		$subject = 'گزارش خطای پرداخت نهال — ' . ( isset( $data['pageTitle'] ) ? $data['pageTitle'] : 'صفحه پرداخت' );
+		$prefix  = ! empty( $data['auto'] ) ? 'هشدار خودکار پرداخت نهال — ' : 'گزارش خطای پرداخت نهال — ';
+		$subject = $prefix . ( isset( $data['pageTitle'] ) ? $data['pageTitle'] : 'صفحه پرداخت' );
 		$body    = self::body( $data, $report_id );
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
 
@@ -64,27 +65,56 @@ class NPBR_Mailer {
 	 * @return string
 	 */
 	public static function body( array $data, $report_id = 0 ) {
-		$admin = $report_id ? admin_url( 'admin.php?page=npbr-reports&report=' . (int) $report_id ) : admin_url( 'admin.php?page=npbr-reports' );
-		$lines = array();
-		$lines[] = '<p>یک گزارش خطای پرداخت از سایت نهال ثبت شد.</p>';
-		$lines[] = '<p><strong>شرح کاربر:</strong></p><p>' . nl2br( esc_html( isset( $data['note'] ) ? $data['note'] : '' ) ) . '</p>';
-		$lines[] = '<p>نام: ' . esc_html( isset( $data['name'] ) && $data['name'] ? $data['name'] : '—' ) . '<br>';
-		$lines[] = 'موبایل: ' . esc_html( isset( $data['phone'] ) && $data['phone'] ? $data['phone'] : '—' ) . '<br>';
-		$lines[] = 'صفحه: ' . esc_html( isset( $data['pageUrl'] ) ? $data['pageUrl'] : '' ) . '<br>';
-		$lines[] = 'خلاصه فنی: ' . esc_html( NPBR_Report::summary( $data ) ) . '</p>';
+		$admin  = $report_id ? admin_url( 'admin.php?page=npbr-reports&report=' . (int) $report_id ) : admin_url( 'admin.php?page=npbr-reports' );
+		$prompt = NPBR_Report::agent_prompt( $data );
+		$vitals = NPBR_Report::vital_failures( $data );
+		$auto   = ! empty( $data['auto'] );
+
+		$html   = array();
+		$html[] = '<div style="font-family:Tahoma,Vazirmatn,sans-serif;direction:rtl;text-align:right;color:#14221c;max-width:720px">';
+		$html[] = $auto
+			? '<h1 style="font-size:18px;margin:0 0 12px">هشدار خودکار: المان حیاتی صفحه پرداخت لود نشد</h1>'
+			: '<h1 style="font-size:18px;margin:0 0 12px">گزارش خطای پرداخت نهال</h1>';
+		$html[] = '<p style="line-height:1.8;color:#3d5349">صفحه: ' . esc_html( isset( $data['pageTitle'] ) ? $data['pageTitle'] : '' ) . '<br>';
+		$html[] = '<span dir="ltr">' . esc_html( isset( $data['pageUrl'] ) ? $data['pageUrl'] : '' ) . '</span></p>';
+
+		$html[] = '<div style="background:#f7faf6;border:1px solid #d7e4dc;border-radius:12px;padding:14px 16px;margin:0 0 16px">';
+		$html[] = '<p style="margin:0 0 8px;font-weight:700">شرح</p>';
+		$html[] = '<pre style="white-space:pre-wrap;font-family:Tahoma,sans-serif;margin:0;line-height:1.8">' . esc_html( isset( $data['note'] ) ? $data['note'] : '' ) . '</pre>';
+		$html[] = '</div>';
+
+		if ( $vitals ) {
+			$html[] = '<p style="font-weight:700;margin:0 0 8px">فهرست المان‌های حیاتی</p>';
+			$html[] = '<ol style="line-height:1.9;padding-right:22px">';
+			foreach ( $vitals as $row ) {
+				$item = esc_html( isset( $row['title'] ) ? $row['title'] : '' );
+				if ( ! empty( $row['status'] ) ) {
+					$item .= ' <span style="color:#9a3412">[' . esc_html( $row['status'] ) . ']</span>';
+				}
+				if ( ! empty( $row['url'] ) ) {
+					$item .= '<br><span dir="ltr" style="font-size:12px;color:#4b6358">' . esc_html( $row['url'] ) . '</span>';
+				}
+				$html[] = '<li style="margin:0 0 8px">' . $item . '</li>';
+			}
+			$html[] = '</ol>';
+		}
 
 		$failed = isset( $data['failed'] ) && is_array( $data['failed'] ) ? $data['failed'] : array();
 		if ( $failed ) {
-			$lines[] = '<p><strong>کدها و فایل‌هایی که لود نشدند:</strong></p><ul>';
+			$html[] = '<p style="font-weight:700;margin:16px 0 8px">همه کدها و فایل‌های لودنشده</p><ul style="line-height:1.8">';
 			foreach ( array_slice( $failed, 0, 25 ) as $row ) {
-				$label   = ! empty( $row['payment'] ) ? '[پرداخت] ' : '';
-				$lines[] = '<li>' . esc_html( $label . ( isset( $row['kind'] ) ? $row['kind'] : '' ) . ' — ' . ( isset( $row['status'] ) ? $row['status'] : '' ) . ' — ' . ( isset( $row['url'] ) ? $row['url'] : '' ) ) . '</li>';
+				$label  = ! empty( $row['payment'] ) ? '[پرداخت] ' : '';
+				$html[] = '<li>' . esc_html( $label . ( isset( $row['kind'] ) ? $row['kind'] : '' ) . ' — ' . ( isset( $row['status'] ) ? $row['status'] : '' ) . ' — ' . ( isset( $row['url'] ) ? $row['url'] : '' ) ) . '</li>';
 			}
-			$lines[] = '</ul>';
+			$html[] = '</ul>';
 		}
 
-		$lines[] = '<p>اسکرین‌شات صفحه و فایل <code>agent-prompt.md</code> (پرامپت آماده برای ایجنت هوش مصنوعی) در پیوست همین ایمیل هستند.</p>';
-		$lines[] = '<p><a href="' . esc_url( $admin ) . '">مشاهده در پیشخوان</a></p>';
-		return implode( "\n", $lines );
+		$html[] = '<p style="color:#3d5349">اسکرین‌شات همان صفحه در پیوست است (اگر گرفته شده باشد).</p>';
+		$html[] = '<p style="font-weight:700;margin:18px 0 8px">پرامپت آماده برای ایجنت هوش مصنوعی</p>';
+		$html[] = '<p style="color:#5b7268;font-size:13px">این متن را کپی کنید و همراه اسکرین برای Cursor یا ایجنت دیگر بفرستید.</p>';
+		$html[] = '<pre style="white-space:pre-wrap;background:#14221c;color:#f4f7f3;border-radius:12px;padding:14px;font-size:12px;line-height:1.7;direction:rtl">' . esc_html( $prompt ) . '</pre>';
+		$html[] = '<p><a href="' . esc_url( $admin ) . '">مشاهده در پیشخوان</a></p>';
+		$html[] = '</div>';
+		return implode( "\n", $html );
 	}
 }
