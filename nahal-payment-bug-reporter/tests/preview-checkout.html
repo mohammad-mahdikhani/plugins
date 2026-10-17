@@ -22,6 +22,27 @@
 		.pay { margin-top: 16px; background: #3f5d45; color: #fff; border: 0; border-radius: 10px; padding: 12px 18px; font-weight: 700; }
 		.hint { font-size: 13px; color: #4b6358; line-height: 1.8; }
 		img.logo { width: 40px; height: 40px; object-fit: contain; background: #fff; border-radius: 8px; }
+		.wc-mobile-bar { display: none; }
+		@media (max-width: 782px) {
+			main { padding-bottom: 180px; }
+			.wc-mobile-bar {
+				display: flex;
+				position: fixed;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				height: 64px;
+				z-index: 40;
+				background: #fff;
+				border-top: 1px solid #d7e4dc;
+				box-shadow: 0 -6px 18px rgba(15, 40, 28, 0.08);
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 16px;
+				font-weight: 700;
+			}
+			.wc-mobile-bar button { background: #3f5d45; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 700; }
+		}
 	</style>
 	<script src="../assets/frontend/collector.js"></script>
 	<script>
@@ -84,6 +105,7 @@
 			</div>
 		</form>
 	</main>
+	<div class="wc-mobile-bar" aria-hidden="true"><span>۱٬۹۹۰٬۰۰۰ تومان</span><button type="button">پرداخت</button></div>
 
 	<div id="npbr-root" class="npbr-root" hidden>
 		<button type="button" class="npbr-fab" data-npbr-open>گزارش خطا</button>

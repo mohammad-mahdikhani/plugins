@@ -356,6 +356,19 @@ $http400 = NPBR_Sanitizer::failed_resources(
 npbr_assert( 1 === count( $http400 ), 'keeps enamad 400 url' );
 npbr_assert( '400' === $http400[0]['status'], 'keeps http 400 status' );
 
+echo "== Mobile FAB 1.0.11 ==\n";
+$plugin_php = file_get_contents( __DIR__ . '/../nahal-payment-bug-reporter.php' );
+$css        = file_get_contents( __DIR__ . '/../assets/frontend/reporter.css' );
+$js         = file_get_contents( __DIR__ . '/../assets/frontend/reporter.js' );
+npbr_assert( false !== strpos( $plugin_php, "NPBR_VERSION', '1.0.11'" ), 'plugin version 1.0.11' );
+npbr_assert( false !== strpos( $css, 'calc(96px + env(safe-area-inset-bottom' ), 'mobile FAB spaced from bottom' );
+npbr_assert( false !== strpos( $css, 'z-index: 2147483000' ), 'FAB above sticky bars' );
+npbr_assert( false !== strpos( $js, 'document.body.appendChild(fab)' ), 'FAB moved to body so theme overflow cannot clip it' );
+npbr_assert( false !== strpos( $js, 'ignoreElements' ), 'screenshot ignores reporter chrome' );
+npbr_assert( false === strpos( $js, 'fab.style.visibility' ), 'does not hide live FAB during screenshot' );
+npbr_assert( false !== strpos( $js, 'npbr-fab-away' ), 'hides FAB while modal is open' );
+npbr_assert( false !== strpos( $css, 'z-index: 2147483002' ), 'modal sits above FAB' );
+
 echo "== Zip ==\n";
 $zip_path = sys_get_temp_dir() . '/npbr-test-' . getmypid() . '.zip';
 npbr_assert( NPBR_Zip::write( $ok['data'], $zip_path ), 'writes zip' );

@@ -17,6 +17,27 @@
 		.update { background: #edf3ef; border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 700; }
 		.checkout-button { display: inline-block; background: #3f5d45; color: #fff; text-decoration: none; border-radius: 10px; padding: 12px 18px; font-weight: 700; }
 		.hint { font-size: 13px; color: #4b6358; line-height: 1.8; }
+		.wc-mobile-bar { display: none; }
+		@media (max-width: 782px) {
+			main { padding-bottom: 180px; }
+			.wc-mobile-bar {
+				display: flex;
+				position: fixed;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				height: 64px;
+				z-index: 40;
+				background: #fff;
+				border-top: 1px solid #d7e4dc;
+				box-shadow: 0 -6px 18px rgba(15, 40, 28, 0.08);
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 16px;
+				font-weight: 700;
+			}
+			.wc-mobile-bar a { background: #3f5d45; color: #fff; text-decoration: none; border-radius: 10px; padding: 10px 16px; }
+		}
 	</style>
 	<script src="../assets/frontend/collector.js"></script>
 	<script>
@@ -65,6 +86,7 @@
 			</div>
 		</div>
 	</main>
+	<div class="wc-mobile-bar" aria-hidden="true"><span>۱٬۹۹۰٬۰۰۰ تومان</span><a href="./preview-checkout.html">تسویه</a></div>
 	<div id="npbr-root" class="npbr-root" hidden>
 		<button type="button" class="npbr-fab" data-npbr-open>گزارش خطا</button>
 		<div class="npbr-overlay" data-npbr-close hidden></div>

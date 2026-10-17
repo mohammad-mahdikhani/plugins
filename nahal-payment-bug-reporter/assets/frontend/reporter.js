@@ -552,23 +552,16 @@
 		});
 	}
 
-	function setReporterHidden(hide) {
-		if (!root) {
-			return;
+	function isReporterNode(el) {
+		if (!el || !el.closest) {
+			return el && (el.id === 'npbr-root' || (el.classList && el.classList.contains('npbr-fab')));
 		}
-		root.style.visibility = hide ? 'hidden' : '';
+		return !!(el.id === 'npbr-root' || el.classList && el.classList.contains('npbr-fab') || el.closest('#npbr-root, .npbr-fab'));
 	}
 
 	function captureShot() {
 		var changed = maskSensitive();
-		setReporterHidden(true);
-		var restored = false;
 		function restore() {
-			if (restored) {
-				return;
-			}
-			restored = true;
-			setReporterHidden(false);
 			restoreMasked(changed);
 		}
 		var target = document.body;
@@ -579,6 +572,19 @@
 			windowWidth: document.documentElement.clientWidth,
 			height: Math.min(document.documentElement.scrollHeight, 2400),
 			backgroundColor: '#ffffff',
+			ignoreElements: function (el) {
+				return isReporterNode(el);
+			},
+			onclone: function (doc) {
+				var fab = doc.querySelector('.npbr-fab');
+				if (fab && fab.parentNode) {
+					fab.parentNode.removeChild(fab);
+				}
+				var clonedRoot = doc.getElementById('npbr-root');
+				if (clonedRoot && clonedRoot.parentNode) {
+					clonedRoot.parentNode.removeChild(clonedRoot);
+				}
+			},
 		};
 		var run = window.html2canvas
 			? window.html2canvas(target, opts)
@@ -1022,6 +1028,20 @@
 		});
 	}
 
+	function setFabAway(away) {
+		var fab = $('.npbr-fab');
+		if (!fab) {
+			return;
+		}
+		if (away) {
+			fab.classList.add('npbr-fab-away');
+			fab.setAttribute('aria-hidden', 'true');
+		} else {
+			fab.classList.remove('npbr-fab-away');
+			fab.removeAttribute('aria-hidden');
+		}
+	}
+
 	function openModal() {
 		if (!root) {
 			return;
@@ -1029,6 +1049,7 @@
 		root.hidden = false;
 		overlay.hidden = false;
 		modal.hidden = false;
+		setFabAway(true);
 		applyAuthGate();
 		if (!canReport()) {
 			setStatus('');
@@ -1048,6 +1069,7 @@
 		}
 		modal.hidden = true;
 		overlay.hidden = true;
+		setFabAway(false);
 	}
 
 	function removePaySlot() {
@@ -1225,11 +1247,12 @@
 		statusEl = $('#npbr-status', root);
 		root.hidden = false;
 		lockCustomerUi();
-		if (cfg.showFloating === false) {
-			var fab = $('.npbr-fab', root);
-			if (fab) {
-				fab.hidden = true;
-			}
+		var fab = $('.npbr-fab') || $('.npbr-fab', root);
+		if (fab && fab.parentNode !== document.body) {
+			document.body.appendChild(fab);
+		}
+		if (cfg.showFloating === false && fab) {
+			fab.hidden = true;
 		}
 		var cust = cfg.customer || {};
 		if ($('#npbr-name') && cust.firstName && !$('#npbr-name').value) {
