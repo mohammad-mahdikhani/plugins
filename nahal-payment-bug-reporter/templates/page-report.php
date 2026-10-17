@@ -101,6 +101,23 @@ $payment = isset( $payload['payment'] ) && is_array( $payload['payment'] ) ? $pa
 	</div>
 
 	<div class="npbr-card">
+		<h2>پرامپت آماده برای ایجنت هوش مصنوعی</h2>
+		<p>این متن را کپی کنید و همراه اسکرین همان صفحه برای ایجنت بفرستید تا خطا را روی همان URL بررسی کند.</p>
+		<?php
+		$prompt = (string) get_post_meta( $id, '_npbr_agent_prompt', true );
+		if ( ! $prompt ) {
+			$payload['note'] = $post->post_content;
+			$prompt          = NPBR_Report::agent_prompt( $payload, $shot );
+		}
+		?>
+		<textarea id="npbr-agent-prompt" class="large-text code" rows="16" readonly><?php echo esc_textarea( $prompt ); ?></textarea>
+		<p>
+			<button type="button" class="button button-primary" id="npbr-copy-agent-prompt">کپی پرامپت</button>
+			<button type="button" class="button" id="npbr-dl-agent-prompt">دانلود agent-prompt.md</button>
+		</p>
+	</div>
+
+	<div class="npbr-card">
 		<h2>اسکرین‌شات</h2>
 		<?php if ( $shot ) : ?>
 			<p><a class="button" href="<?php echo esc_url( $shot ); ?>" download>دانلود اسکرین</a></p>
@@ -117,3 +134,46 @@ $payment = isset( $payload['payment'] ) && is_array( $payload['payment'] ) ? $pa
 		<button type="submit" class="button">حذف گزارش</button>
 	</form>
 </div>
+<script>
+(function () {
+	var ta = document.getElementById('npbr-agent-prompt');
+	var copyBtn = document.getElementById('npbr-copy-agent-prompt');
+	var dlBtn = document.getElementById('npbr-dl-agent-prompt');
+	if (!ta) {
+		return;
+	}
+	function text() {
+		return ta.value || '';
+	}
+	if (copyBtn) {
+		copyBtn.addEventListener('click', function () {
+			var t = text();
+			var done = function () { copyBtn.textContent = 'کپی شد'; };
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(t).then(done).catch(function () {
+					ta.select();
+					document.execCommand('copy');
+					done();
+				});
+			} else {
+				ta.select();
+				document.execCommand('copy');
+				done();
+			}
+		});
+	}
+	if (dlBtn) {
+		dlBtn.addEventListener('click', function () {
+			var blob = new Blob([text()], { type: 'text/markdown;charset=utf-8' });
+			var url = URL.createObjectURL(blob);
+			var a = document.createElement('a');
+			a.href = url;
+			a.download = 'agent-prompt.md';
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+		});
+	}
+})();
+</script>

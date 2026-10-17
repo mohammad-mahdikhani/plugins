@@ -105,6 +105,7 @@ class NPBR_Ajax {
 
 		$public = NPBR_Report::public_json( $data );
 		update_post_meta( $id, '_npbr_payload', wp_json_encode( $public, JSON_UNESCAPED_UNICODE ) );
+		update_post_meta( $id, '_npbr_agent_prompt', NPBR_Report::agent_prompt( $data ) );
 		update_post_meta( $id, '_npbr_page_url', $data['pageUrl'] );
 		update_post_meta( $id, '_npbr_summary', NPBR_Report::summary( $data ) );
 		update_post_meta( $id, '_npbr_failed_count', count( $data['failed'] ) );

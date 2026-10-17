@@ -31,6 +31,7 @@ class NPBR_Zip {
 			json_encode( $json, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT )
 		);
 		$zip->addFromString( 'report.html', NPBR_Report::html( $data ) );
+		$zip->addFromString( 'agent-prompt.md', NPBR_Report::agent_prompt( $data ) );
 
 		if ( ! empty( $data['screenshot'] ) && preg_match( '#^data:image/(png|jpeg|webp);base64,(.+)$#', (string) $data['screenshot'], $m ) ) {
 			$bin = base64_decode( $m[2], true );

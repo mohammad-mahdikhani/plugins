@@ -243,6 +243,36 @@
 	margin: 8px 0 12px;
 }
 
+.npbr-prompt-wrap {
+	margin: 8px 0 12px;
+	padding: 12px;
+	background: #f7faf6;
+	border: 1px solid #d7e4dc;
+	border-radius: 12px;
+}
+
+.npbr-prompt {
+	width: 100%;
+	box-sizing: border-box;
+	min-height: 160px;
+	max-height: 280px;
+	font-family: Tahoma, Vazirmatn, sans-serif;
+	font-size: 12px;
+	line-height: 1.7;
+	border: 1px solid #c9d9d0;
+	border-radius: 8px;
+	padding: 8px;
+	resize: vertical;
+	direction: rtl;
+}
+
+.npbr-prompt-hint {
+	font-size: 12px;
+	color: #5b7268;
+	line-height: 1.7;
+	margin: 6px 0 10px;
+}
+
 .npbr-downloads a {
 	display: inline-block;
 	text-decoration: none;

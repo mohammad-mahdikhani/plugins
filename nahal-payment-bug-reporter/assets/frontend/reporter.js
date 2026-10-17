@@ -468,6 +468,131 @@
 		return out;
 	}
 
+	function agentPrompt(data) {
+		var p = data.payment || {};
+		var failed = data.failed || [];
+		var errors = data.errors || [];
+		var shot = data.screenshot
+			? 'اسکرین‌شات JPEG/PNG از همان صفحه همراه این گزارش است (فایل screenshot.jpg در ZIP). تصویر را باز کن و ظاهر فیلدهای پرداخت، پیام خطا و بخش‌های خالی را با شرح کاربر مقایسه کن.'
+			: 'اسکرین‌شات در این گزارش ذخیره نشده؛ فقط شرح کاربر و لاگ کنسول را داری.';
+		var failedLines = failed.length
+			? failed.slice(0, 25).map(function (r, i) {
+				return (i + 1) + '. [' + (r.payment ? 'پرداخت' : 'عمومی') + '] ' + (r.status || '') + ' — ' + (r.kind || '') + ' — ' + (r.url || '');
+			}).join('\n')
+			: 'مورد لودنشده‌ای ثبت نشد.';
+		var errorLines = errors.length
+			? errors.slice(0, 15).map(function (r) {
+				return '- ' + (r.type || 'error') + ': ' + (r.message || '') + (r.source ? ' @ ' + r.source : '');
+			}).join('\n')
+			: 'خطای کنسولی ثبت نشد.';
+		var methodLines = (p.methods && p.methods.length)
+			? p.methods.map(function (m) {
+				return '- ' + (m.label || m.id || '') + (m.selected ? ' (انتخاب‌شده)' : '');
+			}).join('\n')
+			: '- هیچ درگاه پرداختی در DOM دیده نشد.';
+		var fieldLines = (p.fields && p.fields.length)
+			? p.fields.slice(0, 20).map(function (f) {
+				var state = [];
+				state.push(f.visible ? 'نمایان' : 'مخفی');
+				state.push(f.empty ? 'خالی' : 'پر');
+				if (f.broken) {
+					state.push('آسیب‌دیده');
+				}
+				return '- ' + (f.name || f.id || '') + ' [' + (f.type || '') + '] — ' + state.join('، ');
+			}).join('\n')
+			: '- فیلد پرداختی پیدا نشد.';
+		var flags = [];
+		flags.push(p.foundPaymentBox ? 'باکس #payment پیدا شد' : 'باکس #payment پیدا نشد');
+		if (p.emptyBox) {
+			flags.push('باکس خالی یا رندر نشده');
+		}
+		if (p.noMethods) {
+			flags.push('روش پرداختی لود نشد');
+		}
+		var lines = [
+			'تو یک ایجنت برنامه‌نویس هستی. کاربر در صفحه پرداخت سایت nahal.website به مشکل خورده.',
+			'این گزارش را همراه اسکرین‌شات همان صفحه بررسی کن، علت را پیدا کن و اصلاح مشخص بده.',
+			'',
+			'## نقش و زمینه',
+			'- سایت: nahal.website — وردپرس + ووکامرس + درگاه دیجی‌پی',
+			'- صفحات سفارشی تسویه: checkout-dore (دوره) / checkout-eyvand (ایونت) / checkout-ordoo (اردو) / checkout-mahsool (محصول)',
+			'- تمرکز: فیلدهای کارت/پرداخت، اسکریپت و استایل لودنشده، خطاهای کنسول، ظاهر صفحه در اسکرین',
+			'- کارت، CVV و رمز در گزارش ماسک شده‌اند؛ دنبال نشت اطلاعات پرداخت نباش',
+			'',
+			'## صفحه‌ای که در آن به مشکل خورده',
+			'- عنوان: ' + (data.pageTitle || '—'),
+			'- نشانی: ' + (data.pageUrl || '—'),
+			'- زمان ثبت: ' + (data.capturedAt || '—'),
+			'- مرورگر: ' + (data.userAgent || '—'),
+			'- ابعاد صفحه: ' + (data.viewport || '—'),
+			'- وضعیت شبکه: ' + (data.online === false ? 'آفلاین' : 'آنلاین'),
+			'- نوع تسویه: ' + (p.checkoutType || '—'),
+		];
+		if (p.bodyClasses) {
+			lines.push('- کلاس‌های body: ' + p.bodyClasses);
+		}
+		lines = lines.concat([
+			'',
+			'## شرح خطایی که کاربر نوشته',
+			String(data.note || '').trim() || '(کاربر شرحی ننوشت)',
+			'',
+			'## اسکرین‌شات همان صفحه',
+			shot,
+			'',
+			'## کدها و فایل‌هایی که لود نشدند',
+			failedLines,
+			'',
+			'## خطاهای کنسول و جاوااسکریپت',
+			errorLines,
+			'',
+			'## وضعیت باکس پرداخت',
+			flags.join('؛ '),
+			'درگاه‌ها:',
+			methodLines,
+			'فیلدها:',
+			fieldLines,
+			'',
+			'## کارهایی که باید انجام بدهی',
+			'1. اسکرین را با شرح کاربر و خطاهای کنسول تطبیق بده؛ بگو روی صفحه چه چیزی دیده می‌شود و چه چیزی غایب است.',
+			'2. مشخص کن کدام اسکریپت، استایل یا درخواست HTTP باعث خرابی فیلد/دکمه پرداخت شده (مسیر فایل وردپرس را بنویس).',
+			'3. علت محتمل را بگو: ۴۰۴، ۴۰۰، CORS، مسدود بودن دامنه، ترتیب لود، تداخل افزونه/قالب، یا رندر نشدن درگاه.',
+			'4. یک اصلاح عملی پیشنهاد بده (کدام فایل، کدام هوک/اسکریپت، چه تغییری).',
+			'5. اگر اطلاعات کم است، دقیق بگو در پیشخوان یا روی همان URL چه چیزی را باید چک کرد.',
+		]);
+		return lines.join('\n');
+	}
+
+	function showAgentPrompt(data) {
+		var wrap = $('#npbr-prompt-wrap');
+		var ta = $('#npbr-prompt');
+		var text = agentPrompt(data);
+		if (ta) {
+			ta.value = text;
+		}
+		if (wrap) {
+			wrap.hidden = false;
+		}
+		return text;
+	}
+
+	function copyPromptText(text) {
+		var value = text || ( $('#npbr-prompt') && $('#npbr-prompt').value ) || '';
+		if (!value) {
+			return Promise.reject(new Error('پرامپت خالی است'));
+		}
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			return navigator.clipboard.writeText(value);
+		}
+		var ta = $('#npbr-prompt');
+		if (!ta) {
+			return Promise.reject(new Error('کادر پرامپت پیدا نشد'));
+		}
+		ta.focus();
+		ta.select();
+		document.execCommand('copy');
+		return Promise.resolve();
+	}
+
 	function reportHtml(data) {
 		var failed = (data.failed || []).map(function (r) {
 			return '<tr><td>' + escapeHtml(r.payment ? 'پرداخت' : 'عمومی') + '</td><td>' + escapeHtml(r.kind) + '</td><td>' + escapeHtml(r.status) + '</td><td dir="ltr">' + escapeHtml(r.url) + '</td></tr>';
@@ -517,6 +642,7 @@
 		box.innerHTML =
 			'<a class="npbr-btn npbr-btn-dark" id="npbr-zip-link" href="' + zipUrl + '" download="' + zipName + '">دانلود فایل ZIP</a>' +
 			(shotUrl ? '<a class="npbr-btn npbr-btn-light" id="npbr-shot-link" href="' + shotUrl + '" download="nahal-payment-screenshot.jpg">دانلود اسکرین صفحه</a>' : '') +
+			'<a class="npbr-btn npbr-btn-light" id="npbr-prompt-link" href="#" download="agent-prompt.md">دانلود پرامپت ایجنت</a>' +
 			(htmlUrl ? '<a class="npbr-btn npbr-btn-light" id="npbr-html-link" href="' + htmlUrl + '" target="_blank" rel="noopener">باز کردن گزارش</a>' : '');
 	}
 
@@ -568,9 +694,11 @@
 	}
 
 	function downloadZip(data) {
+		var promptText = agentPrompt(data);
 		var files = [
 			{ name: 'report.json', data: strBytes(JSON.stringify(data, null, 2)) },
 			{ name: 'report.html', data: strBytes(reportHtml(data)) },
+			{ name: 'agent-prompt.md', data: strBytes(promptText) },
 		];
 		if (data.screenshot) {
 			files.push({ name: 'screenshot.jpg', data: dataUriToBytes(data.screenshot) });
@@ -586,7 +714,13 @@
 			clickDownload(shotUrl, 'nahal-payment-screenshot.jpg');
 		}
 		var htmlUrl = URL.createObjectURL(new Blob([reportHtml(data)], { type: 'text/html;charset=utf-8' }));
+		var promptUrl = URL.createObjectURL(new Blob([promptText], { type: 'text/markdown;charset=utf-8' }));
 		showDownloadLinks(zipUrl, zipName, shotUrl, htmlUrl);
+		var promptLink = $('#npbr-prompt-link');
+		if (promptLink) {
+			promptLink.href = promptUrl;
+		}
+		showAgentPrompt(data);
 		downloadViaServer(data);
 		return zipUrl;
 	}
@@ -623,7 +757,7 @@
 		}
 		busy = true;
 		setStatus('اسکرین صفحه در حال تهیه است…');
-		$all('[data-npbr-download], [data-npbr-send]').forEach(function (b) { b.disabled = true; });
+		$all('[data-npbr-download], [data-npbr-send], [data-npbr-prompt]').forEach(function (b) { b.disabled = true; });
 		captureShot()
 			.then(function () {
 				data = buildPayload();
@@ -634,7 +768,7 @@
 			})
 			.then(function () {
 				busy = false;
-				$all('[data-npbr-download], [data-npbr-send]').forEach(function (b) { b.disabled = false; });
+				$all('[data-npbr-download], [data-npbr-send], [data-npbr-prompt]').forEach(function (b) { b.disabled = false; });
 			});
 	}
 
@@ -659,7 +793,8 @@
 				if (!res.ok || !json || !json.success) {
 					throw new Error((json && json.data && json.data.message) || 'ارسال ناموفق بود');
 				}
-				setStatus(json.data.message || 'ارسال شد.');
+				showAgentPrompt(data);
+				setStatus((json.data.message || 'ارسال شد.') + ' پرامپت ایجنت آماده کپی است.');
 			});
 		}).catch(function (err) {
 			downloadZip(data);
@@ -742,6 +877,31 @@
 				ev.preventDefault();
 				ev.stopPropagation();
 				withShot(sendToManager);
+			}
+			if (ev.target.closest && ev.target.closest('[data-npbr-prompt]')) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				withShot(function (data) {
+					var text = showAgentPrompt(data);
+					if (data.screenshot) {
+						clickDownload(data.screenshot, 'nahal-payment-screenshot.jpg');
+					}
+					var promptBlob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+					downloadBlob(promptBlob, 'agent-prompt.md');
+					return copyPromptText(text).then(function () {
+						setStatus('پرامپت ایجنت کپی شد. اسکرین همان صفحه را هم برای ایجنت بفرستید.');
+					}).catch(function () {
+						setStatus('پرامپت آماده است؛ دکمه کپی را بزنید یا از کادر زیر انتخاب کنید.');
+					});
+				});
+			}
+			if (ev.target.closest && ev.target.closest('[data-npbr-copy-prompt]')) {
+				ev.preventDefault();
+				copyPromptText().then(function () {
+					setStatus('پرامپت کپی شد. همراه اسکرین برای ایجنت بفرستید.');
+				}).catch(function () {
+					setStatus('کپی خودکار ممکن نشد؛ متن کادر را دستی انتخاب کنید.', true);
+				});
 			}
 		});
 		document.addEventListener('keydown', function (ev) {

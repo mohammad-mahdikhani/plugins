@@ -295,6 +295,24 @@ class NPBR_Telegram {
 			);
 		}
 
+		if ( $sent && class_exists( 'NPBR_Report', false ) ) {
+			$prompt = NPBR_Report::agent_prompt( $data );
+			if ( $prompt ) {
+				self::api_multipart(
+					$token,
+					'sendDocument',
+					array(
+						'chat_id' => $chat,
+						'caption' => 'پرامپت آماده برای ایجنت هوش مصنوعی — همراه اسکرین صفحه برای بررسی خطا.',
+					),
+					'document',
+					'agent-prompt.md',
+					$prompt,
+					'text/markdown; charset=utf-8'
+				);
+			}
+		}
+
 		return $sent;
 	}
 

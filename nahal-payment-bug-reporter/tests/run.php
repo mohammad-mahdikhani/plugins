@@ -108,6 +108,16 @@ $json = NPBR_Report::public_json( $ok['data'] );
 npbr_assert( empty( $json['screenshot'] ), 'public json drops screenshot bytes' );
 npbr_assert( ! empty( $json['hasScreenshot'] ), 'public json flags screenshot' );
 
+echo "== Agent prompt ==\n";
+$prompt = NPBR_Report::agent_prompt( $ok['data'] );
+npbr_assert( false !== strpos( $prompt, 'https://nahal.website/checkout/' ), 'prompt has page url' );
+npbr_assert( false !== strpos( $prompt, 'فیلدهای کارت' ), 'prompt has user note' );
+npbr_assert( false !== strpos( $prompt, 'checkout.min.js' ), 'prompt has failed url' );
+npbr_assert( false !== strpos( $prompt, 'screenshot' ), 'prompt mentions screenshot' );
+npbr_assert( false !== strpos( $prompt, 'ایجنت' ), 'prompt is for an agent' );
+npbr_assert( false !== strpos( $prompt, 'nahal.website' ), 'prompt names the site' );
+npbr_assert( false === strpos( $prompt, '<script>' ), 'prompt has no html script' );
+
 echo "== Telegram text ==\n";
 $tg = NPBR_Telegram::text( $ok['data'] );
 npbr_assert( false !== strpos( $tg, 'فیلدهای کارت' ), 'telegram includes note' );
@@ -153,7 +163,10 @@ $z = new ZipArchive();
 npbr_assert( true === $z->open( $zip_path ), 'opens zip' );
 npbr_assert( false !== $z->locateName( 'report.json' ), 'has report.json' );
 npbr_assert( false !== $z->locateName( 'report.html' ), 'has report.html' );
+npbr_assert( false !== $z->locateName( 'agent-prompt.md' ), 'has agent-prompt.md' );
 npbr_assert( false !== $z->locateName( 'screenshot.png' ) || false !== $z->locateName( 'screenshot.jpg' ), 'has screenshot' );
+$prompt_in_zip = $z->getFromName( 'agent-prompt.md' );
+npbr_assert( false !== strpos( (string) $prompt_in_zip, 'فیلدهای کارت' ), 'zip prompt has note' );
 $z->close();
 @unlink( $zip_path );
 

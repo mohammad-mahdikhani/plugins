@@ -98,7 +98,7 @@ class NPBR_Frontend {
 		echo '<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>';
 		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطای پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
 		echo '<div class="npbr-body">';
-		echo '<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. خطاهای کنسول (مثل ۴۰۰ اینماد) و اسکرین صفحه ثبت می‌شود و با ارسال، همزمان برای مدیر و تلگرام می‌رود.</p>';
+		echo '<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. خطاهای کنسول، اسکرین صفحه و یک پرامپت آماده برای ایجنت هوش مصنوعی ساخته می‌شود.</p>';
 		echo '<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>';
 		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: فیلدهای کارت دیجی‌پی خالی ماند / دکمه پرداخت کار نکرد / صفحه سفید شد"></textarea>';
 		echo '<div class="npbr-grid">';
@@ -108,11 +108,18 @@ class NPBR_Frontend {
 		echo '<div id="npbr-diag" class="npbr-diag"></div>';
 		echo '<figure class="npbr-shot-wrap"><figcaption>پیش‌نمایش اسکرین‌شات</figcaption><img id="npbr-shot" alt="اسکرین‌شات صفحه" hidden><p id="npbr-shot-empty">هنوز گرفته نشده. با دانلود یا ارسال، اسکرین همین صفحه ذخیره می‌شود.</p></figure>';
 		echo '<div id="npbr-downloads" class="npbr-downloads" hidden></div>';
+		echo '<div id="npbr-prompt-wrap" class="npbr-prompt-wrap" hidden>';
+		echo '<label class="npbr-label" for="npbr-prompt">پرامپت آماده برای ایجنت هوش مصنوعی</label>';
+		echo '<textarea id="npbr-prompt" class="npbr-prompt" rows="10" readonly></textarea>';
+		echo '<p class="npbr-prompt-hint">این متن را کپی کنید و همراه اسکرین همان صفحه برای ایجنت بفرستید تا خطا را روی همان URL بررسی کند.</p>';
+		echo '<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-copy-prompt>کپی پرامپت</button>';
+		echo '</div>';
 		echo '<iframe id="npbr-dl-iframe" name="npbr-dl-iframe" title="دانلود" hidden></iframe>';
 		echo '<p id="npbr-status" class="npbr-status" role="status"></p>';
 		echo '</div>';
 		echo '<footer class="npbr-actions">';
 		echo '<button type="button" class="npbr-btn npbr-btn-light" data-npbr-download>دانلود گزارش و اسکرین</button>';
+		echo '<button type="button" class="npbr-btn npbr-btn-light" data-npbr-prompt>پرامپت ایجنت</button>';
 		echo '<button type="button" class="npbr-btn npbr-btn-dark" data-npbr-send>ارسال برای مدیر و تلگرام</button>';
 		echo '</footer>';
 		echo '</section></div>';

@@ -27,7 +27,7 @@ class NPBR_Mailer {
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
 
 		$attachments = array();
-		$tmp         = '';
+		$tmps        = array();
 		if ( ! empty( $data['screenshot'] ) && preg_match( '#^data:image/(png|jpeg|webp);base64,(.+)$#', (string) $data['screenshot'], $m ) ) {
 			$bin = base64_decode( $m[2], true );
 			if ( false !== $bin ) {
@@ -36,13 +36,24 @@ class NPBR_Mailer {
 				if ( $tmp ) {
 					file_put_contents( $tmp, $bin );
 					$attachments[] = $tmp;
+					$tmps[]        = $tmp;
 				}
+			}
+		}
+		$prompt = NPBR_Report::agent_prompt( $data );
+		if ( $prompt ) {
+			$prompt_tmp = trailingslashit( get_temp_dir() ) . 'npbr-agent-prompt-' . uniqid( '', true ) . '.md';
+			if ( file_put_contents( $prompt_tmp, $prompt ) ) {
+				$attachments[] = $prompt_tmp;
+				$tmps[]        = $prompt_tmp;
 			}
 		}
 
 		$ok = wp_mail( $to, $subject, $body, $headers, $attachments );
-		if ( $tmp && file_exists( $tmp ) ) {
-			@unlink( $tmp );
+		foreach ( $tmps as $tmp ) {
+			if ( $tmp && file_exists( $tmp ) ) {
+				@unlink( $tmp );
+			}
 		}
 		return (bool) $ok;
 	}
@@ -72,7 +83,7 @@ class NPBR_Mailer {
 			$lines[] = '</ul>';
 		}
 
-		$lines[] = '<p>اسکرین‌شات صفحه در پیوست همین ایمیل است (اگر گرفته شده باشد).</p>';
+		$lines[] = '<p>اسکرین‌شات صفحه و فایل <code>agent-prompt.md</code> (پرامپت آماده برای ایجنت هوش مصنوعی) در پیوست همین ایمیل هستند.</p>';
 		$lines[] = '<p><a href="' . esc_url( $admin ) . '">مشاهده در پیشخوان</a></p>';
 		return implode( "\n", $lines );
 	}

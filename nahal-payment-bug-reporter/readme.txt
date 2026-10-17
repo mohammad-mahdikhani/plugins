@@ -3,7 +3,7 @@ Contributors: nahal
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. از منوی «خطای پرداخت» ایمیل مدیر را بگذارید.
 
 == Changelog ==
+
+= 1.0.5 =
+* بعد از هر گزارش، پرامپت آماده برای ایجنت هوش مصنوعی ساخته می‌شود (شرح خطا + صفحه + اسکرین + کنسول) تا کپی یا در ZIP ارسال شود.
 
 = 1.0.4 =
 * دور زدن فیلتر تلگرام: آدرس پروکسی HTTPS (Cloudflare Worker خودتان) و پروکسی HTTP اختیاری، با دکمه تست ارسال.
