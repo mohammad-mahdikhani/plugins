@@ -28,13 +28,23 @@
 	background: #2f4634;
 }
 
-.npbr-inline-btn {
+.npbr-inline-btn,
+.npbr-hint-btn {
 	background: #afd136;
 	color: #1b2a22;
 	border-radius: 10px;
 	padding: 8px 12px;
 	font-size: 13px;
 	font-weight: 700;
+}
+
+.npbr-hint-btn {
+	display: inline-block;
+	margin: 8px 6px 0 0;
+	vertical-align: middle;
+	border: 0;
+	cursor: pointer;
+	font-family: inherit;
 }
 
 .npbr-pay-slot,
@@ -134,6 +144,10 @@
 	grid-template-columns: 1fr 1fr;
 	gap: 10px;
 	margin: 12px 0;
+}
+
+.npbr-grid-3 {
+	grid-template-columns: 1fr 1fr 1fr;
 }
 
 .npbr-grid label {
@@ -276,7 +290,8 @@
 }
 
 @media (max-width: 640px) {
-	.npbr-grid {
+	.npbr-grid,
+	.npbr-grid-3 {
 		grid-template-columns: 1fr;
 	}
 

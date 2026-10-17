@@ -78,6 +78,17 @@ class NPBR_Mailer {
 		$html[] = '<p style="line-height:1.8;color:#3d5349">صفحه: ' . esc_html( isset( $data['pageTitle'] ) ? $data['pageTitle'] : '' ) . '<br>';
 		$html[] = '<span dir="ltr">' . esc_html( isset( $data['pageUrl'] ) ? $data['pageUrl'] : '' ) . '</span></p>';
 
+		$contact = NPBR_Report::contact_lines( $data );
+		$c       = isset( $data['customer'] ) && is_array( $data['customer'] ) ? $data['customer'] : array();
+		$phone   = isset( $c['phone'] ) && $c['phone'] ? (string) $c['phone'] : ( isset( $data['phone'] ) ? (string) $data['phone'] : '' );
+		$html[]  = '<div style="background:#eef6ff;border:1px solid #cfe0f5;border-radius:12px;padding:14px 16px;margin:0 0 16px">';
+		$html[]  = '<p style="margin:0 0 8px;font-weight:700">تماس با کاربر</p>';
+		$html[]  = '<pre style="white-space:pre-wrap;font-family:Tahoma,sans-serif;margin:0;line-height:1.8">' . esc_html( implode( "\n", $contact ) ) . '</pre>';
+		if ( $phone ) {
+			$html[] = '<p style="margin:10px 0 0">تماس: <a dir="ltr" href="tel:' . esc_attr( $phone ) . '">' . esc_html( $phone ) . '</a></p>';
+		}
+		$html[] = '</div>';
+
 		$html[] = '<div style="background:#f7faf6;border:1px solid #d7e4dc;border-radius:12px;padding:14px 16px;margin:0 0 16px">';
 		$html[] = '<p style="margin:0 0 8px;font-weight:700">شرح</p>';
 		$html[] = '<pre style="white-space:pre-wrap;font-family:Tahoma,sans-serif;margin:0;line-height:1.8">' . esc_html( isset( $data['note'] ) ? $data['note'] : '' ) . '</pre>';

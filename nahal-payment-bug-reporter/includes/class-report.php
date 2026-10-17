@@ -83,8 +83,8 @@ class NPBR_Report {
 			. '</head><body><div class="wrap"><h1>گزارش خطای پرداخت نهال</h1>'
 			. '<p class="meta">صفحه: ' . self::e( isset( $data['pageTitle'] ) ? $data['pageTitle'] : '' ) . '<br>نشانی: ' . self::e( isset( $data['pageUrl'] ) ? $data['pageUrl'] : '' ) . '<br>زمان: ' . self::e( isset( $data['capturedAt'] ) ? $data['capturedAt'] : '' ) . '<br>مرورگر: ' . self::e( isset( $data['userAgent'] ) ? $data['userAgent'] : '' ) . '<br>ابعاد: ' . self::e( isset( $data['viewport'] ) ? $data['viewport'] : '' ) . '</p>'
 			. '<h2>شرح کاربر</h2><div class="note">' . self::e( isset( $data['note'] ) ? $data['note'] : '' ) . '</div>'
-			. '<p class="meta">نام: ' . self::e( isset( $data['name'] ) ? $data['name'] : '—' ) . ' — موبایل: ' . self::e( isset( $data['phone'] ) ? $data['phone'] : '—' ) . '</p>'
-			. '<h2>وضعیت فیلدهای پرداخت</h2><p>' . self::e( implode( '؛ ', $payment_flags ) ) . '</p><p>نوع صفحه: ' . self::e( isset( $payment['checkoutType'] ) ? $payment['checkoutType'] : '' ) . '</p>'
+			. self::contact_html( $data )
+			. '<h2>وضعیت فیلدهای پرداخت</h2><p>' . self::e( implode( '؛ ', $payment_flags ) ) . '</p><p>نوع صفحه: ' . self::e( isset( $payment['checkoutType'] ) ? $payment['checkoutType'] : '' ) . ' — مسیر خرید: ' . self::e( self::page_kind( $data ) ) . '</p>'
 			. '<h3>درگاه‌ها</h3><ul>' . $methods . '</ul>'
 			. '<h3>فیلدها</h3><ul>' . $fields . '</ul>'
 			. '<h2>کدها و فایل‌هایی که لود نشدند</h2><table><thead><tr><th>نوع</th><th>جنس</th><th>وضعیت</th><th>نشانی</th></tr></thead><tbody>' . $failed_rows . '</tbody></table>'
@@ -112,6 +112,122 @@ class NPBR_Report {
 			$pay,
 			$errors
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return string
+	 */
+	public static function page_kind( array $data ) {
+		$payment = isset( $data['payment'] ) && is_array( $data['payment'] ) ? $data['payment'] : array();
+		$kind    = isset( $payment['pageKind'] ) ? (string) $payment['pageKind'] : '';
+		if ( $kind ) {
+			return $kind;
+		}
+		$type = isset( $payment['checkoutType'] ) ? (string) $payment['checkoutType'] : '';
+		if ( in_array( $type, array( 'course', 'event', 'camp', 'product', 'checkout' ), true ) ) {
+			return 'checkout';
+		}
+		if ( 'order-pay' === $type ) {
+			return 'order-pay';
+		}
+		if ( in_array( $type, array( 'cart', 'shop', 'single-product' ), true ) ) {
+			return 'cart' === $type ? 'cart' : ( 'shop' === $type ? 'shop' : 'product' );
+		}
+		return '';
+	}
+
+	/**
+	 * Contact + device lines so staff can call the shopper.
+	 *
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return array<int, string>
+	 */
+	public static function contact_lines( array $data ) {
+		$c     = isset( $data['customer'] ) && is_array( $data['customer'] ) ? $data['customer'] : array();
+		$d     = isset( $data['device'] ) && is_array( $data['device'] ) ? $data['device'] : array();
+		$first = isset( $c['firstName'] ) ? (string) $c['firstName'] : '';
+		$last  = isset( $c['lastName'] ) && $c['lastName'] ? (string) $c['lastName'] : ( isset( $data['lastName'] ) ? (string) $data['lastName'] : '' );
+		$name  = trim( $first . ' ' . $last );
+		if ( ! $name ) {
+			$name = isset( $data['name'] ) && $data['name'] ? (string) $data['name'] : ( isset( $c['displayName'] ) ? (string) $c['displayName'] : '' );
+		}
+		$phone = isset( $c['phone'] ) && $c['phone'] ? (string) $c['phone'] : ( isset( $data['phone'] ) ? (string) $data['phone'] : '' );
+		$login = isset( $c['login'] ) ? (string) $c['login'] : '';
+		$email = isset( $c['email'] ) ? (string) $c['email'] : '';
+		$label = isset( $d['label'] ) && $d['label'] ? (string) $d['label'] : '';
+		$ua    = isset( $d['userAgent'] ) && $d['userAgent'] ? (string) $d['userAgent'] : ( isset( $data['userAgent'] ) ? (string) $data['userAgent'] : '' );
+		$view  = isset( $d['viewport'] ) && $d['viewport'] ? (string) $d['viewport'] : ( isset( $data['viewport'] ) ? (string) $data['viewport'] : '' );
+		$scr   = isset( $d['screen'] ) ? (string) $d['screen'] : '';
+		$conn  = isset( $d['connection'] ) ? (string) $d['connection'] : '';
+		$touch = ! empty( $d['touch'] ) ? 'لمسی' : '';
+
+		$lines   = array();
+		$lines[] = 'تماس با کاربر (برای راهنمایی تلفنی):';
+		$lines[] = 'نام: ' . ( $first ? $first : '—' );
+		$lines[] = 'نام خانوادگی: ' . ( $last ? $last : '—' );
+		if ( $name && $name !== trim( $first . ' ' . $last ) ) {
+			$lines[] = 'نام نمایشی: ' . $name;
+		}
+		$lines[] = 'موبایل لاگین/صورتحساب: ' . ( $phone ? $phone : '—' );
+		if ( ! empty( $c['loggedIn'] ) ) {
+			$lines[] = 'وضعیت ورود: وارد شده' . ( $login ? ' (' . $login . ')' : '' );
+		} else {
+			$lines[] = 'وضعیت ورود: مهمان';
+		}
+		if ( $email ) {
+			$lines[] = 'ایمیل: ' . $email;
+		}
+		$dev = $label ? $label : 'نامشخص';
+		if ( $touch ) {
+			$dev .= ' — ' . $touch;
+		}
+		if ( $view ) {
+			$dev .= ' — صفحه ' . $view;
+		}
+		if ( $scr ) {
+			$dev .= ' — نمایشگر ' . $scr;
+		}
+		if ( $conn ) {
+			$dev .= ' — شبکه ' . $conn;
+		}
+		$lines[] = 'دستگاه: ' . $dev;
+		if ( $ua ) {
+			$lines[] = 'مرورگر: ' . $ua;
+		}
+		$orders = isset( $c['orders'] ) && is_array( $c['orders'] ) ? $c['orders'] : array();
+		if ( $orders ) {
+			$lines[] = 'خریدهای قبلی (' . count( $orders ) . '):';
+			foreach ( $orders as $i => $row ) {
+				$lines[] = ( $i + 1 ) . '. #' . ( isset( $row['number'] ) && $row['number'] ? $row['number'] : ( isset( $row['id'] ) ? $row['id'] : '' ) )
+					. ' — ' . ( isset( $row['status'] ) ? $row['status'] : '' )
+					. ' — ' . ( isset( $row['total'] ) ? $row['total'] : '' )
+					. ' — ' . ( isset( $row['date'] ) ? $row['date'] : '' )
+					. ( ! empty( $row['items'] ) ? ' — ' . $row['items'] : '' );
+			}
+		} else {
+			$lines[] = 'خرید قبلی در حساب ثبت نشده.';
+		}
+		return $lines;
+	}
+
+	/**
+	 * @param array<string, mixed> $data Normalized payload.
+	 * @return string
+	 */
+	public static function contact_html( array $data ) {
+		$lines = self::contact_lines( $data );
+		$c     = isset( $data['customer'] ) && is_array( $data['customer'] ) ? $data['customer'] : array();
+		$phone = isset( $c['phone'] ) && $c['phone'] ? (string) $c['phone'] : ( isset( $data['phone'] ) ? (string) $data['phone'] : '' );
+		$html  = '<h2>تماس با کاربر</h2><div class="note">';
+		foreach ( $lines as $line ) {
+			$html .= self::e( $line ) . '<br>';
+		}
+		if ( $phone ) {
+			$html .= '<br>تماس: <a dir="ltr" href="tel:' . self::e( $phone ) . '">' . self::e( $phone ) . '</a>';
+		}
+		$html .= '</div>';
+		return $html;
 	}
 
 	/**
@@ -148,25 +264,27 @@ class NPBR_Report {
 	 * @return array<int, array<string, string>>
 	 */
 	public static function vital_failures( array $data ) {
-		$out     = array();
-		$payment = isset( $data['payment'] ) && is_array( $data['payment'] ) ? $data['payment'] : array();
-		$failed  = isset( $data['failed'] ) && is_array( $data['failed'] ) ? $data['failed'] : array();
-		$seen    = array();
+		$out      = array();
+		$payment  = isset( $data['payment'] ) && is_array( $data['payment'] ) ? $data['payment'] : array();
+		$failed   = isset( $data['failed'] ) && is_array( $data['failed'] ) ? $data['failed'] : array();
+		$seen     = array();
+		$kind     = self::page_kind( $data );
+		$pay_page = in_array( $kind, array( 'checkout', 'order-pay' ), true );
 
-		if ( empty( $payment['foundPaymentBox'] ) ) {
+		if ( $pay_page && empty( $payment['foundPaymentBox'] ) ) {
 			$out[] = array(
 				'title'  => 'باکس پرداخت (#payment) در صفحه پیدا نشد',
 				'status' => 'missing',
 				'url'    => '',
 			);
 		}
-		if ( ! empty( $payment['emptyBox'] ) && ! empty( $payment['noMethods'] ) ) {
+		if ( $pay_page && ! empty( $payment['emptyBox'] ) && ! empty( $payment['noMethods'] ) ) {
 			$out[] = array(
 				'title'  => 'باکس پرداخت خالی است و هیچ روش پرداختی لود نشده',
 				'status' => 'empty',
 				'url'    => '',
 			);
-		} elseif ( ! empty( $payment['noMethods'] ) ) {
+		} elseif ( $pay_page && ! empty( $payment['noMethods'] ) ) {
 			$out[] = array(
 				'title'  => 'هیچ روش پرداختی در صفحه دیده نشد',
 				'status' => 'no-methods',
@@ -218,13 +336,19 @@ class NPBR_Report {
 	public static function listed_note( array $data ) {
 		$vitals = self::vital_failures( $data );
 		$lines  = array();
-		$lines[] = 'گزارش خودکار — المان حیاتی صفحه پرداخت لود نشد';
+		$lines[] = 'گزارش خودکار — المان حیاتی مسیر خرید/پرداخت لود نشد';
 		$lines[] = '';
 		$lines[] = 'صفحه: ' . ( isset( $data['pageTitle'] ) && $data['pageTitle'] ? $data['pageTitle'] : '—' );
 		$lines[] = 'نشانی: ' . ( isset( $data['pageUrl'] ) && $data['pageUrl'] ? $data['pageUrl'] : '—' );
 		if ( ! empty( $data['capturedAt'] ) ) {
 			$lines[] = 'زمان: ' . $data['capturedAt'];
 		}
+		$kind = self::page_kind( $data );
+		if ( $kind ) {
+			$lines[] = 'مسیر خرید: ' . $kind;
+		}
+		$lines[] = '';
+		$lines   = array_merge( $lines, self::contact_lines( $data ) );
 		$lines[] = '';
 		$lines[] = 'فهرست المان‌های حیاتی:';
 		if ( $vitals ) {
@@ -347,18 +471,19 @@ class NPBR_Report {
 		}
 
 		$lines   = array();
-		$lines[] = 'تو یک ایجنت برنامه‌نویس هستی. کاربر در صفحه پرداخت سایت nahal.website به مشکل خورده.';
+		$lines[] = 'تو یک ایجنت برنامه‌نویس هستی. کاربر در مسیر خرید سایت nahal.website (فروشگاه، محصول، سبد، تسویه یا درگاه) به مشکل خورده.';
 		$lines[] = 'این گزارش را همراه اسکرین‌شات همان صفحه بررسی کن، علت را پیدا کن و اصلاح مشخص بده.';
 		$lines[] = '';
 		$lines[] = '## نقش و زمینه';
 		$lines[] = '- سایت: nahal.website — وردپرس + ووکامرس + درگاه دیجی‌پی';
 		$lines[] = '- صفحات سفارشی تسویه: checkout-dore (دوره) / checkout-eyvand (ایونت) / checkout-ordoo (اردو) / checkout-mahsool (محصول)';
-		$lines[] = '- تمرکز: فیلدهای کارت/پرداخت، اسکریپت و استایل لودنشده، خطاهای کنسول، ظاهر صفحه در اسکرین';
+		$lines[] = '- تمرکز: سبد خرید، دکمه خرید، فروشگاه، صفحه محصول، فیلدهای کارت/پرداخت، اسکریپت لودنشده، کنسول';
 		$lines[] = '- کارت، CVV و رمز در گزارش ماسک شده‌اند؛ دنبال نشت اطلاعات پرداخت نباش';
 		$lines[] = '';
 		$lines[] = '## صفحه‌ای که در آن به مشکل خورده';
 		$lines[] = '- عنوان: ' . ( $title ? $title : '—' );
 		$lines[] = '- نشانی: ' . ( $page ? $page : '—' );
+		$lines[] = '- مسیر خرید: ' . ( self::page_kind( $data ) ? self::page_kind( $data ) : '—' );
 		$lines[] = '- زمان ثبت: ' . ( $when ? $when : '—' );
 		$lines[] = '- مرورگر: ' . ( $ua ? $ua : '—' );
 		$lines[] = '- ابعاد صفحه: ' . ( $view ? $view : '—' );
@@ -369,6 +494,9 @@ class NPBR_Report {
 		if ( $classes ) {
 			$lines[] = '- کلاس‌های body: ' . $classes;
 		}
+		$lines[] = '';
+		$lines[] = '## تماس با کاربر (برای راهنمایی تلفنی)';
+		$lines   = array_merge( $lines, self::contact_lines( $data ) );
 		$lines[] = '';
 		$lines[] = '## شرح خطایی که کاربر نوشته';
 		$lines[] = $note ? $note : '(کاربر شرحی ننوشت)';

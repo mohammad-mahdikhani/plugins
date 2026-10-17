@@ -37,6 +37,21 @@ $payment = isset( $payload['payment'] ) && is_array( $payload['payment'] ) ? $pa
 			موبایل: <?php echo esc_html( isset( $payload['phone'] ) && $payload['phone'] ? $payload['phone'] : '—' ); ?></p>
 		<p dir="ltr">URL: <?php echo esc_html( isset( $payload['pageUrl'] ) ? $payload['pageUrl'] : '' ); ?></p>
 		<p>مرورگر: <?php echo esc_html( isset( $payload['userAgent'] ) ? $payload['userAgent'] : '' ); ?></p>
+		<?php
+		$contact_lines = class_exists( 'NPBR_Report', false ) ? NPBR_Report::contact_lines( $payload ) : array();
+		$cust          = isset( $payload['customer'] ) && is_array( $payload['customer'] ) ? $payload['customer'] : array();
+		$phone_link    = isset( $cust['phone'] ) && $cust['phone'] ? (string) $cust['phone'] : ( isset( $payload['phone'] ) ? (string) $payload['phone'] : '' );
+		if ( $contact_lines ) :
+			?>
+			<div class="npbr-note-box">
+				<?php foreach ( $contact_lines as $line ) : ?>
+					<?php echo esc_html( $line ); ?><br>
+				<?php endforeach; ?>
+				<?php if ( $phone_link ) : ?>
+					<p>تماس: <a dir="ltr" href="tel:<?php echo esc_attr( $phone_link ); ?>"><?php echo esc_html( $phone_link ); ?></a></p>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
 		<?php if ( '1' === (string) get_post_meta( $id, '_npbr_auto', true ) ) : ?>
 			<p><strong>گزارش خودکار:</strong> المان حیاتی صفحه پرداخت لود نشده بود.</p>
 		<?php endif; ?>

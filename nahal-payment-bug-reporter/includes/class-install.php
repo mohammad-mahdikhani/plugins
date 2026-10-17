@@ -23,9 +23,21 @@ class NPBR_Install {
 
 	public static function maybe_upgrade() {
 		$stored = get_option( 'npbr_version' );
-		if ( $stored !== NPBR_VERSION ) {
-			update_option( 'npbr_version', NPBR_VERSION );
+		if ( $stored === NPBR_VERSION ) {
+			return;
 		}
+		if ( $stored && version_compare( (string) $stored, '1.0.7', '<' ) ) {
+			$s = get_option( 'npbr_settings', array() );
+			if ( is_array( $s ) ) {
+				$s['show_on_cart']    = true;
+				$s['show_on_shop']    = true;
+				$s['show_on_product'] = true;
+				$s['show_sitewide']   = true;
+				$s['show_near_cart']  = true;
+				update_option( 'npbr_settings', $s );
+			}
+		}
+		update_option( 'npbr_version', NPBR_VERSION );
 	}
 
 	public static function register_type() {

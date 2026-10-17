@@ -52,13 +52,8 @@ class NPBR_Frontend {
 			return;
 		}
 		$settings   = NPBR_Plugin::settings();
-		$auto_watch = false;
-		if ( function_exists( 'is_checkout' ) && is_checkout() && ! ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) ) {
-			$auto_watch = true;
-		}
-		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-pay' ) ) {
-			$auto_watch = true;
-		}
+		$page_kind  = $this->page_kind();
+		$auto_watch = in_array( $page_kind, array( 'checkout', 'order-pay', 'cart', 'product', 'shop' ), true );
 		if ( isset( $_GET['npbr_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$auto_watch = true;
 		}
@@ -91,9 +86,12 @@ class NPBR_Frontend {
 				'buttonLabel'  => $settings['button_label'],
 				'showFloating' => ! empty( $settings['show_floating'] ),
 				'showNearPay'  => false,
+				'showNearCart' => ! empty( $settings['show_near_cart'] ),
 				'autoWatch'    => $auto_watch,
+				'pageKind'     => $page_kind,
 				'requireNote'  => ! empty( $settings['require_description'] ),
 				'site'         => home_url( '/' ),
+				'customer'     => class_exists( 'NPBR_Customer', false ) ? NPBR_Customer::preview() : array(),
 			)
 		);
 	}
@@ -107,14 +105,15 @@ class NPBR_Frontend {
 		echo '<button type="button" class="npbr-fab" data-npbr-open>' . esc_html( $label ) . '</button>';
 		echo '<div class="npbr-overlay" data-npbr-close hidden></div>';
 		echo '<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>';
-		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطای پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
+		echo '<header class="npbr-head"><h2 id="npbr-title">گزارش خطا در خرید و پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>';
 		echo '<div class="npbr-body">';
-		echo '<p class="npbr-lead">اگر فیلد پرداخت لود نشد همین مورد را بنویسید. اگر المان حیاتی صفحه لود نشود، گزارش فهرست‌شده همراه پرامپت ایجنت به‌صورت خودکار برای مدیر می‌رود.</p>';
+		echo '<p class="npbr-lead">اگر سبد خرید، دکمه خرید، فروشگاه، صفحه محصول یا درگاه پرداخت لود نشد همین مورد را بنویسید. اگر المان حیاتی لود نشود، گزارش فهرست‌شده همراه مشخصات تماس و دستگاه برای مدیر می‌رود.</p>';
 		echo '<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>';
-		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: فیلدهای کارت دیجی‌پی خالی ماند / دکمه پرداخت کار نکرد / صفحه سفید شد"></textarea>';
-		echo '<div class="npbr-grid">';
-		echo '<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80"></label>';
-		echo '<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr"></label>';
+		echo '<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: سبد خرید خالی ماند / دکمه خرید کار نکرد / فیلدهای کارت لود نشد"></textarea>';
+		echo '<div class="npbr-grid npbr-grid-3">';
+		echo '<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80" autocomplete="given-name"></label>';
+		echo '<label>نام خانوادگی (اختیاری)<input type="text" id="npbr-last" maxlength="80" autocomplete="family-name"></label>';
+		echo '<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr" autocomplete="tel"></label>';
 		echo '</div>';
 		echo '<div id="npbr-diag" class="npbr-diag"></div>';
 		echo '<figure class="npbr-shot-wrap"><figcaption>پیش‌نمایش اسکرین‌شات</figcaption><img id="npbr-shot" alt="اسکرین‌شات صفحه" hidden><p id="npbr-shot-empty">هنوز گرفته نشده. با دانلود یا ارسال، اسکرین همین صفحه ذخیره می‌شود.</p></figure>';
@@ -153,6 +152,9 @@ class NPBR_Frontend {
 		}
 		$settings = NPBR_Plugin::settings();
 
+		if ( ! empty( $settings['show_sitewide'] ) ) {
+			return true;
+		}
 		if ( function_exists( 'is_checkout' ) && is_checkout() && ! empty( $settings['show_on_checkout'] ) ) {
 			return true;
 		}
@@ -165,6 +167,15 @@ class NPBR_Frontend {
 		if ( function_exists( 'is_cart' ) && is_cart() && ! empty( $settings['show_on_cart'] ) ) {
 			return true;
 		}
+		if ( function_exists( 'is_shop' ) && is_shop() && ! empty( $settings['show_on_shop'] ) ) {
+			return true;
+		}
+		if ( function_exists( 'is_product_taxonomy' ) && is_product_taxonomy() && ! empty( $settings['show_on_shop'] ) ) {
+			return true;
+		}
+		if ( function_exists( 'is_product' ) && is_product() && ! empty( $settings['show_on_product'] ) ) {
+			return true;
+		}
 
 		if ( is_singular() ) {
 			$post = get_post();
@@ -174,15 +185,40 @@ class NPBR_Frontend {
 				if ( has_shortcode( $content, 'nahal_bug_report' ) ) {
 					return true;
 				}
-				if ( has_shortcode( $content, 'woocommerce_checkout' ) ) {
+				if ( has_shortcode( $content, 'woocommerce_checkout' ) || has_shortcode( $content, 'woocommerce_cart' ) ) {
 					return true;
 				}
-				if ( preg_match( '/checkout|order-pay|pardakht|پرداخت/u', $slug ) ) {
+				if ( preg_match( '/checkout|order-pay|pardakht|پرداخت|cart|sabad|فروشگاه|shop/u', $slug ) ) {
 					return true;
 				}
 			}
 		}
 
 		return (bool) apply_filters( 'npbr_should_load', false, $settings );
+	}
+
+	/**
+	 * @return string
+	 */
+	public function page_kind() {
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-pay' ) ) {
+			return 'order-pay';
+		}
+		if ( function_exists( 'is_checkout' ) && is_checkout() && ! ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) ) {
+			return 'checkout';
+		}
+		if ( function_exists( 'is_cart' ) && is_cart() ) {
+			return 'cart';
+		}
+		if ( function_exists( 'is_product' ) && is_product() ) {
+			return 'product';
+		}
+		if ( ( function_exists( 'is_shop' ) && is_shop() ) || ( function_exists( 'is_product_taxonomy' ) && is_product_taxonomy() ) ) {
+			return 'shop';
+		}
+		if ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) {
+			return 'thankyou';
+		}
+		return 'other';
 	}
 }

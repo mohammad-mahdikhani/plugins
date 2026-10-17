@@ -18,7 +18,7 @@ if ( ! isset( $tg_test ) ) {
 	<div class="npbr-hero">
 		<div>
 			<h1>تنظیمات گزارشگر خطای پرداخت</h1>
-			<p>دکمه گزارش روی صفحات پرداخت nahal.website نشان داده می‌شود. کاربر شرح خطا را می‌نویسد، کدهای لودنشده و اسکرین صفحه را دانلود یا برای مدیر می‌فرستد.</p>
+			<p>دکمه گزارش روی کل سایت (با تمرکز روی سبد، دکمه خرید، فروشگاه، محصول و درگاه) نشان داده می‌شود. گزارش شامل دستگاه، نام، فامیلی، موبایل لاگین و خریدهای قبلی است تا بتوانید تماس بگیرید.</p>
 		</div>
 	</div>
 
@@ -82,10 +82,14 @@ if ( ! isset( $tg_test ) ) {
 
 		<fieldset class="npbr-checks">
 			<legend>نمایش دکمه</legend>
-			<label><input type="checkbox" name="show_on_checkout" value="1" <?php checked( $settings['show_on_checkout'] ); ?>> صفحه تسویه / پرداخت</label>
+			<label><input type="checkbox" name="show_sitewide" value="1" <?php checked( ! empty( $settings['show_sitewide'] ) ); ?>> کل سایت</label>
+			<label><input type="checkbox" name="show_on_shop" value="1" <?php checked( ! empty( $settings['show_on_shop'] ) ); ?>> فروشگاه و دسته‌بندی محصولات</label>
+			<label><input type="checkbox" name="show_on_product" value="1" <?php checked( ! empty( $settings['show_on_product'] ) ); ?>> صفحه محصول و دکمه خرید</label>
+			<label><input type="checkbox" name="show_on_cart" value="1" <?php checked( $settings['show_on_cart'] ); ?>> سبد خرید و ویرایش سبد</label>
+			<label><input type="checkbox" name="show_on_checkout" value="1" <?php checked( $settings['show_on_checkout'] ); ?>> صفحه تسویه / پرداخت تا درگاه</label>
 			<label><input type="checkbox" name="show_on_order_pay" value="1" <?php checked( $settings['show_on_order_pay'] ); ?>> پرداخت سفارش (order-pay)</label>
 			<label><input type="checkbox" name="show_on_thankyou" value="1" <?php checked( $settings['show_on_thankyou'] ); ?>> صفحه تشکر بعد از پرداخت</label>
-			<label><input type="checkbox" name="show_on_cart" value="1" <?php checked( $settings['show_on_cart'] ); ?>> سبد خرید</label>
+			<label><input type="checkbox" name="show_near_cart" value="1" <?php checked( ! empty( $settings['show_near_cart'] ) ); ?>> دکمه کمکی کنار سبد، دکمه خرید و ادامه تسویه (نه داخل باکس درگاه)</label>
 			<label><input type="checkbox" name="show_floating" value="1" <?php checked( $settings['show_floating'] ); ?>> دکمه شناور</label>
 			<label><input type="checkbox" name="require_description" value="1" <?php checked( $settings['require_description'] ); ?>> نوشتن شرح خطا اجباری باشد</label>
 		</fieldset>

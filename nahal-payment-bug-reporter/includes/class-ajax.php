@@ -75,7 +75,11 @@ class NPBR_Ajax {
 		if ( ! $normalized['ok'] ) {
 			return new WP_Error( 'npbr_bad', $normalized['error'] );
 		}
-		return $normalized['data'];
+		$data = $normalized['data'];
+		if ( class_exists( 'NPBR_Customer', false ) ) {
+			$data = NPBR_Customer::merge_into( $data );
+		}
+		return $data;
 	}
 
 	public function submit() {
@@ -111,6 +115,9 @@ class NPBR_Ajax {
 		update_post_meta( $id, '_npbr_summary', NPBR_Report::summary( $data ) );
 		update_post_meta( $id, '_npbr_failed_count', count( $data['failed'] ) );
 		update_post_meta( $id, '_npbr_ip', $this->ip() );
+		if ( ! empty( $data['phone'] ) ) {
+			update_post_meta( $id, '_npbr_phone', $data['phone'] );
+		}
 
 		if ( $data['screenshot'] ) {
 			$attach = $this->store_screenshot( $id, $data['screenshot'] );

@@ -27,6 +27,8 @@ npbr_assert( false === strpos( NPBR_Sanitizer::redact_secrets( 'cvv:123' ), '123
 npbr_assert( false !== strpos( NPBR_Sanitizer::redact_secrets( 'password=secret99' ), '[REDACTED]' ), 'redact password' );
 npbr_assert( NPBR_Sanitizer::phone( '0912-345-6789' ) === '09123456789', 'phone digits' );
 npbr_assert( NPBR_Sanitizer::is_payment_asset( 'https://nahal.website/wp-content/plugins/digipay/checkout.js' ), 'digipay is payment' );
+npbr_assert( NPBR_Sanitizer::is_payment_asset( 'https://nahal.website/wp-content/plugins/woocommerce/assets/js/frontend/cart-fragments.min.js' ), 'cart-fragments is journey asset' );
+npbr_assert( NPBR_Sanitizer::is_payment_asset( 'https://nahal.website/?add-to-cart=12' ), 'add-to-cart is journey asset' );
 npbr_assert( ! NPBR_Sanitizer::is_payment_asset( 'https://nahal.website/wp-content/themes/studiare/style.css' ), 'theme css is not payment' );
 
 echo "== Failed resources ==\n";
@@ -60,7 +62,33 @@ $ok   = NPBR_Sanitizer::normalize_payload(
 	array(
 		'note'       => "فیلدهای کارت دیجی‌پی لود نشد.\nصفحه سفید ماند.",
 		'name'       => 'علی',
+		'lastName'   => 'محمدی',
 		'phone'      => '09120000000',
+		'device'     => array(
+			'label'     => 'اندروید (موبایل)',
+			'userAgent' => 'Mozilla/5.0',
+			'viewport'  => '390x844',
+			'screen'    => '390x844',
+			'touch'     => true,
+			'connection'=> '4g',
+		),
+		'customer'   => array(
+			'loggedIn'  => true,
+			'firstName' => 'علی',
+			'lastName'  => 'محمدی',
+			'phone'     => '09120000000',
+			'login'     => '09120000000',
+			'orders'    => array(
+				array(
+					'id'     => '101',
+					'number' => '101',
+					'status' => 'completed',
+					'total'  => '۱٬۹۹۰٬۰۰۰ تومان',
+					'date'   => '2026-10-01 12:00',
+					'items'  => 'دوره لگو × 1',
+				),
+			),
+		),
 		'pageUrl'    => 'https://nahal.website/checkout/',
 		'pageTitle'  => 'پرداخت',
 		'userAgent'  => 'Mozilla/5.0',
@@ -78,6 +106,7 @@ $ok   = NPBR_Sanitizer::normalize_payload(
 			'foundPaymentBox' => true,
 			'emptyBox'        => true,
 			'noMethods'       => true,
+			'pageKind'        => 'checkout',
 			'checkoutType'    => 'course',
 			'methods'         => array(),
 			'fields'          => array(),
@@ -98,6 +127,9 @@ npbr_assert( '' === $bad_shot, 'rejects non-image data uri' );
 echo "== Report ==\n";
 $html = NPBR_Report::html( $ok['data'] );
 npbr_assert( false !== strpos( $html, 'فیلدهای کارت' ), 'html has note' );
+npbr_assert( false !== strpos( $html, '09120000000' ), 'html has contact phone' );
+npbr_assert( false !== strpos( $html, 'محمدی' ), 'html has family name' );
+npbr_assert( false !== strpos( $html, 'اندروید' ), 'html has device' );
 npbr_assert( false !== strpos( $html, 'checkout.min.js' ), 'html has failed url' );
 npbr_assert( false !== strpos( $html, '<img class="shot"' ), 'html embeds screenshot' );
 npbr_assert( false === strpos( $html, '<script>' ), 'html has no script' );
@@ -116,6 +148,8 @@ npbr_assert( false !== strpos( $prompt, 'checkout.min.js' ), 'prompt has failed 
 npbr_assert( false !== strpos( $prompt, 'screenshot' ), 'prompt mentions screenshot' );
 npbr_assert( false !== strpos( $prompt, 'ایجنت' ), 'prompt is for an agent' );
 npbr_assert( false !== strpos( $prompt, 'nahal.website' ), 'prompt names the site' );
+npbr_assert( false !== strpos( $prompt, '09120000000' ), 'prompt has phone' );
+npbr_assert( false !== strpos( $prompt, 'تماس با کاربر' ), 'prompt has contact block' );
 npbr_assert( false === strpos( $prompt, '<script>' ), 'prompt has no html script' );
 
 echo "== Vital auto report ==\n";
@@ -128,6 +162,38 @@ $listed = NPBR_Report::listed_note( $ok['data'] );
 npbr_assert( false !== strpos( $listed, 'فهرست المان' ), 'listed heading' );
 npbr_assert( false !== strpos( $listed, 'checkout.min.js' ), 'listed has failed url' );
 npbr_assert( false === strpos( $listed, 'پرامپت آماده برای ایجنت' ), 'listed note does not nest prompt' );
+npbr_assert( false !== strpos( $listed, '09120000000' ), 'listed has phone' );
+npbr_assert( false !== strpos( $listed, 'محمدی' ), 'listed has family name' );
+npbr_assert( false !== strpos( $listed, 'اندروید' ), 'listed has device' );
+npbr_assert( false !== strpos( $listed, 'دوره لگو' ), 'listed has previous order' );
+
+$shop_page = array(
+	'payment' => array(
+		'pageKind'        => 'product',
+		'foundPaymentBox' => false,
+		'emptyBox'        => true,
+		'noMethods'       => true,
+	),
+	'failed'  => array(),
+);
+npbr_assert( 0 === count( NPBR_Report::vital_failures( $shop_page ) ), 'missing payment box is not vital on product page' );
+
+$dev = NPBR_Sanitizer::device( array( 'label' => 'آیفون', 'userAgent' => 'Mozilla/5.0 iPhone', 'touch' => true ) );
+npbr_assert( 'آیفون' === $dev['label'], 'device label kept' );
+npbr_assert( ! empty( $dev['touch'] ), 'device touch kept' );
+$cust = NPBR_Sanitizer::customer(
+	array(
+		'loggedIn'  => true,
+		'firstName' => 'سارا',
+		'lastName'  => 'رضایی',
+		'phone'     => '0912-111-2233',
+		'orders'    => array( array( 'id' => '9', 'number' => '9', 'status' => 'processing', 'total' => '10', 'items' => 'کتاب' ) ),
+	)
+);
+npbr_assert( 'سارا' === $cust['firstName'], 'customer first name' );
+npbr_assert( 'رضایی' === $cust['lastName'], 'customer last name' );
+npbr_assert( '09121112233' === $cust['phone'], 'customer phone digits' );
+npbr_assert( 1 === count( $cust['orders'] ), 'customer orders kept' );
 
 $auto_ok = NPBR_Sanitizer::normalize_payload(
 	array(
@@ -184,6 +250,8 @@ $tg = NPBR_Telegram::text( $ok['data'] );
 npbr_assert( false !== strpos( $tg, 'فیلدهای کارت' ), 'telegram includes note' );
 npbr_assert( false !== strpos( $tg, 'checkout.min.js' ), 'telegram includes failed url' );
 npbr_assert( false !== strpos( $tg, 'کنسول' ), 'telegram has console section' );
+npbr_assert( false !== strpos( $tg, '09120000000' ), 'telegram has phone' );
+npbr_assert( false !== strpos( $tg, 'محمدی' ), 'telegram has family name' );
 npbr_assert( false === NPBR_Telegram::enabled(), 'telegram disabled without settings' );
 
 echo "== Telegram filter bypass ==\n";

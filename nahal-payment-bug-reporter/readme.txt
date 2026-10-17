@@ -3,7 +3,7 @@ Contributors: nahal
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. از منوی «خطای پرداخت» ایمیل مدیر را بگذارید.
 
 == Changelog ==
+
+= 1.0.7 =
+* نمایش در کل سایت با تمرکز روی فروشگاه، محصول، سبد خرید، دکمه خرید و مسیر تا درگاه. گزارش شامل دستگاه، نام، فامیلی، موبایل لاگین و خریدهای قبلی است.
 
 = 1.0.6 =
 * دکمه داخل باکس پرداخت برداشته شد. اگر المان حیاتی لود نشود، گزارش فهرست‌شده همراه پرامپت ایجنت خودکار برای مدیر می‌رود.

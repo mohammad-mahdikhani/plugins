@@ -208,13 +208,17 @@ class NPBR_Sanitizer {
 			);
 		}
 		return array(
-			'foundPaymentBox' => ! empty( $data['foundPaymentBox'] ),
-			'emptyBox'        => ! empty( $data['emptyBox'] ),
-			'noMethods'       => ! empty( $data['noMethods'] ),
-			'checkoutType'    => self::text( isset( $data['checkoutType'] ) ? $data['checkoutType'] : '', 40 ),
-			'bodyClasses'     => self::text( isset( $data['bodyClasses'] ) ? $data['bodyClasses'] : '', 400 ),
-			'methods'         => $methods,
-			'fields'          => $fields,
+			'foundPaymentBox'  => ! empty( $data['foundPaymentBox'] ),
+			'emptyBox'         => ! empty( $data['emptyBox'] ),
+			'noMethods'        => ! empty( $data['noMethods'] ),
+			'foundCart'        => ! empty( $data['foundCart'] ),
+			'foundAddToCart'   => ! empty( $data['foundAddToCart'] ),
+			'foundCheckoutBtn' => ! empty( $data['foundCheckoutBtn'] ),
+			'pageKind'         => self::text( isset( $data['pageKind'] ) ? $data['pageKind'] : '', 24 ),
+			'checkoutType'     => self::text( isset( $data['checkoutType'] ) ? $data['checkoutType'] : '', 40 ),
+			'bodyClasses'      => self::text( isset( $data['bodyClasses'] ) ? $data['bodyClasses'] : '', 400 ),
+			'methods'          => $methods,
+			'fields'           => $fields,
 		);
 	}
 
@@ -265,6 +269,13 @@ class NPBR_Sanitizer {
 			'woocommerce/assets/js/frontend/checkout',
 			'wc-checkout',
 			'order-pay',
+			'add-to-cart',
+			'cart-fragments',
+			'wc-cart',
+			'wc-add-to-cart',
+			'single-product',
+			'woocommerce/assets/js/frontend/cart',
+			'update_cart',
 		);
 		foreach ( $needles as $needle ) {
 			if ( false !== strpos( $haystack, $needle ) ) {
@@ -291,11 +302,14 @@ class NPBR_Sanitizer {
 		$data = array(
 			'note'        => $note,
 			'name'        => self::text( isset( $payload['name'] ) ? $payload['name'] : '', self::MAX_NAME ),
+			'lastName'    => self::text( isset( $payload['lastName'] ) ? $payload['lastName'] : '', self::MAX_NAME ),
 			'phone'       => self::phone( isset( $payload['phone'] ) ? $payload['phone'] : '' ),
 			'pageUrl'     => $page_url,
 			'pageTitle'   => self::text( isset( $payload['pageTitle'] ) ? $payload['pageTitle'] : '', 180 ),
 			'userAgent'   => self::text( isset( $payload['userAgent'] ) ? $payload['userAgent'] : '', 240 ),
 			'viewport'    => self::text( isset( $payload['viewport'] ) ? $payload['viewport'] : '', 40 ),
+			'device'      => self::device( isset( $payload['device'] ) ? $payload['device'] : array() ),
+			'customer'    => self::customer( isset( $payload['customer'] ) ? $payload['customer'] : array() ),
 			'online'      => ! empty( $payload['online'] ),
 			'failed'      => $failed,
 			'errors'      => $errors,
@@ -333,9 +347,69 @@ class NPBR_Sanitizer {
 	}
 
 	/**
-	 * @param mixed $value Value.
-	 * @return string
+	 * @param mixed $raw Device payload.
+	 * @return array<string, mixed>
 	 */
+	public static function device( $raw ) {
+		if ( ! is_array( $raw ) ) {
+			$raw = array();
+		}
+		return array(
+			'label'          => self::text( isset( $raw['label'] ) ? $raw['label'] : '', 80 ),
+			'userAgent'      => self::text( isset( $raw['userAgent'] ) ? $raw['userAgent'] : '', 240 ),
+			'platform'       => self::text( isset( $raw['platform'] ) ? $raw['platform'] : '', 80 ),
+			'vendor'         => self::text( isset( $raw['vendor'] ) ? $raw['vendor'] : '', 80 ),
+			'language'       => self::text( isset( $raw['language'] ) ? $raw['language'] : '', 24 ),
+			'touch'          => ! empty( $raw['touch'] ),
+			'maxTouchPoints' => (int) ( isset( $raw['maxTouchPoints'] ) ? $raw['maxTouchPoints'] : 0 ),
+			'screen'         => self::text( isset( $raw['screen'] ) ? $raw['screen'] : '', 40 ),
+			'viewport'       => self::text( isset( $raw['viewport'] ) ? $raw['viewport'] : '', 40 ),
+			'pixelRatio'     => self::text( isset( $raw['pixelRatio'] ) ? $raw['pixelRatio'] : '', 12 ),
+			'connection'     => self::text( isset( $raw['connection'] ) ? $raw['connection'] : '', 24 ),
+			'downlink'       => self::text( isset( $raw['downlink'] ) ? $raw['downlink'] : '', 12 ),
+		);
+	}
+
+	/**
+	 * @param mixed $raw Customer payload.
+	 * @return array<string, mixed>
+	 */
+	public static function customer( $raw ) {
+		if ( ! is_array( $raw ) ) {
+			$raw = array();
+		}
+		$orders = array();
+		if ( isset( $raw['orders'] ) && is_array( $raw['orders'] ) ) {
+			foreach ( $raw['orders'] as $row ) {
+				if ( count( $orders ) >= 8 ) {
+					break;
+				}
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$orders[] = array(
+					'id'     => self::text( isset( $row['id'] ) ? $row['id'] : '', 16 ),
+					'number' => self::text( isset( $row['number'] ) ? $row['number'] : '', 24 ),
+					'status' => self::text( isset( $row['status'] ) ? $row['status'] : '', 32 ),
+					'total'  => self::text( isset( $row['total'] ) ? $row['total'] : '', 40 ),
+					'date'   => self::text( isset( $row['date'] ) ? $row['date'] : '', 40 ),
+					'items'  => self::text( isset( $row['items'] ) ? $row['items'] : '', 240 ),
+				);
+			}
+		}
+		return array(
+			'loggedIn'    => ! empty( $raw['loggedIn'] ),
+			'userId'      => (int) ( isset( $raw['userId'] ) ? $raw['userId'] : 0 ),
+			'login'       => self::text( isset( $raw['login'] ) ? $raw['login'] : '', 60 ),
+			'email'       => self::text( isset( $raw['email'] ) ? $raw['email'] : '', 120 ),
+			'firstName'   => self::text( isset( $raw['firstName'] ) ? $raw['firstName'] : '', self::MAX_NAME ),
+			'lastName'    => self::text( isset( $raw['lastName'] ) ? $raw['lastName'] : '', self::MAX_NAME ),
+			'displayName' => self::text( isset( $raw['displayName'] ) ? $raw['displayName'] : '', 80 ),
+			'phone'       => self::phone( isset( $raw['phone'] ) ? $raw['phone'] : '' ),
+			'orders'      => $orders,
+		);
+	}
+
 	private static function as_string( $value ) {
 		if ( is_bool( $value ) || is_int( $value ) || is_float( $value ) ) {
 			return (string) $value;

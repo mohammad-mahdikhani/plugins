@@ -59,9 +59,13 @@ class NPBR_Plugin {
 			'manager_email'       => '',
 			'show_on_checkout'    => true,
 			'show_on_order_pay'   => true,
-			'show_on_cart'        => false,
+			'show_on_cart'        => true,
+			'show_on_shop'        => true,
+			'show_on_product'     => true,
 			'show_on_thankyou'    => true,
+			'show_sitewide'       => true,
 			'show_near_payment'   => false,
+			'show_near_cart'      => true,
 			'show_floating'       => true,
 			'require_description' => true,
 			'button_label'        => 'گزارش خطا',
@@ -82,7 +86,7 @@ class NPBR_Plugin {
 			$stored = array();
 		}
 		$merged = array_merge( self::defaults(), $stored );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_thankyou', 'show_near_payment', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email']      = sanitize_email( (string) $merged['manager_email'] );
@@ -101,7 +105,7 @@ class NPBR_Plugin {
 	public static function save_settings( array $settings ) {
 		$current = self::settings();
 		$merged  = array_merge( $current, $settings );
-		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_thankyou', 'show_near_payment', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
+		foreach ( array( 'show_on_checkout', 'show_on_order_pay', 'show_on_cart', 'show_on_shop', 'show_on_product', 'show_on_thankyou', 'show_sitewide', 'show_near_payment', 'show_near_cart', 'show_floating', 'require_description', 'telegram_enabled' ) as $bool ) {
 			$merged[ $bool ] = ! empty( $merged[ $bool ] );
 		}
 		$merged['manager_email'] = sanitize_email( isset( $merged['manager_email'] ) ? (string) $merged['manager_email'] : '' );

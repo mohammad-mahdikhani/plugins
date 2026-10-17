@@ -26,7 +26,102 @@
 
 	function isPaymentUrl(url) {
 		var u = String(url || '').toLowerCase();
-		return /payment|checkout|gateway|digipay|zarinpal|shaparak|zibal|idpay|nextpay|payping|saman|mellat|parsian|sadad|wc-checkout|order-pay/.test(u);
+		return /payment|checkout|gateway|digipay|zarinpal|shaparak|zibal|idpay|nextpay|payping|saman|mellat|parsian|sadad|wc-checkout|order-pay|add-to-cart|cart-fragments|wc-cart|wc-add-to-cart|single-product|update_cart|\/cart(\/|\?|$)/.test(u);
+	}
+
+	function pageKind() {
+		if (cfg.pageKind) {
+			return cfg.pageKind;
+		}
+		var b = document.body.className || '';
+		if (/\bwoocommerce-order-pay\b/.test(b)) {
+			return 'order-pay';
+		}
+		if (/\bwoocommerce-checkout\b/.test(b) || /\bcheckout-dore\b|\bcheckout-eyvand\b|\bcheckout-ordoo\b|\bcheckout-mahsool\b/.test(b)) {
+			return 'checkout';
+		}
+		if (/\bwoocommerce-cart\b/.test(b)) {
+			return 'cart';
+		}
+		if (/\bsingle-product\b/.test(b)) {
+			return 'product';
+		}
+		if (/\bpost-type-archive-product\b|\bwoocommerce-shop\b|\btax-product_cat\b/.test(b)) {
+			return 'shop';
+		}
+		return 'other';
+	}
+
+	function deviceInfo() {
+		var ua = navigator.userAgent || '';
+		var label = 'نامشخص';
+		if (/iPhone|iPad|iPod/i.test(ua)) {
+			label = /iPad/i.test(ua) ? 'آیپد' : 'آیفون';
+		} else if (/Android/i.test(ua)) {
+			label = 'اندروید';
+		} else if (/Windows/i.test(ua)) {
+			label = 'ویندوز';
+		} else if (/Mac OS X|Macintosh/i.test(ua)) {
+			label = 'مک';
+		} else if (/Linux/i.test(ua)) {
+			label = 'لینوکس';
+		}
+		if (/Mobile/i.test(ua) && label !== 'آیفون') {
+			label += ' (موبایل)';
+		}
+		var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+		return {
+			label: label,
+			userAgent: ua,
+			platform: navigator.platform || '',
+			vendor: navigator.vendor || '',
+			language: navigator.language || document.documentElement.lang || '',
+			touch: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0),
+			maxTouchPoints: navigator.maxTouchPoints || 0,
+			screen: (window.screen ? (screen.width + 'x' + screen.height) : ''),
+			viewport: window.innerWidth + 'x' + window.innerHeight,
+			pixelRatio: String(window.devicePixelRatio || 1),
+			connection: conn ? String(conn.effectiveType || conn.type || '') : '',
+			downlink: conn && conn.downlink != null ? String(conn.downlink) : '',
+		};
+	}
+
+	function customerSnapshot() {
+		var preview = cfg.customer || {};
+		return {
+			loggedIn: !!preview.loggedIn,
+			firstName: ($('#npbr-name') && $('#npbr-name').value) || preview.firstName || '',
+			lastName: ($('#npbr-last') && $('#npbr-last').value) || preview.lastName || '',
+			displayName: preview.displayName || '',
+			phone: ($('#npbr-phone') && $('#npbr-phone').value) || preview.phone || '',
+			orders: [],
+		};
+	}
+
+	function contactLines(data) {
+		var c = data.customer || {};
+		var d = data.device || {};
+		var first = c.firstName || '';
+		var last = c.lastName || data.lastName || '';
+		var phone = c.phone || data.phone || '';
+		var lines = [
+			'تماس با کاربر (برای راهنمایی تلفنی):',
+			'نام: ' + (first || '—'),
+			'نام خانوادگی: ' + (last || '—'),
+			'موبایل لاگین/صورتحساب: ' + (phone || '—'),
+			'وضعیت ورود: ' + (c.loggedIn ? 'وارد شده' : 'مهمان'),
+			'دستگاه: ' + (d.label || 'نامشخص') + (d.touch ? ' — لمسی' : '') + (d.viewport ? ' — صفحه ' + d.viewport : '') + (d.screen ? ' — نمایشگر ' + d.screen : '') + (d.connection ? ' — شبکه ' + d.connection : ''),
+			'مرورگر: ' + (d.userAgent || data.userAgent || '—'),
+		];
+		if (c.orders && c.orders.length) {
+			lines.push('خریدهای قبلی (' + c.orders.length + '):');
+			c.orders.forEach(function (row, i) {
+				lines.push((i + 1) + '. #' + (row.number || row.id || '') + ' — ' + (row.status || '') + ' — ' + (row.total || '') + ' — ' + (row.date || '') + (row.items ? ' — ' + row.items : ''));
+			});
+		} else {
+			lines.push('خرید قبلی در حساب ثبت نشده.');
+		}
+		return lines;
 	}
 
 	function visible(el) {
@@ -74,6 +169,15 @@
 		}
 		if (/\bwoocommerce-checkout\b/.test(b)) {
 			return 'checkout';
+		}
+		if (/\bwoocommerce-cart\b/.test(b)) {
+			return 'cart';
+		}
+		if (/\bsingle-product\b/.test(b)) {
+			return 'single-product';
+		}
+		if (/\bwoocommerce-shop\b|\bpost-type-archive-product\b/.test(b)) {
+			return 'shop';
 		}
 		return 'other';
 	}
@@ -226,6 +330,10 @@
 			foundPaymentBox: !!box,
 			emptyBox: emptyBox,
 			noMethods: uniq.length === 0,
+			foundCart: !!document.querySelector('.woocommerce-cart-form, form.woocommerce-cart-form, table.shop_table.cart, .cart_totals'),
+			foundAddToCart: !!document.querySelector('.single_add_to_cart_button, button[name="add-to-cart"], .ajax_add_to_cart, .add_to_cart_button'),
+			foundCheckoutBtn: !!document.querySelector('.checkout-button, a.checkout-button, .wc-proceed-to-checkout a, #place_order'),
+			pageKind: pageKind(),
 			checkoutType: checkoutType(),
 			bodyClasses: (document.body.className || '').slice(0, 400),
 			methods: uniq,
@@ -247,12 +355,14 @@
 	function vitalIssues(data) {
 		var issues = [];
 		var p = data.payment || {};
-		if (!p.foundPaymentBox) {
+		var kind = (p.pageKind || pageKind());
+		var payPage = kind === 'checkout' || kind === 'order-pay';
+		if (payPage && !p.foundPaymentBox) {
 			issues.push({ title: 'باکس پرداخت (#payment) در صفحه پیدا نشد', status: 'missing', url: '' });
 		}
-		if (p.emptyBox && p.noMethods) {
+		if (payPage && p.emptyBox && p.noMethods) {
 			issues.push({ title: 'باکس پرداخت خالی است و هیچ روش پرداختی لود نشده', status: 'empty', url: '' });
-		} else if (p.noMethods) {
+		} else if (payPage && p.noMethods) {
 			issues.push({ title: 'هیچ روش پرداختی در صفحه دیده نشد', status: 'no-methods', url: '' });
 		}
 		var seen = {};
@@ -283,14 +393,17 @@
 	function listedNote(data, issues) {
 		issues = issues || vitalIssues(data);
 		var lines = [
-			'گزارش خودکار — المان حیاتی صفحه پرداخت لود نشد',
+			'گزارش خودکار — المان حیاتی مسیر خرید/پرداخت لود نشد',
 			'',
 			'صفحه: ' + (data.pageTitle || '—'),
 			'نشانی: ' + (data.pageUrl || '—'),
 			'زمان: ' + (data.capturedAt || '—'),
+			'مسیر خرید: ' + ((data.payment && data.payment.pageKind) || pageKind()),
+			'',
+		].concat(contactLines(data)).concat([
 			'',
 			'فهرست المان‌های حیاتی:',
-		];
+		]);
 		if (!issues.length) {
 			lines.push('مورد حیاتی جداگانه‌ای ثبت نشد.');
 		} else {
@@ -312,18 +425,23 @@
 		failed.forEach(function (row) {
 			row.payment = !!row.payment || isPaymentUrl(row.url) || isPaymentUrl(row.id);
 		});
+		var cust = customerSnapshot();
+		var device = deviceInfo();
 		return {
 			note: ($('#npbr-note') && $('#npbr-note').value) || '',
-			name: ($('#npbr-name') && $('#npbr-name').value) || '',
-			phone: ($('#npbr-phone') && $('#npbr-phone').value) || '',
+			name: ($('#npbr-name') && $('#npbr-name').value) || cust.firstName || '',
+			lastName: ($('#npbr-last') && $('#npbr-last').value) || cust.lastName || '',
+			phone: ($('#npbr-phone') && $('#npbr-phone').value) || cust.phone || '',
 			pageUrl: location.href,
 			pageTitle: document.title || '',
 			userAgent: navigator.userAgent || '',
-			viewport: window.innerWidth + 'x' + window.innerHeight,
+			viewport: device.viewport,
 			online: navigator.onLine !== false,
 			failed: failed,
 			errors: buf.errors.slice(),
 			payment: inspectPayment(),
+			device: device,
+			customer: cust,
 			capturedAt: new Date().toISOString(),
 		};
 	}
@@ -581,18 +699,19 @@
 			flags.push('روش پرداختی لود نشد');
 		}
 		var lines = [
-			'تو یک ایجنت برنامه‌نویس هستی. کاربر در صفحه پرداخت سایت nahal.website به مشکل خورده.',
+			'تو یک ایجنت برنامه‌نویس هستی. کاربر در مسیر خرید سایت nahal.website (فروشگاه، محصول، سبد، تسویه یا درگاه) به مشکل خورده.',
 			'این گزارش را همراه اسکرین‌شات همان صفحه بررسی کن، علت را پیدا کن و اصلاح مشخص بده.',
 			'',
 			'## نقش و زمینه',
 			'- سایت: nahal.website — وردپرس + ووکامرس + درگاه دیجی‌پی',
 			'- صفحات سفارشی تسویه: checkout-dore (دوره) / checkout-eyvand (ایونت) / checkout-ordoo (اردو) / checkout-mahsool (محصول)',
-			'- تمرکز: فیلدهای کارت/پرداخت، اسکریپت و استایل لودنشده، خطاهای کنسول، ظاهر صفحه در اسکرین',
+			'- تمرکز: سبد خرید، دکمه خرید، فروشگاه، صفحه محصول، فیلدهای کارت/پرداخت، اسکریپت لودنشده، کنسول',
 			'- کارت، CVV و رمز در گزارش ماسک شده‌اند؛ دنبال نشت اطلاعات پرداخت نباش',
 			'',
 			'## صفحه‌ای که در آن به مشکل خورده',
 			'- عنوان: ' + (data.pageTitle || '—'),
 			'- نشانی: ' + (data.pageUrl || '—'),
+			'- مسیر خرید: ' + (p.pageKind || pageKind()),
 			'- زمان ثبت: ' + (data.capturedAt || '—'),
 			'- مرورگر: ' + (data.userAgent || '—'),
 			'- ابعاد صفحه: ' + (data.viewport || '—'),
@@ -602,7 +721,7 @@
 		if (p.bodyClasses) {
 			lines.push('- کلاس‌های body: ' + p.bodyClasses);
 		}
-		lines = lines.concat([
+		lines = lines.concat(['']).concat(contactLines(data)).concat([
 			'',
 			'## شرح خطایی که کاربر نوشته',
 			String(data.note || '').trim() || '(کاربر شرحی ننوشت)',
@@ -676,7 +795,7 @@
 			'<h1>گزارش خطای پرداخت نهال</h1>' +
 			'<p>' + escapeHtml(data.pageTitle) + '<br dir="ltr">' + escapeHtml(data.pageUrl) + '<br>' + escapeHtml(data.capturedAt) + '</p>' +
 			'<h2>شرح کاربر</h2><pre>' + escapeHtml(data.note) + '</pre>' +
-			'<p>نام: ' + escapeHtml(data.name || '—') + ' — موبایل: ' + escapeHtml(data.phone || '—') + '</p>' +
+			'<h2>تماس با کاربر</h2><pre>' + escapeHtml(contactLines(data).join('\n')) + '</pre>' +
 			'<h2>کدهای لودنشده</h2><table border="1" cellpadding="6">' + failed + '</table>' +
 			'<h2>خطاهای اسکریپت</h2><table border="1" cellpadding="6">' + errors + '</table>' +
 			'<h2>اسکرین‌شات</h2>' + shot +
@@ -972,12 +1091,78 @@
 		});
 	}
 
+	function journeyReady() {
+		var kind = pageKind();
+		if (kind === 'checkout' || kind === 'order-pay') {
+			return document.querySelectorAll('.wc_payment_method, input[name="payment_method"]').length > 0;
+		}
+		if (kind === 'cart') {
+			return !!document.querySelector('.woocommerce-cart-form, .cart_totals, .cart-empty, .wc-empty-cart-message');
+		}
+		if (kind === 'product') {
+			return !!document.querySelector('.single_add_to_cart_button, form.cart, .product');
+		}
+		if (kind === 'shop') {
+			return !!document.querySelector('.products, ul.products, .woocommerce-result-count');
+		}
+		return true;
+	}
+
+	function mountJourneyHints() {
+		if (cfg.showNearCart === false) {
+			return;
+		}
+		$all('.npbr-hint-btn').forEach(function (el) {
+			if (el && el.parentNode) {
+				el.parentNode.removeChild(el);
+			}
+		});
+		var label = cfg.buttonLabel || 'گزارش خطا';
+		var selectors = [
+			'.wc-proceed-to-checkout',
+			'button[name="update_cart"]',
+			'.single_add_to_cart_button',
+			'button[name="add-to-cart"]',
+			'.checkout-button',
+		];
+		var seen = [];
+		selectors.forEach(function (sel) {
+			$all(sel).forEach(function (el) {
+				if (!el || el.closest && el.closest('#payment')) {
+					return;
+				}
+				if (!el.parentNode) {
+					return;
+				}
+				if (sel === '.checkout-button' && el.closest && el.closest('.wc-proceed-to-checkout')) {
+					return;
+				}
+				if (sel === 'button[name="add-to-cart"]' && el.classList && el.classList.contains('single_add_to_cart_button')) {
+					return;
+				}
+				if (seen.indexOf(el) !== -1) {
+					return;
+				}
+				seen.push(el);
+				var btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'npbr-hint-btn';
+				btn.setAttribute('data-npbr-open', '1');
+				btn.textContent = label;
+				if (el.nextSibling) {
+					el.parentNode.insertBefore(btn, el.nextSibling);
+				} else {
+					el.parentNode.appendChild(btn);
+				}
+			});
+		});
+	}
+
 	function scheduleAuto() {
 		var tries = 0;
 		function tick() {
 			tries += 1;
-			var methods = document.querySelectorAll('.wc_payment_method, input[name="payment_method"]');
-			if (methods.length || tries >= 8) {
+			if (journeyReady() || tries >= 8) {
 				maybeAutoReport();
 				return;
 			}
@@ -1009,6 +1194,17 @@
 				fab.hidden = true;
 			}
 		}
+		var cust = cfg.customer || {};
+		if ($('#npbr-name') && cust.firstName && !$('#npbr-name').value) {
+			$('#npbr-name').value = cust.firstName;
+		}
+		if ($('#npbr-last') && cust.lastName && !$('#npbr-last').value) {
+			$('#npbr-last').value = cust.lastName;
+		}
+		if ($('#npbr-phone') && cust.phone && !$('#npbr-phone').value) {
+			$('#npbr-phone').value = cust.phone;
+		}
+		mountJourneyHints();
 		document.addEventListener('click', function (ev) {
 			var open = ev.target.closest && ev.target.closest('[data-npbr-open]');
 			if (open) {
@@ -1064,9 +1260,13 @@
 		});
 		removePaySlot();
 		setTimeout(removePaySlot, 1200);
+		setTimeout(mountJourneyHints, 1200);
 		scheduleAuto();
 		if (window.jQuery) {
-			window.jQuery(document.body).on('updated_checkout payment_method_selected', removePaySlot);
+			window.jQuery(document.body).on('updated_checkout payment_method_selected updated_cart_totals added_to_cart', function () {
+				removePaySlot();
+				mountJourneyHints();
+			});
 		}
 	}
 

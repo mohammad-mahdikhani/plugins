@@ -31,9 +31,12 @@
 			buttonLabel: 'گزارش خطا',
 			showFloating: true,
 			showNearPay: false,
+			showNearCart: true,
 			autoWatch: true,
+			pageKind: 'checkout',
 			requireNote: true,
-			site: 'https://nahal.website/'
+			site: 'https://nahal.website/',
+			customer: { loggedIn: true, firstName: 'علی', lastName: 'محمدی', displayName: 'علی محمدی', phone: '09120000000' }
 		};
 		console.error('Failed to load resource: the server responded with a status of 400 (https://trustseal.enamad.ir/logo.aspx?id=592152)');
 		fetch('./http-400.php');
@@ -84,11 +87,12 @@
 		<section class="npbr-modal" role="dialog" aria-modal="true" aria-labelledby="npbr-title" hidden>
 			<header class="npbr-head"><h2 id="npbr-title">گزارش خطای پرداخت</h2><button type="button" class="npbr-x" data-npbr-close aria-label="بستن">×</button></header>
 			<div class="npbr-body">
-				<p class="npbr-lead">اگر فیلد پرداخت، درگاه یا اسکریپت صفحه لود نشد، همین مورد را بنویسید. اسکرین صفحه، کدهای لودنشده و پرامپت آماده برای ایجنت هوش مصنوعی ساخته می‌شود.</p>
+				<p class="npbr-lead">اگر سبد خرید، دکمه خرید، فروشگاه، صفحه محصول یا درگاه پرداخت لود نشد، همین مورد را بنویسید.</p>
 				<label class="npbr-label" for="npbr-note">شرح خطا <span>*</span></label>
-				<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: فیلدهای کارت دیجی‌پی خالی ماند / دکمه پرداخت کار نکرد / صفحه سفید شد"></textarea>
-				<div class="npbr-grid">
+				<textarea id="npbr-note" class="npbr-note" rows="5" maxlength="4000" placeholder="مثلاً: سبد خرید خالی ماند / دکمه خرید کار نکرد / فیلدهای کارت لود نشد"></textarea>
+				<div class="npbr-grid npbr-grid-3">
 					<label>نام (اختیاری)<input type="text" id="npbr-name" maxlength="80"></label>
+					<label>نام خانوادگی (اختیاری)<input type="text" id="npbr-last" maxlength="80"></label>
 					<label>موبایل (اختیاری)<input type="tel" id="npbr-phone" maxlength="20" dir="ltr"></label>
 				</div>
 				<div id="npbr-diag" class="npbr-diag"></div>

@@ -87,6 +87,10 @@ namespace {
 		fwrite( STDERR, "post type not registered on init\n" );
 		exit( 1 );
 	}
+	if ( ! class_exists( 'NPBR_Customer', false ) ) {
+		fwrite( STDERR, "NPBR_Customer missing after include\n" );
+		exit( 1 );
+	}
 
 	echo "activate-stub OK\n";
 }

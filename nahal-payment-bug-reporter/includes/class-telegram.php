@@ -212,7 +212,11 @@ class NPBR_Telegram {
 		$lines[] = 'گزارش خطای پرداخت نهال';
 		$lines[] = '';
 		$lines[] = 'شرح: ' . ( isset( $data['note'] ) ? $data['note'] : '' );
-		if ( ! empty( $data['name'] ) || ! empty( $data['phone'] ) ) {
+		$lines[] = '';
+		if ( class_exists( 'NPBR_Report', false ) ) {
+			$lines = array_merge( $lines, NPBR_Report::contact_lines( $data ) );
+			$lines[] = '';
+		} elseif ( ! empty( $data['name'] ) || ! empty( $data['phone'] ) ) {
 			$lines[] = 'نام: ' . ( isset( $data['name'] ) && $data['name'] ? $data['name'] : '—' ) . ' — موبایل: ' . ( isset( $data['phone'] ) && $data['phone'] ? $data['phone'] : '—' );
 		}
 		$lines[] = 'صفحه: ' . ( isset( $data['pageUrl'] ) ? $data['pageUrl'] : '' );
