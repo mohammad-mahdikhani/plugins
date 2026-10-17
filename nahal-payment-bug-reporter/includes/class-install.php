@@ -15,19 +15,15 @@ class NPBR_Install {
 		if ( ! get_option( 'npbr_settings' ) ) {
 			add_option( 'npbr_settings', NPBR_Plugin::defaults() );
 		}
-		self::register_type();
-		flush_rewrite_rules( false );
 		update_option( 'npbr_version', NPBR_VERSION );
 	}
 
 	public static function deactivate() {
-		flush_rewrite_rules( false );
 	}
 
 	public static function maybe_upgrade() {
 		$stored = get_option( 'npbr_version' );
 		if ( $stored !== NPBR_VERSION ) {
-			self::register_type();
 			update_option( 'npbr_version', NPBR_VERSION );
 		}
 	}
@@ -41,8 +37,14 @@ class NPBR_Install {
 					'singular_name' => 'گزارش خطا',
 				),
 				'public'              => false,
+				'publicly_queryable'  => false,
 				'show_ui'             => false,
 				'show_in_menu'        => false,
+				'show_in_rest'        => false,
+				'exclude_from_search' => true,
+				'has_archive'         => false,
+				'rewrite'             => false,
+				'query_var'           => false,
 				'supports'            => array( 'title', 'editor' ),
 				'capability_type'     => 'post',
 			)

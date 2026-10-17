@@ -30,7 +30,7 @@ class NPBR_Plugin {
 	public function init() {
 		$this->wc_active = class_exists( 'WooCommerce' );
 		NPBR_Install::maybe_upgrade();
-		add_action( 'init', array( 'NPBR_Install', 'register_type' ) );
+		add_action( 'init', array( 'NPBR_Install', 'register_type' ), 5 );
 		NPBR_Frontend::instance()->init();
 		NPBR_Admin::instance()->init();
 		NPBR_Ajax::instance()->init();
