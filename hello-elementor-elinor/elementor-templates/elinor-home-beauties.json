@@ -1,0 +1,310 @@
+{
+  "title": "الینور — Beauties (Hello Elementor)",
+  "type": "page",
+  "version": "0.4",
+  "page_settings": {
+    "template": "elementor_canvas",
+    "hide_title": "yes"
+  },
+  "content": [
+    {
+      "id": "4f7e02f",
+      "elType": "container",
+      "isInner": false,
+      "settings": {
+        "content_width": "boxed",
+        "flex_direction": "row",
+        "flex_align_items": "center",
+        "flex_gap": {
+          "unit": "px",
+          "size": 32
+        },
+        "padding": {
+          "unit": "px",
+          "top": "56",
+          "right": "0",
+          "bottom": "56",
+          "left": "0"
+        },
+        "css_classes": "ebh-hero"
+      },
+      "elements": [
+        {
+          "id": "3604750",
+          "elType": "container",
+          "isInner": true,
+          "settings": {
+            "width": {
+              "unit": "%",
+              "size": 52
+            },
+            "flex_direction": "column",
+            "css_classes": "ebh-hero__content"
+          },
+          "elements": [
+            {
+              "id": "9d39ac7",
+              "elType": "widget",
+              "widgetType": "heading",
+              "settings": {
+                "title": "صورت شما <em>لایق</em> است تا <em>بیشتر بدرخشد</em>",
+                "header_size": "h1",
+                "align": "right"
+              },
+              "elements": []
+            },
+            {
+              "id": "3014144",
+              "elType": "widget",
+              "widgetType": "text-editor",
+              "settings": {
+                "editor": "<p>لوازم آرایشی و مراقبت پوست اورجینال با ارسال سریع؛ هر روز با محصولات الینور، هر جا بدرخشید.</p>",
+                "align": "right"
+              },
+              "elements": []
+            },
+            {
+              "id": "0645c6e",
+              "elType": "container",
+              "isInner": true,
+              "settings": {
+                "flex_direction": "row",
+                "flex_gap": {
+                  "unit": "px",
+                  "size": 12
+                }
+              },
+              "elements": [
+                {
+                  "id": "f874948",
+                  "elType": "widget",
+                  "widgetType": "button",
+                  "settings": {
+                    "text": "مشاهده فروشگاه",
+                    "link": {
+                      "url": "/shop/",
+                      "is_external": "",
+                      "nofollow": ""
+                    },
+                    "button_type": "default",
+                    "size": "md"
+                  },
+                  "elements": []
+                },
+                {
+                  "id": "d0867f4",
+                  "elType": "widget",
+                  "widgetType": "button",
+                  "settings": {
+                    "text": "پیشنهاد ویژه",
+                    "link": {
+                      "url": "#ebh-deal",
+                      "is_external": "",
+                      "nofollow": ""
+                    },
+                    "button_type": "outline",
+                    "size": "md"
+                  },
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "f9ba399",
+          "elType": "container",
+          "isInner": true,
+          "settings": {
+            "width": {
+              "unit": "%",
+              "size": 48
+            },
+            "css_classes": "ebh-hero__visual"
+          },
+          "elements": [
+            {
+              "id": "795a046",
+              "elType": "widget",
+              "widgetType": "image",
+              "settings": {
+                "image": {
+                  "url": "https://elinorstore.com/wp-content/uploads/2026/01/IMG_3467-2-1024x533.jpeg",
+                  "id": ""
+                },
+                "image_size": "full"
+              },
+              "elements": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "6b47add",
+      "elType": "container",
+      "isInner": false,
+      "settings": {
+        "content_width": "boxed",
+        "flex_direction": "column",
+        "padding": {
+          "unit": "px",
+          "top": "48",
+          "bottom": "48"
+        },
+        "css_classes": "ebh-section"
+      },
+      "elements": [
+        {
+          "id": "0e317f1",
+          "elType": "widget",
+          "widgetType": "heading",
+          "settings": {
+            "title": "کشف با دسته‌بندی‌ها",
+            "header_size": "h2",
+            "align": "center"
+          },
+          "elements": []
+        },
+        {
+          "id": "dde8cda",
+          "elType": "widget",
+          "widgetType": "shortcode",
+          "settings": {
+            "shortcode": "[product_categories number=\"4\" columns=\"4\" orderby=\"count\"]"
+          },
+          "elements": []
+        }
+      ]
+    },
+    {
+      "id": "8c9af7f",
+      "elType": "container",
+      "isInner": false,
+      "settings": {
+        "content_width": "boxed",
+        "flex_direction": "column",
+        "background_background": "classic",
+        "background_color": "#fbf9fd",
+        "padding": {
+          "unit": "px",
+          "top": "48",
+          "bottom": "48"
+        },
+        "css_classes": "ebh-section ebh-section--muted"
+      },
+      "elements": [
+        {
+          "id": "8bc7f76",
+          "elType": "widget",
+          "widgetType": "heading",
+          "settings": {
+            "title": "پرطرفدارترین محصولات",
+            "header_size": "h2",
+            "align": "center"
+          },
+          "elements": []
+        },
+        {
+          "id": "2b0a16d",
+          "elType": "widget",
+          "widgetType": "shortcode",
+          "settings": {
+            "shortcode": "[products limit=\"8\" columns=\"4\" orderby=\"date\"]"
+          },
+          "elements": []
+        },
+        {
+          "id": "1581280",
+          "elType": "widget",
+          "widgetType": "button",
+          "settings": {
+            "text": "مشاهده همه",
+            "align": "center",
+            "link": {
+              "url": "/shop/"
+            }
+          },
+          "elements": []
+        }
+      ]
+    },
+    {
+      "id": "254e15e",
+      "elType": "container",
+      "isInner": false,
+      "settings": {
+        "content_width": "boxed",
+        "flex_direction": "column",
+        "background_background": "classic",
+        "background_color": "#341555",
+        "padding": {
+          "unit": "px",
+          "top": "56",
+          "bottom": "56"
+        },
+        "css_classes": "ebh-deal",
+        "_element_id": "ebh-deal"
+      },
+      "elements": [
+        {
+          "id": "ef25dbf",
+          "elType": "widget",
+          "widgetType": "heading",
+          "settings": {
+            "title": "پیشنهاد ویژه امروز",
+            "header_size": "h2",
+            "align": "center",
+            "title_color": "#FFFFFF"
+          },
+          "elements": []
+        },
+        {
+          "id": "aff9611",
+          "elType": "widget",
+          "widgetType": "shortcode",
+          "settings": {
+            "shortcode": "[sale_products limit=\"1\" columns=\"1\"]"
+          },
+          "elements": []
+        }
+      ]
+    },
+    {
+      "id": "8764aae",
+      "elType": "container",
+      "isInner": false,
+      "settings": {
+        "content_width": "boxed",
+        "flex_direction": "column",
+        "padding": {
+          "unit": "px",
+          "top": "48",
+          "bottom": "48"
+        }
+      },
+      "elements": [
+        {
+          "id": "2ebf71e",
+          "elType": "widget",
+          "widgetType": "heading",
+          "settings": {
+            "title": "مجله زیبایی",
+            "header_size": "h2",
+            "align": "center"
+          },
+          "elements": []
+        },
+        {
+          "id": "c525b43",
+          "elType": "widget",
+          "widgetType": "shortcode",
+          "settings": {
+            "shortcode": "[recent_posts posts_per_page=\"4\"]"
+          },
+          "elements": []
+        }
+      ]
+    }
+  ]
+}
