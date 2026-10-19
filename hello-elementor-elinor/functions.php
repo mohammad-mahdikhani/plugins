@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('ELINOR_HELLO_VERSION', '1.1.0');
+define('ELINOR_HELLO_VERSION', '1.2.0');
 define('ELINOR_HELLO_PATH', get_stylesheet_directory());
 define('ELINOR_HELLO_URI', get_stylesheet_directory_uri());
 

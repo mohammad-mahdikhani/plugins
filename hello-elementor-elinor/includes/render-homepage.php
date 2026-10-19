@@ -40,7 +40,8 @@ function elinor_render_homepage(): string {
 	$products     = Elinor_Home_Data::get_featured_products(8);
 	$deal_product = Elinor_Home_Data::get_on_sale_products(1);
 	$deal         = $deal_product[0] ?? ($products[0] ?? null);
-	$categories   = Elinor_Home_Data::get_category_cards(4);
+	$categories   = Elinor_Home_Data::get_category_cards(8);
+	$mega_columns = Elinor_Home_Data::get_mega_menu_columns(6);
 	$posts        = Elinor_Home_Data::get_magazine_posts(4);
 
 	$shop_url    = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('shop') : home_url('/shop/');
@@ -93,7 +94,7 @@ function elinor_homepage_page_template(string $template): string {
 
 	$slug = get_page_template_slug();
 	if ($slug === 'page-templates/beauties-home.php') {
-		$custom = ELINOR_HELLO_PATH . 'page-templates/beauties-home.php';
+		$custom = ELINOR_HELLO_PATH . '/page-templates/beauties-home.php';
 		if (file_exists($custom)) {
 			return $custom;
 		}

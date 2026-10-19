@@ -1,15 +1,17 @@
 :root {
 	--ebh-primary: #341555;
-	--ebh-primary-dark: #26103d;
+	--ebh-primary-dark: #1c0a30;
 	--ebh-primary-soft: #f3eaf8;
-	--ebh-accent: #e8a0c8;
+	--ebh-accent: #c9a4e8;
 	--ebh-text: #2b2233;
 	--ebh-muted: #6b6474;
 	--ebh-border: #ece6f2;
 	--ebh-radius: 18px;
-	--ebh-shadow: 0 18px 50px rgba(52, 21, 85, 0.08);
+	--ebh-shadow: 0 18px 50px rgba(52, 21, 85, 0.14);
 	--ebh-font: "Vazirmatn", system-ui, sans-serif;
 	--ebh-display: "Playfair Display", "Vazirmatn", serif;
+	--ebh-glass: rgba(52, 21, 85, 0.42);
+	--ebh-glass-border: rgba(255, 255, 255, 0.22);
 }
 
 body.elinor-beauties-page {
@@ -77,57 +79,181 @@ body.elinor-beauties-page {
 	font-size: 0.85rem;
 }
 
+.ebh-topbar {
+	background: var(--ebh-primary);
+	color: #fff;
+	text-align: center;
+	font-size: 0.8rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 0.45rem 1rem;
+}
+
 .ebh-header {
 	position: sticky;
 	top: 0;
-	z-index: 50;
-	background: rgba(255, 255, 255, 0.92);
-	backdrop-filter: blur(12px);
-	border-bottom: 1px solid var(--ebh-border);
+	z-index: 80;
+	background: var(--ebh-glass);
+	backdrop-filter: blur(22px) saturate(180%);
+	-webkit-backdrop-filter: blur(22px) saturate(180%);
+	border-bottom: 1px solid var(--ebh-glass-border);
+	box-shadow: 0 10px 30px rgba(28, 10, 48, 0.18);
 }
 
 .ebh-header__inner {
+	position: relative;
 	display: grid;
 	grid-template-columns: auto 1fr auto auto;
 	align-items: center;
 	gap: 1rem;
-	padding: 0.9rem 0;
+	padding: 0.75rem 0;
+}
+
+.ebh-burger {
+	display: none;
+	flex-direction: column;
+	gap: 4px;
+	width: 40px;
+	height: 40px;
+	border: 1px solid var(--ebh-glass-border);
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 12px;
+	padding: 10px;
+	cursor: pointer;
+}
+
+.ebh-burger span {
+	display: block;
+	height: 2px;
+	background: #fff;
+	border-radius: 2px;
+}
+
+.ebh-logo {
+	background: rgba(255, 255, 255, 0.92);
+	border-radius: 14px;
+	padding: 0.2rem 0.45rem;
+	line-height: 0;
 }
 
 .ebh-logo img {
 	display: block;
-	height: 44px;
+	height: 40px;
 	width: auto;
 	object-fit: contain;
 }
 
 .ebh-nav {
 	display: flex;
-	gap: 1.25rem;
+	align-items: center;
+	gap: 0.35rem;
 	justify-content: center;
+	position: relative;
 }
 
-.ebh-nav a {
-	color: var(--ebh-text);
+.ebh-nav > a,
+.ebh-mega__trigger {
+	color: #fff;
 	text-decoration: none;
-	font-weight: 500;
+	font-weight: 600;
 	font-size: 0.95rem;
+	padding: 0.45rem 0.85rem;
+	border-radius: 999px;
 }
 
-.ebh-nav a:hover {
-	color: var(--ebh-primary);
+.ebh-nav > a:hover,
+.ebh-mega__trigger:hover,
+.ebh-mega:hover .ebh-mega__trigger {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.ebh-mega {
+	position: relative;
+}
+
+.ebh-mega__panel {
+	position: absolute;
+	top: calc(100% + 0.65rem);
+	right: 50%;
+	transform: translateX(50%) translateY(8px);
+	min-width: min(920px, 88vw);
+	padding: 1.25rem;
+	border-radius: 22px;
+	background: rgba(28, 10, 48, 0.72);
+	backdrop-filter: blur(24px) saturate(180%);
+	-webkit-backdrop-filter: blur(24px) saturate(180%);
+	border: 1px solid var(--ebh-glass-border);
+	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+	z-index: 90;
+}
+
+.ebh-mega:hover .ebh-mega__panel,
+.ebh-mega:focus-within .ebh-mega__panel,
+.ebh-mega.is-open .ebh-mega__panel {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(50%) translateY(0);
+}
+
+.ebh-mega__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 1rem 1.25rem;
+}
+
+.ebh-mega__title {
+	display: block;
+	color: #fff;
+	font-weight: 800;
+	margin-bottom: 0.45rem;
+	text-decoration: none;
+}
+
+.ebh-mega__col a {
+	display: block;
+	color: rgba(255, 255, 255, 0.86);
+	text-decoration: none;
+	font-size: 0.88rem;
+	padding: 0.18rem 0;
+}
+
+.ebh-mega__col a:hover {
+	color: #fff;
+}
+
+.ebh-mega__all {
+	display: inline-flex;
+	margin-top: 1rem;
+	color: #fff;
+	font-weight: 700;
+	text-decoration: none;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .ebh-search {
 	display: flex;
 	align-items: center;
-	background: #f8f5fb;
-	border: 1px solid var(--ebh-border);
+	background: rgba(255, 255, 255, 0.14);
+	border: 1px solid var(--ebh-glass-border);
 	border-radius: 999px;
 	padding: 0.35rem 0.35rem 0.35rem 1rem;
 	max-width: 360px;
 	width: 100%;
 	margin-inline: auto;
+	color: #fff;
+}
+
+.ebh-search input {
+	color: #fff;
+}
+
+.ebh-search input::placeholder {
+	color: rgba(255, 255, 255, 0.7);
 }
 
 .ebh-search input {
@@ -156,10 +282,115 @@ body.elinor-beauties-page {
 }
 
 .ebh-icon-btn {
-	color: var(--ebh-primary);
+	color: #fff;
 	text-decoration: none;
 	display: inline-flex;
 	padding: 0.35rem;
+}
+
+.ebh-slider {
+	position: relative;
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 85% 20%, rgba(201, 164, 232, 0.28), transparent 45%),
+		linear-gradient(180deg, #efe6f6 0%, #fff 70%);
+}
+
+.ebh-slide {
+	display: none;
+	padding: 3.2rem 0 2rem;
+}
+
+.ebh-slide.is-active {
+	display: block;
+}
+
+.ebh-slider__nav {
+	position: absolute;
+	inset-inline: 1rem;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	justify-content: space-between;
+	pointer-events: none;
+}
+
+.ebh-slider__nav button {
+	pointer-events: auto;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 1px solid rgba(52, 21, 85, 0.2);
+	background: rgba(255, 255, 255, 0.7);
+	backdrop-filter: blur(10px);
+	color: var(--ebh-primary);
+	cursor: pointer;
+	font-size: 1.4rem;
+}
+
+.ebh-slider__dots {
+	display: flex;
+	justify-content: center;
+	gap: 0.4rem;
+	padding-bottom: 1rem;
+}
+
+.ebh-slider__dots button {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	border: 0;
+	background: rgba(52, 21, 85, 0.25);
+	cursor: pointer;
+}
+
+.ebh-slider__dots button.is-active {
+	background: var(--ebh-primary);
+	width: 22px;
+	border-radius: 999px;
+}
+
+.ebh-cat-row {
+	padding: 0.75rem 0 1.25rem;
+	background: #fff;
+	border-bottom: 1px solid var(--ebh-border);
+}
+
+.ebh-cat-row__track {
+	display: flex;
+	gap: 0.75rem;
+	overflow-x: auto;
+	padding-bottom: 0.35rem;
+	scrollbar-width: thin;
+}
+
+.ebh-cat-chip {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	padding: 0.4rem 0.85rem 0.4rem 0.4rem;
+	border-radius: 999px;
+	text-decoration: none;
+	color: var(--ebh-primary);
+	background: var(--ebh-primary-soft);
+	border: 1px solid rgba(52, 21, 85, 0.1);
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.ebh-cat-chip__img {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	overflow: hidden;
+	background: #fff;
+}
+
+.ebh-cat-chip__img img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
 }
 
 .ebh-hero {
@@ -747,10 +978,46 @@ body.elinor-beauties-page {
 
 @media (max-width: 1024px) {
 	.ebh-header__inner {
-		grid-template-columns: 1fr auto;
+		grid-template-columns: auto 1fr auto;
 	}
 
-	.ebh-nav,
+	.ebh-burger {
+		display: inline-flex;
+	}
+
+	.ebh-nav {
+		display: none;
+		position: absolute;
+		top: 100%;
+		inset-inline: 0;
+		flex-direction: column;
+		align-items: stretch;
+		padding: 1rem;
+		background: rgba(28, 10, 48, 0.92);
+		backdrop-filter: blur(22px);
+		border-bottom: 1px solid var(--ebh-glass-border);
+	}
+
+	.ebh-header.is-open .ebh-nav {
+		display: flex;
+	}
+
+	.ebh-mega__panel {
+		position: static;
+		transform: none;
+		min-width: 0;
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+		box-shadow: none;
+		margin-top: 0.5rem;
+		display: none;
+	}
+
+	.ebh-mega.is-open .ebh-mega__panel {
+		display: block;
+	}
+
 	.ebh-search {
 		display: none;
 	}

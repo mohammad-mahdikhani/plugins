@@ -1,12 +1,35 @@
+<?php
+$mega_columns = isset($mega_columns) && is_array($mega_columns) ? $mega_columns : [];
+$categories   = isset($categories) && is_array($categories) ? $categories : [];
+?>
 <div class="elinor-bh">
+	<div class="ebh-topbar">ارسال رایگان برای سفارش‌های بالای ۲ میلیون تومان</div>
 	<header class="ebh-header">
 		<div class="ebh-container ebh-header__inner">
+			<button type="button" class="ebh-burger" aria-label="منو" data-mega-toggle>
+				<span></span><span></span><span></span>
+			</button>
 			<a class="ebh-logo" href="<?php echo esc_url(home_url('/')); ?>">
 				<img src="<?php echo esc_url($logo_url); ?>" alt="<?php echo esc_attr(get_bloginfo('name')); ?>" width="140" height="48" />
 			</a>
 			<nav class="ebh-nav" aria-label="<?php esc_attr_e('منوی اصلی', 'hello-elementor-elinor'); ?>">
 				<a href="<?php echo esc_url(home_url('/')); ?>">خانه</a>
-				<a href="<?php echo esc_url($shop_url); ?>">فروشگاه</a>
+				<div class="ebh-mega">
+					<a class="ebh-mega__trigger" href="<?php echo esc_url($shop_url); ?>">فروشگاه <span aria-hidden="true">▾</span></a>
+					<div class="ebh-mega__panel" role="menu">
+						<div class="ebh-mega__grid">
+							<?php foreach ($mega_columns as $col) : ?>
+								<div class="ebh-mega__col">
+									<a class="ebh-mega__title" href="<?php echo esc_url($col['link']); ?>"><?php echo esc_html($col['name']); ?></a>
+									<?php foreach ($col['children'] as $child) : ?>
+										<a href="<?php echo esc_url($child['link']); ?>"><?php echo esc_html($child['name']); ?></a>
+									<?php endforeach; ?>
+								</div>
+							<?php endforeach; ?>
+						</div>
+						<a class="ebh-mega__all" href="<?php echo esc_url($shop_url); ?>">مشاهده همه محصولات فروشگاه</a>
+					</div>
+				</div>
 				<a href="<?php echo esc_url($shop_url); ?>?on_sale=1">تخفیف‌ها</a>
 				<a href="<?php echo esc_url(home_url('/blog/')); ?>">مجله زیبایی</a>
 			</nav>
@@ -27,47 +50,64 @@
 	</header>
 
 	<main>
-		<section class="ebh-hero">
-			<div class="ebh-container ebh-hero__grid">
-				<div class="ebh-hero__content">
-					<p class="ebh-eyebrow">فروشگاه اینترنتی الینور استور</p>
-					<h1 class="ebh-hero__title">
-						صورت شما <em>لایق</em> است تا <em>بیشتر بدرخشد</em>
-					</h1>
-					<p class="ebh-hero__text">
-						لوازم آرایشی و مراقبت پوست اورجینال با ارسال سریع؛ هر روز با محصولات ما، هر جا بدرخشید.
-					</p>
-					<div class="ebh-hero__cta">
-						<a class="ebh-btn ebh-btn--solid ebh-btn--lg" href="<?php echo esc_url($shop_url); ?>">مشاهده فروشگاه</a>
-						<a class="ebh-btn ebh-btn--ghost" href="#ebh-deal">پیشنهاد ویژه</a>
+		<section class="ebh-slider" data-slider>
+			<?php
+			$slides = [
+				[
+					'title' => 'صورت شما <em>لایق</em> است تا <em>بیشتر بدرخشد</em>',
+					'text'  => 'لوازم آرایشی و مراقبت پوست اورجینال با ارسال سریع؛ هر روز با محصولات ما، هر جا بدرخشید.',
+					'cta'   => 'مشاهده فروشگاه',
+					'url'   => $shop_url,
+					'img'   => $hero_image,
+				],
+				[
+					'title' => 'محبوب‌ترین <em>محصولات</em> الینور',
+					'text'  => 'فرمول‌های اثبات‌شده که بارها انتخاب می‌شوند — مراقبت ملایم و مؤثر برای پوست و مو.',
+					'cta'   => 'پیشنهاد ویژه',
+					'url'   => '#ebh-deal',
+					'img'   => $deal && method_exists($deal, 'get_image_id')
+						? (wp_get_attachment_image_url($deal->get_image_id(), 'large') ?: $hero_image)
+						: $hero_image,
+				],
+			];
+			foreach ($slides as $i => $slide) :
+				?>
+			<article class="ebh-slide<?php echo $i === 0 ? ' is-active' : ''; ?>">
+				<div class="ebh-container ebh-hero__grid">
+					<div class="ebh-hero__content">
+						<p class="ebh-eyebrow">فروشگاه اینترنتی الینور استور</p>
+						<h1 class="ebh-hero__title"><?php echo wp_kses($slide['title'], [ 'em' => [] ]); ?></h1>
+						<p class="ebh-hero__text"><?php echo esc_html($slide['text']); ?></p>
+						<div class="ebh-hero__cta">
+							<a class="ebh-btn ebh-btn--solid ebh-btn--lg" href="<?php echo esc_url($slide['url']); ?>"><?php echo esc_html($slide['cta']); ?></a>
+						</div>
 					</div>
-					<ul class="ebh-stats">
-						<li><strong>+۲هزار</strong><span>محصول متنوع</span></li>
-						<li><strong>۴.۸</strong><span>رضایت مشتریان</span></li>
-						<li><strong>+۸</strong><span>دسته‌بندی</span></li>
-					</ul>
-				</div>
-				<div class="ebh-hero__visual">
-					<div class="ebh-hero__ring"></div>
-					<div class="ebh-hero__frame">
-						<img src="<?php echo esc_url($hero_image); ?>" alt="محصولات زیبایی الینور استور" loading="eager" />
+					<div class="ebh-hero__visual">
+						<div class="ebh-hero__ring"></div>
+						<div class="ebh-hero__frame">
+							<img src="<?php echo esc_url($slide['img']); ?>" alt="" loading="<?php echo $i === 0 ? 'eager' : 'lazy'; ?>" />
+						</div>
+						<div class="ebh-badge">تا ۲۵٪ تخفیف</div>
 					</div>
-					<div class="ebh-badge">تا ۲۵٪ تخفیف</div>
 				</div>
+			</article>
+			<?php endforeach; ?>
+			<div class="ebh-slider__nav">
+				<button type="button" data-slide="prev" aria-label="اسلاید قبلی">‹</button>
+				<button type="button" data-slide="next" aria-label="اسلاید بعدی">›</button>
 			</div>
+			<div class="ebh-slider__dots" data-slider-dots></div>
 		</section>
 
-		<section class="ebh-section" id="ebh-categories">
+		<section class="ebh-cat-row" id="ebh-categories">
 			<div class="ebh-container">
-				<h2 class="ebh-section__title">کشف با دسته‌بندی‌ها</h2>
-				<div class="ebh-categories">
+				<div class="ebh-cat-row__track">
 					<?php foreach ($categories as $cat) : ?>
-						<a class="ebh-cat" href="<?php echo esc_url($cat['link']); ?>">
-							<div class="ebh-cat__img">
-								<img src="<?php echo esc_url($cat['image']); ?>" alt="<?php echo esc_attr($cat['name']); ?>" loading="lazy" />
-							</div>
-							<h3><?php echo esc_html($cat['name']); ?></h3>
-							<span>مشاهده همه</span>
+						<a class="ebh-cat-chip" href="<?php echo esc_url($cat['link']); ?>">
+							<span class="ebh-cat-chip__img">
+								<img src="<?php echo esc_url($cat['image']); ?>" alt="" loading="lazy" />
+							</span>
+							<span class="ebh-cat-chip__name"><?php echo esc_html($cat['name']); ?></span>
 						</a>
 					<?php endforeach; ?>
 				</div>
