@@ -1,0 +1,9 @@
+{
+  "description": "Paste these into Elementor → Site Settings → Global Colors",
+  "system_colors": [
+    { "title": "Primary", "_id": "primary", "color": "#341555" },
+    { "title": "Secondary", "_id": "secondary", "color": "#e8a0c8" },
+    { "title": "Text", "_id": "text", "color": "#2b2233" },
+    { "title": "Accent", "_id": "accent", "color": "#f3eaf8" }
+  ]
+}

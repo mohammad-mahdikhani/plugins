@@ -1,0 +1,44 @@
+{
+  "title": "الینور — Beauties (Hello Elementor)",
+  "type": "page",
+  "version": "0.4",
+  "page_settings": {
+    "template": "elementor_canvas",
+    "hide_title": "yes"
+  },
+  "content": [
+    {
+      "id": "fcc8b47",
+      "elType": "container",
+      "isInner": false,
+      "settings": {
+        "content_width": "full",
+        "padding": {
+          "unit": "px",
+          "top": "0",
+          "right": "0",
+          "bottom": "0",
+          "left": "0"
+        },
+        "margin": {
+          "unit": "px",
+          "top": "0",
+          "right": "0",
+          "bottom": "0",
+          "left": "0"
+        }
+      },
+      "elements": [
+        {
+          "id": "aea82b5",
+          "elType": "widget",
+          "widgetType": "shortcode",
+          "settings": {
+            "shortcode": "[elinor_beauties_home]"
+          },
+          "elements": []
+        }
+      ]
+    }
+  ]
+}
