@@ -27,13 +27,23 @@
 
 در **Site Settings → Typography** فونت **Vazirmatn** را برای Body و Headings انتخاب کنید.
 
-## ایمپورت صفحه اصلی
+## فعال‌سازی صفحه اصلی (یکی از این روش‌ها)
 
-1. **المانور → قالب‌ها → Import Templates**
-2. فایل `elementor-templates/elinor-home-beauties.json` را انتخاب کنید.
-3. صفحه جدید بسازید یا صفحه «خانه» را با Elementor ویرایش کنید.
-4. از **قالب‌های ذخیره‌شده**، **الینور — Beauties** را درج کنید.
-5. در تنظیمات صفحه: **Page Layout → Elementor Canvas** (یا Full Width) و **Hide Title**.
+### روش ۱ — قالب صفحه (سریع‌ترین)
+1. صفحه «خانه» را ویرایش کنید.
+2. در سایدبار: **قالب → الینور Beauties — صفحه اصلی**.
+3. به‌روزرسانی کنید.
+
+### روش ۲ — Elementor + شورت‌کود
+1. **Import** فایل `elementor-templates/elinor-home-beauties.json`
+2. صفحه را با **Elementor Canvas** باز کنید.
+3. تمپلیت import شده فقط شامل `[elinor_beauties_home]` است (هدر، هیرو، محصولات، فوتر کامل).
+
+### روش ۳ — شورت‌کود دستی
+در ویجت **Shortcode** Elementor بنویسید: `[elinor_beauties_home]`
+
+### پیش‌نمایش استاتیک (بدون وردپرس)
+فایل `preview/index.html` را در مرورگر باز کنید (محصولات از API زنده elinorstore).
 
 ## تنظیم صفحه اصلی وردپرس
 

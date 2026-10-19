@@ -781,3 +781,21 @@ body.elinor-beauties-page {
 		min-height: 280px;
 	}
 }
+
+/* Elementor / Hello Elementor integration */
+.elementor-page .elinor-bh,
+.elementor-default .elinor-bh {
+	width: 100%;
+	max-width: 100%;
+}
+
+.elementor-widget-shortcode .elinor-bh {
+	margin: 0;
+}
+
+body.elinor-beauties-page .site-header,
+body.elinor-beauties-page .site-footer,
+body.page-template-beauties-home .site-header,
+body.page-template-beauties-home .site-footer {
+	display: none;
+}

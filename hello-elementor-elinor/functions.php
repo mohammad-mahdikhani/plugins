@@ -11,15 +11,18 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('ELINOR_HELLO_VERSION', '1.0.0');
+define('ELINOR_HELLO_VERSION', '1.1.0');
 define('ELINOR_HELLO_PATH', get_stylesheet_directory());
 define('ELINOR_HELLO_URI', get_stylesheet_directory_uri());
 
+require_once ELINOR_HELLO_PATH . '/includes/class-elinor-home-data.php';
+require_once ELINOR_HELLO_PATH . '/includes/render-homepage.php';
+
 /**
- * Enqueue parent + child styles and Beauties bundle on the front page.
+ * Enqueue parent + child styles.
  */
 function elinor_hello_enqueue_styles(): void {
-	$parent = 'hello-elementor';
+	$parent     = 'hello-elementor';
 	$parent_ver = wp_get_theme($parent)->get('Version');
 
 	wp_enqueue_style(
@@ -32,38 +35,20 @@ function elinor_hello_enqueue_styles(): void {
 	wp_enqueue_style(
 		'elinor-hello-child',
 		ELINOR_HELLO_URI . '/style.css',
-		[$parent . '-style'],
+		[ $parent . '-style' ],
 		ELINOR_HELLO_VERSION
-	);
-
-	if (!is_front_page()) {
-		return;
-	}
-
-	wp_enqueue_style(
-		'elinor-beauties-341555',
-		ELINOR_HELLO_URI . '/assets/css/beauties-341555.css',
-		['elinor-hello-child'],
-		ELINOR_HELLO_VERSION
-	);
-
-	wp_enqueue_style(
-		'elinor-beauties-fonts',
-		'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap',
-		[],
-		null
 	);
 }
 add_action('wp_enqueue_scripts', 'elinor_hello_enqueue_styles', 20);
 
 /**
- * Body class for Beauties CSS scope on homepage.
+ * Body class for Beauties CSS on homepage views.
  *
  * @param string[] $classes Body classes.
  * @return string[]
  */
 function elinor_hello_body_class(array $classes): array {
-	if (is_front_page()) {
+	if (is_front_page() || is_page_template('page-templates/beauties-home.php')) {
 		$classes[] = 'elinor-beauties-page';
 	}
 
@@ -71,36 +56,34 @@ function elinor_hello_body_class(array $classes): array {
 }
 add_filter('body_class', 'elinor_hello_body_class');
 
-/**
- * Register Elementor kit colors when Elementor is active.
- */
-function elinor_hello_elementor_kit_colors(): void {
-	if (!did_action('elementor/loaded')) {
-		return;
-	}
-
-	// Suggest global primary via theme support doc; kit is edited in Elementor UI.
-}
-add_action('init', 'elinor_hello_elementor_kit_colors');
+add_shortcode('elinor_beauties_home', 'elinor_homepage_shortcode');
+add_filter('template_include', 'elinor_homepage_page_template', 99);
 
 /**
- * Wrap Elementor canvas content for shared Beauties component styles.
+ * Auto-inject homepage on front page when enabled (theme mod).
  */
-function elinor_hello_open_wrapper(): void {
-	if (!is_front_page()) {
-		return;
+function elinor_maybe_replace_front_page_content(string $content): string {
+	if (!is_main_query() || !in_the_loop() || !is_front_page()) {
+		return $content;
 	}
-	echo '<div class="elinor-bh">';
+
+	if (!get_theme_mod('elinor_auto_home', false)) {
+		return $content;
+	}
+
+	return elinor_render_homepage();
 }
-add_action('elementor/page_templates/canvas/before_content', 'elinor_hello_open_wrapper');
+add_filter('the_content', 'elinor_maybe_replace_front_page_content', 1);
 
 /**
- * Close wrapper opened for canvas template.
+ * Register page template for WordPress picker.
+ *
+ * @param string[] $templates Templates.
+ * @return string[]
  */
-function elinor_hello_close_wrapper(): void {
-	if (!is_front_page()) {
-		return;
-	}
-	echo '</div>';
+function elinor_register_page_templates(array $templates): array {
+	$templates['page-templates/beauties-home.php'] = __('الینور Beauties — صفحه اصلی', 'hello-elementor-elinor');
+
+	return $templates;
 }
-add_action('elementor/page_templates/canvas/after_content', 'elinor_hello_close_wrapper');
+add_filter('theme_page_templates', 'elinor_register_page_templates');
