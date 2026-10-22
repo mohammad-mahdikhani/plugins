@@ -1,5 +1,5 @@
 (function () {
-  var root = document.querySelector(".pm-home");
+  var root = document.querySelector(".pm-site");
   if (!root) return;
 
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

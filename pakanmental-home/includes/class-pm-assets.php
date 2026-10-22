@@ -37,8 +37,8 @@ final class PM_Assets {
 		);
 
 		wp_enqueue_style(
-			'pm-home',
-			PM_HOME_URL . 'assets/css/home.css',
+			'pm-site',
+			PM_HOME_URL . 'assets/css/pm.css',
 			array( 'pm-fonts' ),
 			PM_HOME_VERSION
 		);
