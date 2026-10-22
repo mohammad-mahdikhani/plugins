@@ -162,32 +162,147 @@ def blog_cards(limit: int = 6) -> str:
     return html
 
 
+def _filter_checks(name: str, options: list[tuple[str, str]]) -> str:
+    items = []
+    for value, label in options:
+        items.append(
+            f'<li><label class="pm-check"><input type="checkbox" name="{name}[]" value="{value}" />'
+            f'<span class="pm-check__box" aria-hidden="true"></span><span>{label}</span></label></li>'
+        )
+    return f'<ul class="pm-check-list">{"".join(items)}</ul>'
+
+
+def shop_filters_sidebar() -> str:
+    return f"""
+<form id="pm-shop-filters" class="pm-filters__form" action="{URLS["shop"]}" method="get">
+  <div class="pm-filters__head">
+    <h2>فیلتر محصولات</h2>
+    <button type="button" class="pm-filters__close" data-pm-filter-close aria-label="بستن">×</button>
+  </div>
+
+  <fieldset class="pm-filter-block">
+    <legend>قیمت (تومان)</legend>
+    <p class="pm-filter-hint" data-pm-price-out>۰ – ۱۰٬۰۰۰٬۰۰۰ تومان</p>
+    <div class="pm-price-inputs">
+      <label>از <input type="number" id="pm-price-min" name="min_price" min="0" step="10000" value="0" inputmode="numeric" /></label>
+      <label>تا <input type="number" id="pm-price-max" name="max_price" min="0" step="10000" value="10000000" inputmode="numeric" /></label>
+    </div>
+    <input type="range" id="pm-price-range" class="pm-range" min="0" max="10000000" step="100000" value="5000000" aria-label="حداکثر قیمت" />
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>برند</legend>
+    {_filter_checks("brand", [
+      ("pakan", "پاکن منتال"),
+      ("hasbro", "Hasbro"),
+      ("ravensburger", "Ravensburger"),
+      ("fantasy-flight", "Fantasy Flight"),
+      ("other", "سایر برندها"),
+    ])}
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>نوع بازی</legend>
+    {_filter_checks("game_type", [
+      ("board", "بردگیم"),
+      ("card", "کارتی"),
+      ("puzzle", "پازل"),
+      ("figure", "اکشن فیگور"),
+      ("party", "مهمانی"),
+      ("accessory", "لوازم جانبی"),
+    ])}
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>نوع بازی فکری</legend>
+    {_filter_checks("mental_type", [
+      ("strategy", "استراتژی"),
+      ("logic", "منطق و معما"),
+      ("memory", "حافظه"),
+      ("speed", "سرعت و واکنش"),
+      ("coop", "همکاری"),
+      ("deduction", "استنتاج"),
+    ])}
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>تعداد بازیکن</legend>
+    {_filter_checks("players", [
+      ("1", "۱ نفر"),
+      ("2", "۲ نفر"),
+      ("3-4", "۳–۴ نفر"),
+      ("5-6", "۵–۶ نفر"),
+      ("7plus", "۷ نفر و بیشتر"),
+    ])}
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>زمان هر بازی</legend>
+    {_filter_checks("play_time", [
+      ("lt30", "کمتر از ۳۰ دقیقه"),
+      ("30-60", "۳۰ تا ۶۰ دقیقه"),
+      ("60-90", "۶۰ تا ۹۰ دقیقه"),
+      ("gt90", "بیش از ۹۰ دقیقه"),
+    ])}
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>ست بازی</legend>
+    {_filter_checks("game_set", [
+      ("base", "بازی پایه"),
+      ("expansion", "اکسپنشن / گسترش"),
+      ("bundle", "بسته کامل"),
+      ("standalone", "مستقل (نیاز به پایه ندارد)"),
+    ])}
+  </fieldset>
+
+  <fieldset class="pm-filter-block">
+    <legend>سن بازی</legend>
+    {_filter_checks("age", [
+      ("3", "۳+"),
+      ("6", "۶+"),
+      ("8", "۸+"),
+      ("10", "۱۰+"),
+      ("14", "۱۴+"),
+      ("18", "۱۸+"),
+    ])}
+  </fieldset>
+
+  <div class="pm-filters__actions">
+    <button type="submit" class="pm-btn pm-btn--primary pm-btn--block">اعمال فیلتر</button>
+    <button type="button" class="pm-btn pm-btn--ghost pm-btn--block" data-pm-filter-reset>پاک کردن</button>
+  </div>
+</form>
+"""
+
+
 def shop_main() -> str:
     return f"""
 <section class="pm-page-head">
   <div class="pm-container">
     <h1>فروشگاه</h1>
-    <p>بردگیم، پازل، اکشن فیگور و سرگرمی رومیزی — محصولات به‌زودی اضافه می‌شوند.</p>
+    <p>با فیلتر قیمت، برند، نوع بازی، بازیکن، زمان، ست و سن — محصول مناسب را سریع پیدا کنید.</p>
   </div>
 </section>
 <section class="pm-shop">
+  <div class="pm-filters-backdrop" data-pm-filter-close tabindex="-1" aria-hidden="true"></div>
   <div class="pm-container pm-shop__layout">
-    <aside class="pm-filters" aria-label="فیلترها">
-      <h2>دسته‌بندی</h2>
-      <ul class="pm-filter-list">
-        <li><a href="{URLS["shop"]}" class="is-active">همه</a></li>
-        <li><a href="{URLS["shop"]}">بردگیم</a></li>
-        <li><a href="{URLS["shop"]}">پازل</a></li>
-        <li><a href="{URLS["shop"]}">اکشن فیگور</a></li>
-      </ul>
-      <h2>مرتب‌سازی</h2>
-      <select class="pm-select" aria-label="مرتب‌سازی">
-        <option>جدیدترین</option>
-        <option>پرفروش‌ترین</option>
-        <option>ارزان‌ترین</option>
-      </select>
+    <aside class="pm-filters" aria-label="فیلترهای فروشگاه">
+      {shop_filters_sidebar()}
     </aside>
     <div class="pm-shop__main">
+      <div class="pm-shop__toolbar">
+        <button type="button" class="pm-btn pm-btn--ghost" data-pm-filter-open>فیلترها</button>
+        <label class="pm-sort">
+          <span>مرتب‌سازی</span>
+          <select class="pm-select" name="orderby" aria-label="مرتب‌سازی">
+            <option value="date">جدیدترین</option>
+            <option value="popularity">پرفروش‌ترین</option>
+            <option value="price">ارزان‌ترین</option>
+            <option value="price-desc">گران‌ترین</option>
+          </select>
+        </label>
+      </div>
       <div class="pm-product-grid">{product_card_grid(12)}</div>
       <nav class="pm-pagination" aria-label="صفحه‌بندی">
         <span class="pm-pagination__item is-active">۱</span>

@@ -55,12 +55,15 @@ body.blog .pm-blog-archive-fallback { margin: 0; }
     return css
 
 
-def load_site_js(include_hero: bool = False) -> str:
+def load_site_js(include_hero: bool = False, include_shop: bool = False) -> str:
     parts = []
     with open("/workspace/pakanmental-home/assets/js/pm-search.js", encoding="utf-8") as f:
         parts.append(f.read())
     if include_hero:
         with open("/workspace/pakanmental-home/assets/js/home.js", encoding="utf-8") as f:
+            parts.append(f.read())
+    if include_shop:
+        with open("/workspace/pakanmental-home/assets/js/pm-shop.js", encoding="utf-8") as f:
             parts.append(f.read())
     return "\n".join(parts)
 
@@ -148,9 +151,14 @@ def footer() -> str:
 """
 
 
-def wrap_page(active: str, main_html: str, include_hero_js: bool = False) -> str:
+def wrap_page(
+    active: str,
+    main_html: str,
+    include_hero_js: bool = False,
+    include_shop_js: bool = False,
+) -> str:
     css = load_css()
-    js = load_site_js(include_hero=include_hero_js)
+    js = load_site_js(include_hero=include_hero_js, include_shop=include_shop_js)
     return f"""<!-- wp:html -->
 <div class="pm-site" dir="rtl">
 <link rel="preconnect" href="https://fonts.googleapis.com" />
