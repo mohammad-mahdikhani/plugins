@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>پاکن منتال — صفحه اصلی</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="pm-home">
+    <header class="pm-header">
+      <div class="pm-container pm-header__inner">
+        <nav class="pm-nav pm-nav--start" aria-label="منوی اصلی">
+          <a href="#" class="is-active">خانه</a>
+          <a href="#">فروشگاه</a>
+        </nav>
+        <a class="pm-logo" href="#">
+          <picture>
+            <source type="image/webp" srcset="assets/logo-pakanmental.webp" />
+            <img src="assets/logo-pakanmental.png" alt="پاکن منتال" width="180" height="52" fetchpriority="high" loading="eager" decoding="async" />
+          </picture>
+        </a>
+        <nav class="pm-nav pm-nav--end">
+          <a href="#">مجله</a>
+          <a href="#">تماس</a>
+        </nav>
+        <details class="pm-menu-mobile"><summary>منو</summary><div class="pm-menu-mobile__panel"><a href="#">فروشگاه</a><a href="#">مجله</a></div></details>
+      </div>
+    </header>
+
+    <main id="pm-main">
+      <section class="pm-hero" aria-label="معرفی">
+        <div class="pm-container">
+          <div class="pm-hero__slider">
+            <div class="pm-hero__track" id="pm-hero-track">
+              <article class="pm-hero__slide">
+                <div class="pm-hero__copy">
+                  <p class="pm-tags"><span>جدید</span><span>بردگیم</span><span>پازل</span></p>
+                  <h1>سرگرمی رومیزی برای هر سلیقه</h1>
+                  <p>بازی فکری، پازل، اکشن فیگور و بازی‌های منتالی.</p>
+                  <p class="pm-hero__actions"><a class="pm-btn pm-btn--primary" href="#">مشاهده فروشگاه</a></p>
+                </div>
+                <div class="pm-hero__media pm-hero__media--1" role="img" aria-label="بنر"></div>
+              </article>
+              <article class="pm-hero__slide">
+                <div class="pm-hero__copy">
+                  <p class="pm-tags"><span>ترند</span><span>پازل</span></p>
+                  <h1>پازل‌های منتخب</h1>
+                  <p>چالش تصویری برای همه سن‌ها.</p>
+                </div>
+                <div class="pm-hero__media pm-hero__media--2" aria-hidden="true"></div>
+              </article>
+              <article class="pm-hero__slide">
+                <div class="pm-hero__copy">
+                  <p class="pm-tags"><span>اکشن فیگور</span></p>
+                  <h1>کلکسیون فیگور</h1>
+                </div>
+                <div class="pm-hero__media pm-hero__media--3" aria-hidden="true"></div>
+              </article>
+            </div>
+            <div class="pm-hero__dots">
+              <button type="button" aria-selected="true" data-pm-hero-dot="0"></button>
+              <button type="button" aria-selected="false" data-pm-hero-dot="1"></button>
+              <button type="button" aria-selected="false" data-pm-hero-dot="2"></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pm-section" aria-labelledby="pm-cats-title">
+        <div class="pm-container">
+          <header class="pm-section__head"><div><h2 id="pm-cats-title">دسته‌بندی فروشگاه</h2><p>مسیر سریع به هر نوع سرگرمی</p></div></header>
+          <div class="pm-cats">
+            <a class="pm-cat" href="#"><span class="pm-cat__label">بردگیم</span></a>
+            <a class="pm-cat" href="#"><span class="pm-cat__label">پازل</span></a>
+            <a class="pm-cat" href="#"><span class="pm-cat__label">اکشن فیگور</span></a>
+            <a class="pm-cat" href="#"><span class="pm-cat__label">کارتی</span></a>
+            <a class="pm-cat" href="#"><span class="pm-cat__label">بازی منتالی</span></a>
+            <a class="pm-cat" href="#"><span class="pm-cat__label">لوازم جانبی</span></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- product rows: static HTML, 6 cards each (no JS injection) -->
+      <section class="pm-section pm-section--alt" aria-labelledby="t1">
+        <div class="pm-container">
+          <header class="pm-section__head"><div><h2 id="t1">پرفروش‌ها و ترند</h2><p>کاروسل سبک</p></div><a class="pm-more" href="#">مشاهده همه</a></header>
+          <div class="pm-carousel">
+            <button type="button" class="pm-carousel__btn pm-carousel__btn--prev" data-pm-scroll="r1" data-pm-dir="prev" aria-label="قبلی">‹</button>
+            <div class="pm-track" id="r1">
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">محصول ۱</h3><p class="pm-card__price">— <small>تومان</small></p><span class="pm-card__badge">ترند</span></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">محصول ۲</h3><p class="pm-card__price">— <small>تومان</small></p><span class="pm-card__badge">ترند</span></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">محصول ۳</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">محصول ۴</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">محصول ۵</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">محصول ۶</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            </div>
+            <button type="button" class="pm-carousel__btn pm-carousel__btn--next" data-pm-scroll="r1" data-pm-dir="next" aria-label="بعدی">›</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="pm-section" aria-labelledby="t2">
+        <div class="pm-container">
+          <header class="pm-section__head"><div><h2 id="t2">پازل</h2></div><a class="pm-more" href="#">همه پازل‌ها</a></header>
+          <div class="pm-carousel">
+            <div class="pm-track" id="r2">
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">پازل ۱</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">پازل ۲</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">پازل ۳</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">پازل ۴</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">پازل ۵</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+              <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">پازل ۶</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pm-section pm-section--alt" aria-labelledby="t3">
+        <div class="pm-container">
+          <header class="pm-section__head"><div><h2 id="t3">بردگیم</h2></div><a class="pm-more" href="#">همه بردگیم‌ها</a></header>
+          <div class="pm-track" id="r3">
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">بردگیم ۱</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">بردگیم ۲</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">بردگیم ۳</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">بردگیم ۴</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">بردگیم ۵</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">بردگیم ۶</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="pm-section" aria-labelledby="t4">
+        <div class="pm-container">
+          <header class="pm-section__head"><div><h2 id="t4">اکشن فیگور</h2></div><a class="pm-more" href="#">همه فیگورها</a></header>
+          <div class="pm-track" id="r4">
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">فیگور ۱</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">فیگور ۲</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">فیگور ۳</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">فیگور ۴</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">فیگور ۵</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+            <article class="pm-card pm-card--empty"><div class="pm-card__ph"></div><h3 class="pm-card__title">فیگور ۶</h3><p class="pm-card__price">— <small>تومان</small></p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="pm-section pm-section--alt" aria-labelledby="blog">
+        <div class="pm-container">
+          <header class="pm-section__head"><div><h2 id="blog">مجله</h2></div><a class="pm-more" href="#">همه مطالب</a></header>
+          <div class="pm-blog">
+            <article class="pm-post pm-post--empty"><div class="pm-post__ph"></div><h3>مقاله نمونه ۱</h3><p>خلاصه مطلب</p></article>
+            <article class="pm-post pm-post--empty"><div class="pm-post__ph"></div><h3>مقاله نمونه ۲</h3><p>خلاصه مطلب</p></article>
+            <article class="pm-post pm-post--empty"><div class="pm-post__ph"></div><h3>مقاله نمونه ۳</h3><p>خلاصه مطلب</p></article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pm-footer">
+      <div class="pm-container pm-footer__grid">
+        <div class="pm-footer__brand">
+          <picture>
+            <source type="image/webp" srcset="assets/logo-pakanmental.webp" />
+            <img src="assets/logo-pakanmental.png" alt="" width="140" height="56" loading="lazy" decoding="async" />
+          </picture>
+          <p>فروشگاه بازی فکری و سرگرمی رومیزی.</p>
+        </div>
+        <div><h2 class="pm-footer__title">فروشگاه</h2><ul><li><a href="#">محصولات</a></li></ul></div>
+        <div><h2 class="pm-footer__title">مجله</h2><ul><li><a href="#">مقالات</a></li></ul></div>
+      </div>
+      <p class="pm-footer__copy">© پاکن منتال</p>
+    </footer>
+    <script src="../../pakanmental-home/assets/js/home.js"></script>
+  </body>
+</html>
