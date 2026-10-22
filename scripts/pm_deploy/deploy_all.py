@@ -28,7 +28,7 @@ def wrap_blog_posts():
         full = req("GET", f"{BASE}/posts/{pid}?context=edit")
         title = full["title"]["raw"]
         body = full["content"]["raw"]
-        if "<!-- wp:html -->" in body and "pm-rev__viewport" in body:
+        if "<!-- wp:html -->" in body and "pm-header__bar" in body:
             continue
         main = f"""
 <section class="pm-page-head"><div class="pm-container"><h1>{title}</h1></div></section>

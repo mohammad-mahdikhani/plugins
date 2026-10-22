@@ -79,30 +79,40 @@ def logo_picture(footer: bool = False) -> str:
 
 
 def header(active: str) -> str:
-    def nav_link(key: str, label: str) -> str:
-        cls = "pm-nav-min is-active" if active == key else "pm-nav-min"
-        return f'<a class="{cls}" href="{URLS[key]}">{label}</a>'
+    def seg(key: str, label: str) -> str:
+        cls = "pm-seg__link is-active" if active == key else "pm-seg__link"
+        href = URLS.get(key, URLS["home"])
+        return f'<a class="{cls}" href="{href}">{label}</a>'
 
     return f"""
 <header class="pm-header">
-  <div class="pm-container pm-header__inner">
-    <nav class="pm-header__nav" aria-label="منوی اصلی">
-      {nav_link("shop", "فروشگاه")}
-      {nav_link("blog", "مجله")}
-    </nav>
-    <a class="pm-logo" href="{URLS["home"]}" aria-label="پاکن منتال">
-      {logo_picture()}
-    </a>
-    <div class="pm-header__actions">
-      <a class="pm-cart" href="{URLS["cart"]}" aria-label="سبد خرید">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L5 3H2"/></svg>
+  <div class="pm-container pm-header__wrap">
+    <div class="pm-header__bar">
+      <nav class="pm-header__nav" aria-label="منوی اصلی">
+        <div class="pm-seg" role="list">
+          {seg("home", "خانه")}
+          {seg("shop", "فروشگاه")}
+          {seg("blog", "مجله")}
+        </div>
+      </nav>
+      <a class="pm-header__logo" href="{URLS["home"]}" aria-label="پاکن منتال">
+        <span class="pm-header__logo-glow" aria-hidden="true"></span>
+        {logo_picture()}
       </a>
+      <div class="pm-header__tools">
+        <div class="pm-search pm-search--inline">
+          <label class="pm-search__label" for="pm-search-input">جستجو در محصولات</label>
+          <span class="pm-search__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+          </span>
+          <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" />
+          <div class="pm-search__results" hidden></div>
+        </div>
+        <a class="pm-header__icon-btn pm-cart" href="{URLS["cart"]}" aria-label="سبد خرید">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L5 3H2"/></svg>
+        </a>
+      </div>
     </div>
-  </div>
-  <div class="pm-container pm-search">
-    <label class="pm-search__label" for="pm-search-input">جستجو در محصولات</label>
-    <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="نام بازی، پازل یا فیگور…" autocomplete="off" />
-    <div class="pm-search__results" hidden></div>
   </div>
 </header>
 """
@@ -111,26 +121,29 @@ def header(active: str) -> str:
 def footer() -> str:
     return f"""
 <footer class="pm-footer">
+  <div class="pm-footer__glow" aria-hidden="true"></div>
   <div class="pm-container pm-footer__grid">
     <div class="pm-footer__brand">
-      <a href="{URLS["home"]}">{logo_picture(footer=True)}</a>
-      <p>فروشگاه بازی فکری، بردگیم، پازل و سرگرمی رومیزی — پاکن منتال.</p>
+      <a class="pm-footer__logo" href="{URLS["home"]}">{logo_picture(footer=True)}</a>
+      <p class="pm-footer__tagline">فروشگاه بازی فکری، بردگیم، پازل و سرگرمی رومیزی.</p>
+      <p class="pm-footer__brand-name">پاکن منتال</p>
     </div>
-    <div>
+    <div class="pm-footer__col">
       <h2 class="pm-footer__title">فروشگاه</h2>
-      <ul>
+      <ul class="pm-footer__links">
         <li><a href="{URLS["shop"]}">همه محصولات</a></li>
         <li><a href="{URLS["cart"]}">سبد خرید</a></li>
       </ul>
     </div>
-    <div>
+    <div class="pm-footer__col">
       <h2 class="pm-footer__title">مجله</h2>
-      <ul>
+      <ul class="pm-footer__links">
         <li><a href="{URLS["blog"]}">مقالات</a></li>
+        <li><a href="{URLS["home"]}">صفحه اصلی</a></li>
       </ul>
     </div>
   </div>
-  <p class="pm-footer__copy">© پاکن منتال</p>
+  <p class="pm-footer__copy">© پاکن منتال — سرگرمی رومیزی برای هر سلیقه</p>
 </footer>
 """
 
