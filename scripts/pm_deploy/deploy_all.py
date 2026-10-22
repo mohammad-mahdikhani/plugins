@@ -2,7 +2,8 @@
 """Deploy / update all Pakan Mental template pages on live WordPress."""
 from __future__ import annotations
 
-from .builder import wrap_page, load_home_js, req, BASE, URLS
+from .builder import wrap_page, req, BASE, URLS
+from .sync_elementor import sync as sync_elementor
 from .pages_content import home_main, shop_main, cart_main, blog_main, product_single_main
 
 
@@ -27,7 +28,7 @@ def wrap_blog_posts():
         full = req("GET", f"{BASE}/posts/{pid}?context=edit")
         title = full["title"]["raw"]
         body = full["content"]["raw"]
-        if "<!-- wp:html -->" in body and "pm-site" in body:
+        if "<!-- wp:html -->" in body and "pm-search__input" in body:
             continue
         main = f"""
 <section class="pm-page-head"><div class="pm-container"><h1>{title}</h1></div></section>
@@ -39,8 +40,7 @@ def wrap_blog_posts():
 
 
 def main():
-    js = load_home_js()
-    home_id = upsert_page("%d8%ae%d8%a7%d9%86%d9%87", "خانه", wrap_page("home", home_main(), js))
+    home_id = upsert_page("%d8%ae%d8%a7%d9%86%d9%87", "خانه", wrap_page("home", home_main(), include_hero_js=True))
     upsert_page("%d9%81%d8%b1%d9%88%d8%b4%da%af%d8%a7%d9%87", "فروشگاه", wrap_page("shop", shop_main()))
     upsert_page("%d8%b3%d8%a8%d8%af-%d8%ae%d8%b1%db%8c%d8%af", "سبد خرید", wrap_page("cart", cart_main()))
     blog_id = upsert_page("%d9%85%d8%ac%d9%84%d9%87", "مجله", wrap_page("blog", blog_main()))
@@ -56,6 +56,10 @@ def main():
         },
     )
     wrap_blog_posts()
+    try:
+        sync_elementor()
+    except Exception as exc:
+        print("elementor sync skipped", exc)
     print("reading settings OK", URLS["home"])
     print("shop", URLS["shop"], "cart", URLS["cart"], "blog", URLS["blog"], "product", URLS["product_demo"])
 
