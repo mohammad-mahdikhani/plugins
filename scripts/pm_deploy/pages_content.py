@@ -56,42 +56,50 @@ def home_main() -> str:
 </section>"""
 
     return f"""
-<section class="pm-hero" aria-label="معرفی">
-  <div class="pm-container">
-    <div class="pm-hero__slider">
-      <div class="pm-hero__track" id="pm-hero-track">
-        <article class="pm-hero__slide">
-          <div class="pm-hero__copy">
-            <p class="pm-tags"><span>جدید</span><span>بردگیم</span><span>پازل</span></p>
-            <h1>سرگرمی رومیزی برای هر سلیقه</h1>
-            <p>بازی فکری، پازل، اکشن فیگور و بازی‌های منتالی — یک فروشگاه برای لحظه‌های دورهم.</p>
-            <p class="pm-hero__actions"><a class="pm-btn pm-btn--primary" href="{URLS["shop"]}">مشاهده فروشگاه</a></p>
-          </div>
-          <div class="pm-hero__media pm-hero__media--1" role="img" aria-label="بنر"></div>
-        </article>
-        <article class="pm-hero__slide">
-          <div class="pm-hero__copy">
-            <p class="pm-tags"><span>ترند</span><span>پازل</span></p>
-            <h1>پازل‌های منتخب</h1>
-            <p>از چالش‌های سبک تا مجموعه‌های حرفه‌ای.</p>
-            <p class="pm-hero__actions"><a class="pm-btn pm-btn--primary" href="{URLS["shop"]}">دسته پازل</a></p>
-          </div>
-          <div class="pm-hero__media pm-hero__media--2" aria-hidden="true"></div>
-        </article>
-        <article class="pm-hero__slide">
-          <div class="pm-hero__copy">
-            <p class="pm-tags"><span>اکشن فیگور</span></p>
-            <h1>کلکسیون فیگور</h1>
-            <p>برای کلکسیونرها و هدیهٔ خاص.</p>
-          </div>
-          <div class="pm-hero__media pm-hero__media--3" aria-hidden="true"></div>
-        </article>
+<section class="pm-rev" aria-label="اسلایدر اصلی">
+  <div class="pm-rev__viewport">
+    <article class="pm-rev__slide is-active" data-slide="0">
+      <div class="pm-rev__bg pm-rev__bg--1" aria-hidden="true"></div>
+      <div class="pm-rev__shade" aria-hidden="true"></div>
+      <div class="pm-container pm-rev__inner">
+        <div class="pm-rev__copy">
+          <p class="pm-tags"><span>جدید</span><span>بردگیم</span><span>پازل</span></p>
+          <h1>سرگرمی رومیزی برای هر سلیقه</h1>
+          <p>بازی فکری، پازل، اکشن فیگور و بازی‌های منتالی — یک فروشگاه برای لحظه‌های دورهم.</p>
+          <a class="pm-btn pm-btn--primary" href="{URLS["shop"]}">مشاهده فروشگاه</a>
+        </div>
       </div>
-      <div class="pm-hero__dots">
-        <button type="button" aria-selected="true" data-pm-hero-dot="0"></button>
-        <button type="button" aria-selected="false" data-pm-hero-dot="1"></button>
-        <button type="button" aria-selected="false" data-pm-hero-dot="2"></button>
+    </article>
+    <article class="pm-rev__slide" data-slide="1">
+      <div class="pm-rev__bg pm-rev__bg--2" aria-hidden="true"></div>
+      <div class="pm-rev__shade" aria-hidden="true"></div>
+      <div class="pm-container pm-rev__inner">
+        <div class="pm-rev__copy">
+          <p class="pm-tags"><span>ترند</span><span>پازل</span></p>
+          <h1>پازل‌های منتخب</h1>
+          <p>از چالش‌های سبک تا مجموعه‌های حرفه‌ای.</p>
+          <a class="pm-btn pm-btn--primary" href="{URLS["shop"]}">دسته پازل</a>
+        </div>
       </div>
+    </article>
+    <article class="pm-rev__slide" data-slide="2">
+      <div class="pm-rev__bg pm-rev__bg--3" aria-hidden="true"></div>
+      <div class="pm-rev__shade" aria-hidden="true"></div>
+      <div class="pm-container pm-rev__inner">
+        <div class="pm-rev__copy">
+          <p class="pm-tags"><span>اکشن فیگور</span></p>
+          <h1>کلکسیون فیگور</h1>
+          <p>برای کلکسیونرها و هدیهٔ خاص.</p>
+          <a class="pm-btn pm-btn--primary" href="{URLS["shop"]}">مشاهده فیگورها</a>
+        </div>
+      </div>
+    </article>
+    <button type="button" class="pm-rev__arrow pm-rev__arrow--prev" data-pm-hero-prev aria-label="اسلاید قبلی">‹</button>
+    <button type="button" class="pm-rev__arrow pm-rev__arrow--next" data-pm-hero-next aria-label="اسلاید بعدی">›</button>
+    <div class="pm-rev__bullets" role="tablist" aria-label="اسلایدها">
+      <button type="button" role="tab" aria-selected="true" data-pm-hero-dot="0"></button>
+      <button type="button" role="tab" aria-selected="false" data-pm-hero-dot="1"></button>
+      <button type="button" role="tab" aria-selected="false" data-pm-hero-dot="2"></button>
     </div>
   </div>
 </section>

@@ -16,41 +16,51 @@
       return;
     }
 
+    if (e.target.closest("[data-pm-hero-prev]")) {
+      heroStep(-1);
+      return;
+    }
+    if (e.target.closest("[data-pm-hero-next]")) {
+      heroStep(1);
+      return;
+    }
+
     var dot = e.target.closest("[data-pm-hero-dot]");
     if (dot) {
-      var hero = root.querySelector(".pm-hero__track");
-      if (!hero) return;
-      var index = parseInt(dot.getAttribute("data-pm-hero-dot"), 10) || 0;
-      hero.scrollTo({ left: hero.clientWidth * index, behavior: reduced ? "auto" : "smooth" });
-      syncHeroDots(index);
+      goHero(parseInt(dot.getAttribute("data-pm-hero-dot"), 10) || 0);
     }
   });
 
-  var heroTrack = root.querySelector(".pm-hero__track");
-  if (heroTrack) {
-    heroTrack.addEventListener(
-      "scroll",
-      function () {
-        var i = Math.round(heroTrack.scrollLeft / heroTrack.clientWidth);
-        syncHeroDots(i);
-      },
-      { passive: true }
-    );
+  var slides = root.querySelectorAll(".pm-rev__slide");
+  var heroIndex = 0;
+  var heroTimer;
 
-    if (!reduced) {
-      var slide = 0;
-      setInterval(function () {
-        slide = (slide + 1) % 3;
-        heroTrack.scrollTo({ left: heroTrack.clientWidth * slide, behavior: "smooth" });
-        syncHeroDots(slide);
-      }, 7000);
-    }
-  }
-
-  function syncHeroDots(active) {
+  function goHero(i) {
+    if (!slides.length) return;
+    heroIndex = (i + slides.length) % slides.length;
+    slides.forEach(function (s, idx) {
+      s.classList.toggle("is-active", idx === heroIndex);
+    });
     root.querySelectorAll("[data-pm-hero-dot]").forEach(function (btn) {
-      var on = parseInt(btn.getAttribute("data-pm-hero-dot"), 10) === active;
+      var on = parseInt(btn.getAttribute("data-pm-hero-dot"), 10) === heroIndex;
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
+    resetHeroAutoplay();
+  }
+
+  function heroStep(delta) {
+    goHero(heroIndex + delta);
+  }
+
+  function resetHeroAutoplay() {
+    clearInterval(heroTimer);
+    if (reduced || slides.length < 2) return;
+    heroTimer = setInterval(function () {
+      heroStep(1);
+    }, 6500);
+  }
+
+  if (slides.length) {
+    goHero(0);
   }
 })();
