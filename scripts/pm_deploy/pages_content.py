@@ -3,6 +3,48 @@ from __future__ import annotations
 
 from .builder import URLS, req, BASE, SITE
 
+_CAT_SVGS = {
+    "board": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/>'
+        '<rect x="13" y="13" width="8" height="8" rx="1.5"/><circle cx="7" cy="7" r="1" fill="currentColor"/>'
+        '<circle cx="17" cy="17" r="1" fill="currentColor"/></svg>'
+    ),
+    "puzzle": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h2a2 2 0 0 1 2 2v1h2a2 2 0 0 1 2 2v2h1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-1v2a2 2 0 0 1-2 2h-2v1a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-1H5a2 2 0 0 1-2-2v-2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1V5a2 2 0 0 1 2-2h2V3z"/></svg>'
+    ),
+    "figure": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="3"/>'
+        '<path d="M7 21v-2a5 5 0 0 1 10 0v2"/><path d="M12 12v4"/></svg>'
+    ),
+    "card": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="14" height="20" rx="2"/>'
+        '<path d="M8 6h8M8 10h6"/><rect x="6" y="4" width="14" height="20" rx="2" opacity="0.35"/></svg>'
+    ),
+    "mental": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A5.5 5.5 0 0 0 4 9.5c0 2.2 1.2 4.1 3 5.2V18h5v-3.3c1.8-1.1 3-3 3-5.2A5.5 5.5 0 0 0 14.5 4 4.5 4.5 0 0 0 12 5a4.5 4.5 0 0 0-2.5-1z"/>'
+        '<path d="M10 18h4"/></svg>'
+    ),
+    "accessory": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'
+        '<path d="M3.3 7.2L12 12l8.7-4.8M12 22V12"/></svg>'
+    ),
+}
+
+
+def category_tile(label: str, icon_key: str) -> str:
+    svg = _CAT_SVGS[icon_key]
+    return (
+        f'<a class="pm-cat" href="{URLS["shop"]}">'
+        f'<span class="pm-cat__icon" aria-hidden="true">{svg}</span>'
+        f'<span class="pm-cat__label">{label}</span></a>'
+    )
+
 
 def product_card_grid(count: int = 12, link: str | None = None) -> str:
     link = link or URLS["product_demo"]
@@ -107,12 +149,12 @@ def home_main() -> str:
   <div class="pm-container">
     <header class="pm-section__head"><div><h2>دسته‌بندی فروشگاه</h2><p>مسیر سریع به هر نوع سرگرمی</p></div></header>
     <div class="pm-cats">
-      <a class="pm-cat" href="{URLS["shop"]}"><span class="pm-cat__label">بردگیم</span></a>
-      <a class="pm-cat" href="{URLS["shop"]}"><span class="pm-cat__label">پازل</span></a>
-      <a class="pm-cat" href="{URLS["shop"]}"><span class="pm-cat__label">اکشن فیگور</span></a>
-      <a class="pm-cat" href="{URLS["shop"]}"><span class="pm-cat__label">کارتی</span></a>
-      <a class="pm-cat" href="{URLS["shop"]}"><span class="pm-cat__label">بازی منتالی</span></a>
-      <a class="pm-cat" href="{URLS["shop"]}"><span class="pm-cat__label">لوازم جانبی</span></a>
+      {category_tile("بردگیم", "board")}
+      {category_tile("پازل", "puzzle")}
+      {category_tile("اکشن فیگور", "figure")}
+      {category_tile("کارتی", "card")}
+      {category_tile("بازی منتالی", "mental")}
+      {category_tile("لوازم جانبی", "accessory")}
     </div>
   </div>
 </section>
