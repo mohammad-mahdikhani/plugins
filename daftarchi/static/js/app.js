@@ -123,7 +123,8 @@ function remedyFor(message) {
   const text = String(message || "");
   if (text.includes("قطع شد")) return "دفترچی را ببندید و دوباره باز کنید. اگر فروش ثبت شده، همان فاکتور را دوباره نزنید.";
   if (text.includes("ستون نام") || text.includes("نام کالا")) return "ردیف اول اکسل باید نام کالا و قیمت فروش باشد. شناسه اگر نیست، همان نام کالا کافی است.";
-  if (text.includes("Consumer") || text.includes("ووکامرس") || text.includes("کلید مصرف")) return "در تنظیمات، کلید ووکامرس را با ck_ بچسبانید و دسترسی را خواندن و نوشتن بگذارید.";
+  if (text.includes("موجودی کالای متغیر")) return "در انبار، از لیست همان «نوع» متغیر را انتخاب کنید (مثلاً رنگ قرمز)، بعد موجودی را بزنید.";
+  if (text.includes("ووکامرس") || text.includes("Consumer") || text.includes("کلید مصرف")) return "در تنظیمات، کلید ووکامرس را با ck_ بچسبانید و دسترسی را خواندن و نوشتن بگذارید.";
   if (text.includes("صندوق")) return "از زبانه صندوق، صندوق را باز کنید و فروش را دوباره بزنید.";
   if (text.includes("وارد نشده")) return "یک بار خارج شوید و دوباره وارد شوید.";
   if (text.includes("توکن") || text.includes("تلگرام") || text.includes("شناسه چت")) return "در تنظیمات، توکن ربات تلگرام و شناسه چت را ذخیره کنید.";
@@ -1163,7 +1164,9 @@ async function onSubmit(event) {
       toast("رمز عوض شد");
       render();
     } else if (act === "adjust") {
-      await api("/api/inventory/adjust", { method: "POST", body: data });
+      data.stock = asInt(data.stock);
+      const result = await api("/api/inventory/adjust", { method: "POST", body: data });
+      if (result.woo_sync_note) toast(result.woo_sync_note);
       await loaders.inventory();
       render();
     } else if (act === "purchase") {
@@ -1238,6 +1241,9 @@ async function onSubmit(event) {
 
 async function saveProduct(form, data) {
   const file = form.querySelector('input[type="file"]')?.files?.[0];
+  if (data.price !== undefined && data.price !== "") data.price = asInt(data.price);
+  if (data.stock !== undefined && data.stock !== "") data.stock = asInt(data.stock);
+  if (data.cost !== undefined && data.cost !== "") data.cost = asInt(data.cost);
   if (file) {
     const body = new FormData();
     body.append("file", file);
@@ -1247,8 +1253,13 @@ async function saveProduct(form, data) {
   delete data.file;
   const id = data.id;
   delete data.id;
-  if (id) await api(`/api/products/${id}`, { method: "PATCH", body: data });
-  else await api("/api/products", { method: "POST", body: data });
+  if (id) {
+    const result = await api(`/api/products/${id}`, { method: "PATCH", body: data });
+    if (result.woo_sync_note) toast(result.woo_sync_note);
+  } else {
+    const result = await api("/api/products", { method: "POST", body: data });
+    if (result.woo_sync_note) toast(result.woo_sync_note);
+  }
   state.modal = null;
   await loaders.products();
   toast("کالا ذخیره شد");

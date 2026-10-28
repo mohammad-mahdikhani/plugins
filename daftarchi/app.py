@@ -2032,12 +2032,6 @@ def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id:
         parent = int(row["woo_id"])
         vid = int(var["woo_id"])
         woo_request(settings, "PUT", f"products/{parent}/variations/{vid}", payload=variation_woo_payload(var))
-        fresh = conn.execute("SELECT stock FROM products WHERE id=?", (product_id,)).fetchone()
-        if fresh and fresh["stock"] is not None:
-            woo_request(
-                settings, "PUT", f"products/{parent}",
-                payload={"manage_stock": True, "stock_quantity": int(fresh["stock"])},
-            )
         return
     if product_kind(row) == "variable":
         if not row["woo_id"]:
@@ -2052,13 +2046,24 @@ def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id:
     if not row["woo_id"]:
         return
     item = woo_item(row)
-    item["id"] = row["woo_id"]
-    status, response = woo_request(settings, "POST", "products/batch", payload={"update": [item]})
-    if status >= 400 or not isinstance(response, dict):
-        return
-    updates = response.get("update")
-    if isinstance(updates, list) and updates and isinstance(updates[0], dict) and updates[0].get("id"):
-        conn.execute("UPDATE products SET updated_at=? WHERE id=?", (iso(), product_id))
+    woo_request(settings, "PUT", f"products/{int(row['woo_id'])}", payload=item)
+    conn.execute("UPDATE products SET updated_at=? WHERE id=?", (iso(), product_id))
+
+
+def woo_sync_note(conn, product_id: int) -> str:
+    settings = get_settings(conn)
+    if settings.get("woo_auto_sync", "1") != "1":
+        return ""
+    if not (settings.get("woo_key") or "").strip() or not (settings.get("woo_secret") or "").strip():
+        return "موجودی در دفترچی ذخیره شد. برای سایت، کلید ووکامرس را در تنظیمات بگذارید."
+    row = conn.execute("SELECT woo_id, product_type FROM products WHERE id=?", (product_id,)).fetchone()
+    if not row:
+        return ""
+    if not row["woo_id"]:
+        return "موجودی در دفترچی ذخیره شد. برای سایت، یک بار «ارسال به ووکامرس» بزنید تا کالا وصل شود."
+    if product_kind(row) == "variable":
+        return "موجودی در دفترچی ذخیره شد. برای کالای متغیر، موجودی هر «نوع» جداست و به سایت می‌رود."
+    return "موجودی در دفترچی ذخیره شد و برای سایت در صف ارسال است."
 
 
 def _flush_woo_sync_batch(batch: list[tuple[int, int | None]]) -> None:
@@ -3025,7 +3030,8 @@ def create_product():
         row = conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
         product = present_product(conn, row, threshold)
         maybe_queue_woo_sync(conn, product_id)
-    return jsonify(product=product)
+        note = woo_sync_note(conn, product_id)
+    return jsonify(product=product, woo_sync_note=note)
 
 
 @app.patch("/api/products/<int:pid>")
@@ -3062,7 +3068,8 @@ def update_product(pid: int):
         updated = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
         product = present_product(conn, updated, threshold)
         maybe_queue_woo_sync(conn, pid)
-    return jsonify(product=product)
+        note = woo_sync_note(conn, pid)
+    return jsonify(product=product, woo_sync_note=note)
 
 
 @app.delete("/api/products/<int:pid>")
@@ -3083,7 +3090,7 @@ def product_template():
     sheet = book.active
     sheet.title = "products"
     sheet.append(["نام کالا", "SKU", "موجودی", "قیمت فروش", "بارکد", "قیمت خرید", "تصویر", "شناسه مودیان"])
-    sheet.append(["چای ۵۰۰ گرمی", "TEA-500", "6260000000011", 45000, 12, 30000, "", ""])
+    sheet.append(["چای ۵۰۰ گرمی", "TEA-500", 12, 45000, "6260000000011", 30000, "", ""])
     buf = BytesIO()
     book.save(buf)
     buf.seek(0)
@@ -3830,7 +3837,8 @@ def adjust_inventory():
             conn.execute("UPDATE products SET stock=?, updated_at=? WHERE id=?", (stock, iso(), pid))
             log_stock(conn, pid, "adjust", stock - row["stock"], row["stock"], stock, note, user["id"])
         maybe_queue_woo_sync(conn, pid, variation_id if product_kind(row) == "variable" else None)
-    return jsonify(ok=True)
+        note = woo_sync_note(conn, pid)
+    return jsonify(ok=True, woo_sync_note=note)
 
 
 @app.post("/api/purchases")
