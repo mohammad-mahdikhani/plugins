@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-20",
+  "label": "فروشگاه VIP ۲۰",
+  "note": "کسب‌وکار VIP شماره ۲۰",
+  "settings": {
+    "shop_name": "فروشگاه VIP ۲۰",
+    "wp_url": "https://example-shop-20.ir",
+    "gateway_callback": "https://example-shop-20.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

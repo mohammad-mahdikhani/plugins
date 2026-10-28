@@ -2457,6 +2457,45 @@ def init_db():
             for row in conn.execute("SELECT id FROM sales"):
                 conn.execute("UPDATE sales SET invoice_code=? WHERE id=?", (f"D{int(row['id']):08d}", row["id"]))
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_invoice_code ON sales(invoice_code)")
+        apply_site_preset(conn)
+
+
+def preset_path() -> Path | None:
+    raw = os.environ.get("DAFTARCHI_PRESET", "").strip()
+    if raw:
+        path = Path(raw)
+        if path.is_file():
+            return path
+    side = DATA.parent / "preset.json"
+    return side if side.is_file() else None
+
+
+def apply_site_preset(conn) -> None:
+    path = preset_path()
+    if not path:
+        return
+    applied = conn.execute("SELECT value FROM settings WHERE key='site_preset_applied'").fetchone()
+    if applied and str(applied["value"]) == "1":
+        return
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        log.warning("preset unreadable: %s", path)
+        return
+    if not isinstance(payload, dict):
+        return
+    block = payload.get("settings")
+    if isinstance(block, dict) and block:
+        save_settings(conn, block)
+    site_id = clean_text(payload.get("site_id"), "site", 40) if payload.get("site_id") else ""
+    if site_id:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('site_id', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (site_id,),
+        )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('site_preset_applied', '1') ON CONFLICT(key) DO UPDATE SET value='1'",
+    )
 
 
 @app.errorhandler(AppError)

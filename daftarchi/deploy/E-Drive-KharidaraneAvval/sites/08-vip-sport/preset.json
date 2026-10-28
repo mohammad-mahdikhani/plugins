@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-08",
+  "label": "ورزشی VIP",
+  "note": "کسب‌وکار VIP شماره ۸",
+  "settings": {
+    "shop_name": "ورزشی VIP",
+    "wp_url": "https://example-shop-08.ir",
+    "gateway_callback": "https://example-shop-08.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}
