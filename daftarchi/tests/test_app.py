@@ -181,6 +181,50 @@ class DaftarchiTest(unittest.TestCase):
         again = self.client.post("/api/sales", json={"items": [{"product_id": product["id"], "qty": 1}], "payment_method": "cash"})
         self.assertEqual(again.status_code, 400)
 
+    def test_panel_package_keeps_shop_data_out(self):
+        import io
+        import zipfile
+        folder = Path(tempfile.mkdtemp())
+        blob = io.BytesIO()
+        with zipfile.ZipFile(blob, "w") as zipped:
+            zipped.writestr("app.py", "print('new')\n")
+            zipped.writestr("static/js/app.js", "var x = 1;\n")
+            zipped.writestr("Daftarchi-Studio/data/daftarchi.db", "nope")
+            zipped.writestr("../evil.txt", "no")
+        written = appmod.apply_panel_package(blob.getvalue(), folder)
+        self.assertIn("app.py", written)
+        self.assertEqual((folder / "app.py").read_text(encoding="utf-8"), "print('new')\n")
+        self.assertTrue((folder / "static/js/app.js").is_file())
+        self.assertFalse((folder / "data").exists())
+        self.assertFalse((folder.parent / "evil.txt").exists())
+        bad = io.BytesIO()
+        with zipfile.ZipFile(bad, "w") as zipped:
+            zipped.writestr("readme.txt", "no app")
+        with self.assertRaises(appmod.AppError):
+            appmod.apply_panel_package(bad.getvalue(), folder)
+
+    def test_panel_update_reads_github_manifest(self):
+        original = appmod.http_request
+
+        def fake(method, url, payload=None, headers=None, form=None, timeout=12):
+            if "studio-version.json" in str(url):
+                return 200, {
+                    "version": "9.9.9-studio",
+                    "notes": "تازه",
+                    "app_url": "https://github.com/mohammad-mahdikhani/plugins/raw/x/app.zip",
+                    "full_url": "https://github.com/mohammad-mahdikhani/plugins/raw/x/full.zip",
+                }
+            return original(method, url, payload=payload, headers=headers, form=form, timeout=timeout)
+
+        appmod.http_request = fake
+        try:
+            body = self.client.get("/api/panel/update").get_json()
+        finally:
+            appmod.http_request = original
+        self.assertTrue(body["update"])
+        self.assertEqual(body["latest"], "9.9.9-studio")
+        self.assertIn("github.com", body["app_url"])
+
     def test_studio_unlock_skips_trial_limit(self):
         product = self.add_product(barcode="studio-open")
         self.open_register(0)
@@ -714,7 +758,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.8-studio", seen["text"])
+        self.assertIn("1.1.9-studio", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -1360,7 +1404,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.8-studio")
+        self.assertEqual(appmod.APP_VERSION, "1.1.9-studio")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -1425,7 +1469,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.8-studio")
+        self.assertEqual(boot["version"], "1.1.9-studio")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -1434,7 +1478,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.8-studio", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.9-studio", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)

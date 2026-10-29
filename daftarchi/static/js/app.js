@@ -11,6 +11,7 @@ const MORE = [
   ["licenses", "لایسنس", "admin"],
   ["sms", "پیامک", "admin"],
   ["settings", "تنظیمات", "admin"],
+  ["updates", "به‌روزرسانی", "admin"],
 ];
 const NAV = [...PRIMARY, ...MORE];
 const TITLES = Object.fromEntries(NAV.map(([id, title]) => [id, title]));
@@ -266,6 +267,9 @@ const loaders = {
     state.settings = settings.settings;
     state.users = users.users;
     updatePromise.then(() => { if (state.page === "settings") paintChrome(); });
+  },
+  async updates() {
+    state.panelUpdate = await api("/api/panel/update");
   },
 };
 
@@ -900,13 +904,9 @@ function settingsHtml() {
       ${field("telegram_chat_id", "شناسه چت", "text", "عدد چت یا کانال")}
       <p class="hint">ربات را در تلگرام با BotFather بسازید و توکن را اینجا بگذارید. شناسه چت همان عددی است که پیام‌ها باید به آن برسد. اگر این رایانه به تلگرام نرسد، فایل telegram.php و telegram.json را کنار version.json روی هاست بگذارید.</p>
     </section>
-    <section class="card"><h2 class="section-title">جای فایل‌های آپدیت</h2>
-      <p class="hint">نسخه نصب‌شده: ${esc(state.update?.current || "")}. دفترچی این آدرس را می‌خواند:</p>
-      <p class="ltr">https://webakery.ir/daftarchi/version.json</p>
-      <p class="hint">این فایل‌ها را از گیت‌هاب دانلود کنید، نه از خود هاست. بعد روی هاست در public_html/daftarchi بگذارید:</p>
-      <p class="ltr">https://raw.githubusercontent.com/mohammad-mahdikhani/one-project/cursor/accounting-ledger-56dd/Daftarchi-Host.zip</p>
-      <p class="ltr">https://raw.githubusercontent.com/mohammad-mahdikhani/one-project/cursor/accounting-ledger-56dd/Daftarchi.exe</p>
-      <p class="hint">زیپ را باز کنید. version.json و mail.php را با فایل نصب در همان پوشه هاست بگذارید.</p>
+    <section class="card"><h2 class="section-title">به‌روزرسانی</h2>
+      <p class="hint">نسخه نصب‌شده: ${esc(state.update?.current || "")}. برای عوض کردن پنل و برنامه، بدون هاست، از بخش به‌روزرسانی استفاده کنید. داده فروشگاه سر جایش می‌ماند.</p>
+      <button type="button" class="btn" data-act="nav" data-page="updates">باز کردن به‌روزرسانی</button>
     </section>
     <button class="btn primary" type="submit">ذخیره تنظیمات</button>
   </form>
@@ -914,6 +914,32 @@ function settingsHtml() {
     <table><thead><tr><th>نام</th><th>موبایل</th><th>جیمیل</th><th>نقش</th></tr></thead><tbody>${state.users.map((user) => `<tr><td>${esc(user.name)}</td><td class="ltr">${esc(user.phone)}</td><td class="ltr">${esc(user.email || "—")}${user.email && !user.email_verified ? " · تأیید نشده" : ""}</td><td>${user.role === "admin" ? "مدیر" : "صندوقدار"}</td></tr>`).join("")}</tbody></table>
     <form data-act="create-user"><div class="grid-2"><div class="field"><label>نام</label><input name="name" required></div><div class="field"><label>موبایل</label><input class="ltr" name="phone" required></div></div><div class="grid-2"><div class="field"><label>جیمیل</label><input class="ltr" name="email"></div><div class="field"><label>رمز</label><input type="password" name="password" required></div></div><div class="field"><label>نقش</label><select name="role"><option value="cashier">صندوقدار</option><option value="admin">مدیر</option></select></div><button class="btn primary" type="submit">ساخت کاربر</button></form>
   </section>`;
+}
+
+function updatesHtml() {
+  const info = state.panelUpdate || {};
+  const remote = info.update
+    ? `<p>نسخه ${esc(info.latest)} آماده است.</p>`
+    : `<p>${info.reachable ? "همین نسخه آخر است." : "فهرست نسخه از گیت‌هاب خوانده نشد. می‌توانید فایل زیپ را دستی نصب کنید."}</p>`;
+  return `<div class="stack">
+    <section class="card"><h2 class="section-title">به‌روزرسانی پنل و اپ</h2>
+      <p>نسخه این برنامه: <strong class="ltr">${esc(info.current || "")}</strong></p>
+      ${info.latest ? `<p>نسخه موجود: <strong class="ltr">${esc(info.latest)}</strong></p>` : ""}
+      ${remote}
+      ${info.notes ? `<p class="hint">${esc(info.notes)}</p>` : ""}
+      ${info.error ? `<p class="hint">${esc(info.error)}</p>` : ""}
+      <div class="row-actions">
+        <button type="button" class="btn" data-act="reload-panel-update">بررسی دوباره</button>
+        <button type="button" class="btn primary" data-act="install-remote" ${info.update && info.app_url ? "" : "disabled"}>دریافت و نصب نسخه جدید</button>
+      </div>
+      <p class="hint">هاست و کانفیگ لازم نیست. برنامه نسخه را از گیت‌هاب می‌گیرد، فقط فایل‌های پنل و اپ را عوض می‌کند و داده فروشگاه را نگه می‌دارد. بعد از نصب، صفحه خودش تازه می‌شود.</p>
+      ${info.full_url ? `<p class="hint">اگر این رایانه به گیت‌هاب نرسید، نسخه کامل را از این آدرس دانلود کنید:</p><p class="ltr">${esc(info.full_url)}</p>` : ""}
+    </section>
+    <section class="card"><h2 class="section-title">نصب از فایل</h2>
+      <div class="field"><label>فایل زیپ پنل یا نسخه کامل</label><input id="update-file" type="file" accept=".zip,application/zip"></div>
+      <button type="button" class="btn primary" data-act="install-file">نصب همین فایل</button>
+    </section>
+  </div>`;
 }
 
 function productForm() {
@@ -987,13 +1013,13 @@ function modalHtml() {
 }
 
 function pageHtml() {
-  if (state.access && !state.access.active && state.page !== "licenses" && state.page !== "settings") {
+  if (state.access && !state.access.active && state.page !== "licenses" && state.page !== "settings" && state.page !== "updates") {
     return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید لایسنس بسته است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">خرید لایسنس</button></section>`;
   }
   const pages = {
     dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml,
     accounts: accountsHtml, register: registerHtml, licenses: licensesHtml, customers: customersHtml,
-    sms: smsHtml, settings: settingsHtml,
+    sms: smsHtml, settings: settingsHtml, updates: updatesHtml,
   };
   const draw = pages[state.page];
   return draw ? draw() : "";
@@ -1468,6 +1494,22 @@ async function onClick(event) {
       } else await submitSale(el.dataset.method, "");
     } else if (act === "confirm-card") {
       await submitSale("card", document.getElementById("pos-ref")?.value || "");
+    } else if (act === "reload-panel-update") {
+      await loaders.updates();
+      render();
+    } else if (act === "install-remote" || act === "install-file") {
+      let result;
+      if (act === "install-file") {
+        const file = document.getElementById("update-file")?.files?.[0];
+        if (!file) throw new Error("فایل زیپ را انتخاب کنید");
+        const form = new FormData();
+        form.append("file", file);
+        result = await api("/api/panel/update", { method: "POST", form });
+      } else {
+        result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
+      }
+      toast(result.message || "نصب شد");
+      setTimeout(() => location.reload(), 2500);
     } else if (act === "check-update") {
       await loadUpdate();
       state.support = true;

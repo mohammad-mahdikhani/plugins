@@ -13,10 +13,13 @@ import logging
 import os
 import re
 import secrets
+import shutil
 import smtplib
 import socket
 import sqlite3
+import subprocess
 import threading
+import zipfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -108,7 +111,19 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.8-studio"
+APP_VERSION = "1.1.9-studio"
+STUDIO_UPDATE_MANIFEST = (
+    "https://github.com/mohammad-mahdikhani/plugins/raw/"
+    "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
+)
+UPDATE_ZIP_HOSTS = {
+    "github.com",
+    "raw.githubusercontent.com",
+    "objects.githubusercontent.com",
+    "codeload.github.com",
+}
+PANEL_FILES = {"app.py", "moadian.py", "version.json"}
+PANEL_DIRS = {"static", "templates"}
 TRIAL_DAYS = 7
 UPDATE_MANIFEST_URLS = (
     "https://webakery.ir/daftarchi/version.json",
@@ -158,7 +173,7 @@ SYSTEM_ACCOUNTS = [
 ]
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 40 * 1024 * 1024
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -2677,6 +2692,155 @@ def update_info():
         notes=notes,
         manifest=manifest,
     )
+
+
+def panel_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def studio_manifest_url() -> str:
+    return os.environ.get("DAFTARCHI_UPDATE_MANIFEST", "").strip() or STUDIO_UPDATE_MANIFEST
+
+
+def read_studio_manifest() -> dict:
+    url = studio_manifest_url()
+    try:
+        status, body = http_request("GET", url, timeout=8)
+    except AppError as exc:
+        return {"ok": False, "error": str(exc), "manifest": url}
+    if status >= 400 or not isinstance(body, dict):
+        return {"ok": False, "error": "فهرست نسخه خوانده نشد", "manifest": url}
+    return {"ok": True, "manifest": url, "body": body}
+
+
+def panel_update_status() -> dict:
+    current = APP_VERSION
+    remote = read_studio_manifest()
+    body = remote.get("body") or {}
+    latest = str(body.get("version") or "").strip()
+    newer = bool(latest) and version_tuple(latest) > version_tuple(current)
+    return {
+        "current": current,
+        "latest": latest,
+        "update": newer,
+        "notes": str(body.get("notes") or "")[:400],
+        "app_url": str(body.get("app_url") or ""),
+        "full_url": str(body.get("full_url") or ""),
+        "manifest": remote.get("manifest") or studio_manifest_url(),
+        "reachable": bool(remote.get("ok")),
+        "error": remote.get("error") or "",
+        "writable": os.access(panel_root(), os.W_OK),
+    }
+
+
+def _safe_panel_rel(name: str) -> Path | None:
+    cleaned = name.replace("\\", "/").lstrip("/")
+    parts = [part for part in cleaned.split("/") if part and part != "."]
+    if not parts or ".." in parts:
+        return None
+    if parts[0] in {"Daftarchi-Studio", "Daftarchi-Studio-App"} and len(parts) > 1:
+        parts = parts[1:]
+    if parts and parts[0] == "app" and len(parts) > 1:
+        parts = parts[1:]
+    if not parts:
+        return None
+    if parts[0] in PANEL_DIRS or (len(parts) == 1 and parts[0] in PANEL_FILES):
+        return Path(*parts)
+    return None
+
+
+def apply_panel_package(blob: bytes, dest: Path | None = None) -> list[str]:
+    root = (dest or panel_root()).resolve()
+    if not os.access(root, os.W_OK):
+        raise AppError("پوشه برنامه قابل نوشتن نیست")
+    try:
+        archive = zipfile.ZipFile(BytesIO(blob))
+    except zipfile.BadZipFile as exc:
+        raise AppError("فایل زیپ خراب است") from exc
+    planned: list[tuple[zipfile.ZipInfo, Path]] = []
+    with archive:
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            rel = _safe_panel_rel(info.filename)
+            if rel is None:
+                continue
+            target = (root / rel).resolve()
+            if target != root and root not in target.parents:
+                continue
+            planned.append((info, target))
+        if not any(target.name == "app.py" and target.parent == root for _, target in planned):
+            raise AppError("این زیپ نسخه پنل دفترچی نیست")
+        written: list[str] = []
+        for info, target in planned:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(info) as src, target.open("wb") as out:
+                shutil.copyfileobj(src, out)
+            written.append(str(target.relative_to(root)).replace("\\", "/"))
+    if not written:
+        raise AppError("چیزی برای نصب داخل زیپ نبود")
+    return written
+
+
+def download_update_zip(url: str) -> bytes:
+    parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or host not in UPDATE_ZIP_HOSTS:
+        raise AppError("آدرس دانلود نسخه مجاز نیست")
+    req = urllib.request.Request(url, headers={"User-Agent": "Daftarchi/1.0", "Accept": "application/octet-stream"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as res:
+            chunks = []
+            total = 0
+            while True:
+                block = res.read(256 * 1024)
+                if not block:
+                    break
+                total += len(block)
+                if total > 40 * 1024 * 1024:
+                    raise AppError("فایل به‌روزرسانی خیلی بزرگ است")
+                chunks.append(block)
+    except urllib.error.URLError as exc:
+        raise AppError(f"دانلود نسخه نشد: {exc.reason}", 502) from exc
+    blob = b"".join(chunks)
+    if not blob:
+        raise AppError("فایل به‌روزرسانی خالی است")
+    return blob
+
+
+def schedule_restart() -> None:
+    root = panel_root()
+    cmd = [os.environ.get("DAFTARCHI_PYTHON", "").strip() or __import__("sys").executable, str(root / "app.py")]
+    kwargs = {"cwd": str(root), "env": os.environ.copy(), "close_fds": True}
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen(cmd, **kwargs)
+    threading.Timer(0.8, lambda: os._exit(0)).start()
+
+
+@app.get("/api/panel/update")
+def panel_update_info():
+    require_admin()
+    return jsonify(panel_update_status())
+
+
+@app.post("/api/panel/update")
+def panel_update_apply():
+    require_admin()
+    upload = request.files.get("file")
+    if upload is not None and upload.filename:
+        blob = upload.read()
+    else:
+        payload = body_json() if request.is_json else {}
+        if payload.get("source") != "remote":
+            raise AppError("فایل زیپ را انتخاب کنید یا دریافت نسخه را بزنید")
+        status = panel_update_status()
+        if not status["app_url"]:
+            raise AppError(status["error"] or "آدرس نسخه جدید پیدا نشد")
+        blob = download_update_zip(status["app_url"])
+    written = apply_panel_package(blob)
+    schedule_restart()
+    return jsonify(ok=True, files=len(written), message="نصب شد. چند ثانیه دیگر صفحه را تازه کنید. داده‌های فروشگاه ماند.")
 
 
 def telegram_text(user, kind: str, body: str, page: str, error: str, settings: dict) -> str:
