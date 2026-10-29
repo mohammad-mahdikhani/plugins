@@ -56,6 +56,7 @@ body.blog .pm-blog-archive-fallback { margin: 0; }
 .pm-site .pm-search__input:focus-visible {
   outline: none !important;
   border: none !important;
+  border-radius: 9999px !important;
   -webkit-tap-highlight-color: transparent;
 }
 .pm-site .pm-search__input::-moz-focus-inner { border: 0; }
