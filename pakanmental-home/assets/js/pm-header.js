@@ -12,4 +12,8 @@
 
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
+
+  if (document.querySelector(".pm-site--has-hero")) {
+    document.documentElement.classList.add("pm-site--has-hero");
+  }
 })();

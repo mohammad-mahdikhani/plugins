@@ -74,7 +74,11 @@ body.pm-home {
   z-index: 100;
   padding: 0.75rem 0 0.45rem;
   background: transparent;
-  transition: padding 0.3s ease, background 0.3s ease, backdrop-filter 0.3s ease;
+  transition:
+    padding 0.45s ease,
+    background 0.45s ease,
+    backdrop-filter 0.45s ease,
+    box-shadow 0.45s ease;
 }
 
 .pm-site--has-hero .pm-header {
@@ -83,6 +87,10 @@ body.pm-home {
   right: 0;
   top: 0;
   width: 100%;
+  padding: clamp(0.65rem, 2vw, 1.1rem) 0 0;
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .pm-site--has-hero .pm-header.is-scrolled {
@@ -101,11 +109,7 @@ body.pm-home {
 
 .pm-header__wrap {
   position: relative;
-  transition: transform 0.3s ease;
-}
-
-.pm-header.is-scrolled .pm-header__wrap {
-  transform: translateY(0);
+  transition: transform 0.45s ease;
 }
 
 .pm-header__bar {
@@ -118,13 +122,68 @@ body.pm-home {
   background: color-mix(in srgb, var(--pm-surface) 82%, var(--pm-bg));
   backdrop-filter: blur(12px);
   box-shadow: var(--pm-shadow-md);
-  transition: padding 0.3s ease, background 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    padding 0.45s ease,
+    background 0.45s ease,
+    backdrop-filter 0.45s ease,
+    box-shadow 0.45s ease,
+    border-radius 0.45s ease,
+    transform 0.45s ease;
 }
 
+/* روی هیرو: بدون «قرص» جدا — منو داخل خود اسلایدر */
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__bar {
-  background: color-mix(in srgb, var(--pm-cream) 14%, transparent);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 12px 36px color-mix(in srgb, var(--pm-teal-900) 10%, transparent);
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0.25rem 0;
+  transform: none;
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg {
+  background: color-mix(in srgb, var(--pm-cream) 10%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: none;
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link {
+  color: var(--pm-cream);
+  opacity: 0.92;
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link:hover {
+  color: #fff;
+  opacity: 1;
+  background: color-mix(in srgb, var(--pm-cream) 12%, transparent);
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link.is-active {
+  color: var(--pm-cream);
+  background: linear-gradient(135deg, var(--pm-mint-500), var(--pm-teal-700));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--pm-teal-900) 25%, transparent);
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input {
+  background: color-mix(in srgb, var(--pm-cream) 12%, transparent);
+  color: var(--pm-cream);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 22%, transparent);
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input::placeholder {
+  color: color-mix(in srgb, var(--pm-cream) 70%, transparent);
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__icon {
+  color: var(--pm-cream);
+  opacity: 0.85;
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__icon-btn {
+  background: color-mix(in srgb, var(--pm-cream) 12%, transparent);
+  color: var(--pm-cream);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 18%, transparent);
 }
 
 .pm-header.is-scrolled .pm-header__bar {
@@ -132,6 +191,7 @@ body.pm-home {
   background: color-mix(in srgb, var(--pm-surface) 68%, transparent);
   backdrop-filter: blur(20px) saturate(1.15);
   box-shadow: var(--pm-shadow-md);
+  border-radius: var(--pm-radius-lg);
 }
 
 .pm-header.is-scrolled .pm-header__logo .pm-logo__img {
@@ -361,8 +421,21 @@ body.pm-home {
   margin-top: 0;
 }
 
+.pm-site--has-hero #pm-main {
+  padding-top: 0;
+}
+
+.pm-site--has-hero .pm-rev__viewport {
+  border-radius: 0 0 var(--pm-radius-lg) var(--pm-radius-lg);
+  box-shadow: none;
+}
+
+html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
+  box-shadow: var(--pm-shadow-md);
+}
+
 .pm-site--has-hero .pm-rev__inner {
-  padding-top: clamp(4.5rem, 11vw, 6.5rem);
+  padding-top: clamp(5rem, 13vw, 7.5rem);
 }
 
 .pm-rev__viewport {
