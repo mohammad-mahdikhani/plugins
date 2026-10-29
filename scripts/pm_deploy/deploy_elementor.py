@@ -18,6 +18,7 @@ from .pages_content import (
     blog_main,
     product_single_main,
     not_found_main,
+    account_main,
 )
 
 SECTION_HEADER_TITLE = "PM Header Elementor"
@@ -104,6 +105,7 @@ def main() -> None:
         (PAGE_IDS["blog"], "blog", blog_main(), False, False),
         (PAGE_IDS["product"], "shop", product_single_main(), False, False),
         (not_found_id, "home", not_found_main(), False, False),
+        (PAGE_IDS["account"], "account", account_main(), False, False),
     ]
 
     for post_id, active, main_html, hero_js, shop_js in pages:

@@ -12,6 +12,7 @@ PAGE_IDS = {
     "blog": 20,
     "product": 21,
     "not_found": 229,
+    "account": 70,
 }
 
 NOT_FOUND_PAGE_SLUG = "404-pm"

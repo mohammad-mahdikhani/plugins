@@ -101,3 +101,16 @@ button[type="submit"] {
 .pm-site .pm-btn--primary {
   background: var(--pm-brand-green) !important;
 }
+
+.woocommerce-account .woocommerce-MyAccount-navigation a,
+.woocommerce-account .woocommerce-MyAccount-content a,
+.pm-wc-account a {
+  color: var(--pm-brand-green-deep) !important;
+  text-decoration: none !important;
+}
+
+.woocommerce-account .woocommerce-MyAccount-navigation li.is-active a,
+.woocommerce-account .woocommerce-MyAccount-navigation a:hover,
+.pm-wc-account .woocommerce-MyAccount-navigation li.is-active a {
+  color: var(--pm-brand-green) !important;
+}

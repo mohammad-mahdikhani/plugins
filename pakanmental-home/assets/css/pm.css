@@ -2398,3 +2398,106 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
     font-size: clamp(1.15rem, 6vw, 1.45rem);
   }
 }
+
+/* WooCommerce — My Account (PM shell) */
+.pm-wc-account {
+  padding: 1.5rem 0 3rem;
+}
+
+.pm-wc-account__intro {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.pm-wc-account__intro h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-weight: 800;
+}
+
+.pm-wc-account__intro p {
+  margin: 0;
+  color: var(--pm-text-muted);
+  font-size: 0.9rem;
+}
+
+.pm-wc-account__body .woocommerce {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.pm-wc-account .woocommerce-MyAccount-navigation ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pm-wc-account .woocommerce-MyAccount-navigation a {
+  display: block;
+  padding: 0.6rem 0.85rem;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--pm-teal-700) !important;
+  text-decoration: none !important;
+  background: color-mix(in srgb, var(--pm-surface) 90%, var(--pm-bg));
+  box-shadow: var(--pm-shadow-sm);
+}
+
+.pm-wc-account .woocommerce-MyAccount-navigation li.is-active a,
+.pm-wc-account .woocommerce-MyAccount-navigation a:hover {
+  color: var(--pm-teal-900) !important;
+  background: color-mix(in srgb, var(--pm-mint-50) 85%, var(--pm-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 22%, transparent);
+}
+
+.pm-wc-account .woocommerce-MyAccount-content {
+  background: color-mix(in srgb, var(--pm-surface) 94%, var(--pm-bg));
+  border-radius: var(--pm-radius-lg);
+  padding: 1.25rem 1.35rem;
+  box-shadow: var(--pm-shadow-sm);
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--pm-teal-900);
+}
+
+.pm-wc-account .woocommerce-MyAccount-content a {
+  color: var(--pm-mint-600) !important;
+  font-weight: 600;
+  text-decoration: none !important;
+}
+
+.pm-wc-account .woocommerce-MyAccount-content a:hover {
+  color: var(--pm-mint-500) !important;
+}
+
+.pm-wc-account .woocommerce-MyAccount-content p {
+  color: var(--pm-text-muted);
+}
+
+@media (min-width: 901px) {
+  .pm-wc-account__body .woocommerce {
+    grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .pm-wc-account .woocommerce-MyAccount-navigation ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .pm-wc-account .woocommerce-MyAccount-navigation li {
+    flex: 1 1 calc(50% - 0.35rem);
+  }
+
+  .pm-wc-account .woocommerce-MyAccount-navigation a {
+    text-align: center;
+    font-size: 0.78rem;
+    padding: 0.5rem 0.45rem;
+  }
+}

@@ -353,6 +353,22 @@ def _dice_404_svg() -> str:
 """
 
 
+def account_main() -> str:
+    return """
+<section class="pm-wc-account">
+  <div class="pm-container">
+    <header class="pm-wc-account__intro">
+      <h1>حساب کاربری</h1>
+      <p>سفارش‌ها، دانلودها، آدرس‌ها و اطلاعات ورود شما</p>
+    </header>
+    <div class="pm-wc-account__body">
+      [woocommerce_my_account]
+    </div>
+  </div>
+</section>
+"""
+
+
 def not_found_main() -> str:
     dice = _dice_404_svg()
     return f"""
