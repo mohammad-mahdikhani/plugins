@@ -35,6 +35,8 @@ def req(method: str, url: str, data=None):
 def load_css() -> str:
     with open("/workspace/pakanmental-home/assets/css/pm.css", encoding="utf-8") as f:
         css = f.read()
+    with open("/workspace/pakanmental-home/assets/css/pm-brand-overrides.css", encoding="utf-8") as f:
+        css += "\n" + f.read()
     css += """
 body.page .site-header,
 body.page .site-footer,

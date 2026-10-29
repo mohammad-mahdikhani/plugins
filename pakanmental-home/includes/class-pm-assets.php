@@ -17,7 +17,7 @@ final class PM_Assets {
 	}
 
 	public static function font_preconnect(): void {
-		if ( ! self::is_pm_home_page() ) {
+		if ( is_admin() ) {
 			return;
 		}
 		echo '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
@@ -25,6 +25,17 @@ final class PM_Assets {
 	}
 
 	public static function enqueue(): void {
+		if ( is_admin() ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'pm-brand-overrides',
+			PM_HOME_URL . 'assets/css/pm-brand-overrides.css',
+			array(),
+			PM_HOME_VERSION
+		);
+
 		if ( ! self::is_pm_home_page() ) {
 			return;
 		}

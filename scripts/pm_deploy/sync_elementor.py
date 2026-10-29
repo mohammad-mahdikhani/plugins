@@ -90,6 +90,12 @@ def sync() -> None:
         {"action": "update", "tag": "h1", "css": "color: #1e4339;", "mode": "replace"},
         {"action": "update", "tag": "h2", "css": "color: #1e4339;", "mode": "replace"},
         {"action": "update", "tag": "button", "css": "background-color: #4aa88e; color: #faf7f2; border: none;", "mode": "replace"},
+        {
+            "action": "update",
+            "tag": "input",
+            "css": "accent-color: #4aa88e;",
+            "mode": "replace",
+        },
     ]
     r2 = _call(session, "elementor-manage-default-styles", {"operations": styles})
     print("elementor default styles", "ok" if r2.get("result") else r2)
