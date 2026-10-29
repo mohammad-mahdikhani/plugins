@@ -108,7 +108,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.7-test"
+APP_VERSION = "1.1.8-studio"
 TRIAL_DAYS = 7
 UPDATE_MANIFEST_URLS = (
     "https://webakery.ir/daftarchi/version.json",
@@ -2647,6 +2647,8 @@ def update_info():
         "notes": "",
         "manifest": UPDATE_MANIFEST_URL,
     }
+    if studio_unlock_active():
+        return jsonify(quiet)
     status, body, manifest = 404, None, UPDATE_MANIFEST_URL
     for candidate in UPDATE_MANIFEST_URLS:
         try:
@@ -5052,6 +5054,13 @@ init_db()
 def main():
     port = int(os.environ.get("PORT", "8080"))
     print(f"دفترچی روی http://127.0.0.1:{port}")
+    if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
+        def _open_browser():
+            import time
+            import webbrowser
+            time.sleep(0.8)
+            webbrowser.open(f"http://127.0.0.1:{port}")
+        threading.Thread(target=_open_browser, daemon=True).start()
     try:
         from waitress import serve
         serve(app, host="0.0.0.0", port=port)
