@@ -95,16 +95,31 @@ body.pm-home {
 
 .pm-site--has-hero .pm-header.is-scrolled {
   position: fixed;
-  padding: 0.35rem 0 0.25rem;
-  background: color-mix(in srgb, var(--pm-bg) 78%, transparent);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 10px 40px color-mix(in srgb, var(--pm-teal-900) 6%, transparent);
+  top: clamp(0.55rem, 1.8vw, 0.85rem);
+  left: 0;
+  right: 0;
+  width: 100%;
+  padding: 0 0 0.15rem;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .pm-header.is-scrolled {
-  padding: 0.35rem 0 0.25rem;
-  background: color-mix(in srgb, var(--pm-bg) 82%, transparent);
-  backdrop-filter: blur(16px);
+  padding: clamp(0.55rem, 1.8vw, 0.85rem) 0 0.15rem;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
+  top: calc(32px + clamp(0.45rem, 1.5vw, 0.65rem));
+}
+
+@media screen and (max-width: 782px) {
+  html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
+    top: calc(46px + clamp(0.45rem, 1.5vw, 0.65rem));
+  }
 }
 
 .pm-header__wrap {
@@ -188,10 +203,39 @@ body.pm-home {
 
 .pm-header.is-scrolled .pm-header__bar {
   padding: 0.38rem 0.75rem;
-  background: color-mix(in srgb, var(--pm-surface) 68%, transparent);
-  backdrop-filter: blur(20px) saturate(1.15);
+  background: color-mix(in srgb, var(--pm-cream) 62%, transparent);
+  backdrop-filter: blur(22px) saturate(1.12);
   box-shadow: var(--pm-shadow-md);
   border-radius: var(--pm-radius-lg);
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-seg__link {
+  color: var(--pm-teal-700);
+  opacity: var(--pm-text-muted-opacity);
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-seg__link.is-active {
+  color: var(--pm-cream);
+  opacity: 1;
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-search__input {
+  background: color-mix(in srgb, var(--pm-cream) 55%, var(--pm-bg));
+  color: var(--pm-teal-900);
+  box-shadow:
+    0 6px 22px color-mix(in srgb, var(--pm-teal-900) 7%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 14%, transparent);
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-search__icon {
+  color: var(--pm-teal-700);
+  opacity: 0.55;
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-header__icon-btn {
+  background: color-mix(in srgb, var(--pm-mint-50) 50%, var(--pm-bg));
+  color: var(--pm-teal-700);
+  box-shadow: var(--pm-shadow-sm);
 }
 
 .pm-header.is-scrolled .pm-header__logo .pm-logo__img {
