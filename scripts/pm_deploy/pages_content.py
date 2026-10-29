@@ -318,12 +318,73 @@ def shop_filters_sidebar() -> str:
 """
 
 
+def _dice_404_svg() -> str:
+    return """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="تاس">
+  <defs>
+    <linearGradient id="pm-dice-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#faf7f2"/>
+      <stop offset="100%" stop-color="#e8f6f1"/>
+    </linearGradient>
+    <linearGradient id="pm-dice-side" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4aa88e"/>
+      <stop offset="100%" stop-color="#2a5f52"/>
+    </linearGradient>
+    <linearGradient id="pm-dice-front" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3d8f78"/>
+      <stop offset="100%" stop-color="#1e4339"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="100" cy="178" rx="62" ry="10" fill="#1e4339" opacity="0.12"/>
+  <g transform="translate(28 38) rotate(-8 72 72)">
+    <path d="M72 20 L132 52 L132 112 L72 144 L12 112 L12 52 Z" fill="url(#pm-dice-top)" stroke="#2a5f52" stroke-width="2"/>
+    <path d="M132 52 L152 62 L152 122 L132 112 Z" fill="url(#pm-dice-side)" stroke="#1e4339" stroke-width="1.5"/>
+    <path d="M12 52 L72 20 L132 52 L72 84 Z" fill="url(#pm-dice-front)" stroke="#1e4339" stroke-width="1.5"/>
+    <circle cx="72" cy="52" r="7" fill="#faf7f2"/>
+    <circle cx="52" cy="62" r="5" fill="#e5d4bc"/>
+    <circle cx="92" cy="62" r="5" fill="#e5d4bc"/>
+    <circle cx="72" cy="72" r="5" fill="#faf7f2"/>
+    <circle cx="52" cy="82" r="5" fill="#e5d4bc"/>
+    <circle cx="92" cy="82" r="5" fill="#e5d4bc"/>
+    <circle cx="142" cy="87" r="6" fill="#faf7f2"/>
+    <circle cx="142" cy="107" r="4" fill="#e5d4bc"/>
+  </g>
+</svg>
+"""
+
+
+def not_found_main() -> str:
+    dice = _dice_404_svg()
+    return f"""
+<section class="pm-not-found">
+  <div class="pm-container">
+    <div class="pm-not-found__art">{dice}</div>
+    <h1>صفحه پیدا نشد</h1>
+    <p>شاید آدرس را اشتباه وارد کرده‌اید یا این صفحه جابه‌جا شده است. یک بار دیگر تاس بیندازید و از منوی بالا مسیر درست را پیدا کنید.</p>
+    <a class="pm-btn pm-btn--primary" href="{URLS["home"]}">بازگشت به خانه</a>
+    <a class="pm-btn pm-btn--ghost" href="{URLS["shop"]}">رفتن به فروشگاه</a>
+  </div>
+</section>
+"""
+
+
 def shop_main() -> str:
     return f"""
 <section class="pm-page-head">
   <div class="pm-container">
     <h1>فروشگاه</h1>
     <p>با فیلتر قیمت، برند، نوع بازی، بازیکن، زمان، ست و سن — محصول مناسب را سریع پیدا کنید.</p>
+  </div>
+</section>
+<section class="pm-shop-category" aria-label="توضیحات دسته‌بندی">
+  <div class="pm-container">
+    <div class="pm-shop-category__content" data-pm-category-description>
+      <h2 class="pm-shop-category__title">دسته‌بندی محصولات</h2>
+      <div class="pm-shop-category__body">
+        <p>این بخش برای متن معرفی دسته‌بندی است. در آرشیو ووکامرس، توضیحاتی که در «محصولات → دسته‌ها» وارد می‌کنید اینجا نمایش داده می‌شود.</p>
+        <p>تا آن زمان می‌توانید همین متن را در ویرایشگر المنتور (HTML این صفحه) تغییر دهید.</p>
+      </div>
+    </div>
   </div>
 </section>
 <section class="pm-shop">

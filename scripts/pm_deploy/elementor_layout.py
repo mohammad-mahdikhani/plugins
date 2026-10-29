@@ -11,7 +11,11 @@ PAGE_IDS = {
     "cart": 19,
     "blog": 20,
     "product": 21,
+    "not_found": 229,
 }
+
+NOT_FOUND_PAGE_SLUG = "404-pm"
+NOT_FOUND_PAGE_TITLE = "۴۰۴ — صفحه پیدا نشد"
 
 
 def _link(url: str) -> dict:

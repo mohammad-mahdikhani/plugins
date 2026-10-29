@@ -10,13 +10,14 @@ from .builder import req, BASE, wrap_page, header, footer
 from .elementor_client import ElementorMcp
 from .elementor_document import set_elementor_html, set_library_html
 from .elementor_globals import PAGE_CHROME_CSS, sync_all
-from .elementor_layout import PAGE_IDS
+from .elementor_layout import PAGE_IDS, NOT_FOUND_PAGE_SLUG, NOT_FOUND_PAGE_TITLE
 from .pages_content import (
     home_main,
     shop_main,
     cart_main,
     blog_main,
     product_single_main,
+    not_found_main,
 )
 
 SECTION_HEADER_TITLE = "PM Header Elementor"
@@ -38,6 +39,27 @@ def _ensure_section(title: str) -> int:
             "meta": {
                 "_elementor_template_type": "section",
                 "_elementor_edit_mode": "builder",
+            },
+        },
+    )
+    return int(created["id"])
+
+
+def _ensure_page(title: str, slug: str) -> int:
+    found = req("GET", f"{BASE}/pages?slug={slug}&per_page=5")
+    for item in found:
+        if item.get("slug") == slug:
+            return int(item["id"])
+    created = req(
+        "POST",
+        f"{BASE}/pages",
+        {
+            "title": title,
+            "slug": slug,
+            "status": "publish",
+            "meta": {
+                "_elementor_edit_mode": "builder",
+                "_elementor_template_type": "wp-page",
             },
         },
     )
@@ -72,12 +94,16 @@ def main() -> None:
     )
     set_library_html(footer_section_id, f'<div class="pm-site" dir="rtl">{footer()}</div>')
 
+    not_found_id = _ensure_page(NOT_FOUND_PAGE_TITLE, NOT_FOUND_PAGE_SLUG)
+    PAGE_IDS["not_found"] = not_found_id
+
     pages = [
         (PAGE_IDS["home"], "home", home_main(), True, False),
         (PAGE_IDS["shop"], "shop", shop_main(), False, True),
         (PAGE_IDS["cart"], "shop", cart_main(), False, False),
         (PAGE_IDS["blog"], "blog", blog_main(), False, False),
         (PAGE_IDS["product"], "shop", product_single_main(), False, False),
+        (not_found_id, "home", not_found_main(), False, False),
     ]
 
     for post_id, active, main_html, hero_js, shop_js in pages:
@@ -113,6 +139,7 @@ def main() -> None:
         },
     )
     print("sections header", header_section_id, "footer", footer_section_id)
+    print("404 page id", not_found_id, "slug", NOT_FOUND_PAGE_SLUG)
     print("edit:", f"https://www.pakanmental.com/wp-admin/post.php?post={PAGE_IDS['home']}&action=elementor")
 
 

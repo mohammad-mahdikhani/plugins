@@ -131,7 +131,7 @@ def footer() -> str:
     <div class="pm-footer__brand">
       <a class="pm-footer__logo" href="{URLS["home"]}">{logo_picture(footer=True)}</a>
       <p class="pm-footer__tagline">فروشگاه بازی فکری، بردگیم، پازل و سرگرمی رومیزی.</p>
-      <p class="pm-footer__brand-name">پاکن منتال</p>
+      <p class="pm-footer__brand-name">فروشگاه پاکان منتال</p>
     </div>
     <div class="pm-footer__col">
       <h2 class="pm-footer__title">فروشگاه</h2>
@@ -147,8 +147,15 @@ def footer() -> str:
         <li><a href="{URLS["home"]}">صفحه اصلی</a></li>
       </ul>
     </div>
+    <div class="pm-footer__col pm-footer__enamad">
+      <h2 class="pm-footer__title">نماد اعتماد</h2>
+      <div class="pm-footer__enamad-slot" id="pm-enamad" data-pm-enamad>
+        <!-- کد HTML یا تصویر اینماد را داخل این div قرار دهید -->
+        <span class="pm-footer__enamad-placeholder">جایگاه اینماد</span>
+      </div>
+    </div>
   </div>
-  <p class="pm-footer__copy">© پاکن منتال — سرگرمی رومیزی برای هر سلیقه</p>
+  <p class="pm-footer__copy">© فروشگاه پاکان منتال — سرگرمی رومیزی برای هر سلیقه</p>
 </footer>
 """
 
