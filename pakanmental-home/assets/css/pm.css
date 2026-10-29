@@ -199,10 +199,19 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   box-shadow: inset 0 -2px 0 var(--pm-cream);
 }
 
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__shell {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--pm-cream) 35%, transparent) 0%,
+    color-mix(in srgb, var(--pm-mint-500) 22%, transparent) 100%
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 28%, transparent);
+}
+
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input {
-  background: color-mix(in srgb, var(--pm-cream) 12%, transparent);
+  background: color-mix(in srgb, var(--pm-teal-900) 18%, transparent);
   color: var(--pm-cream);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 22%, transparent);
+  box-shadow: none;
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input::placeholder {
@@ -243,9 +252,15 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 .pm-site--has-hero .pm-header.is-scrolled .pm-search__input {
   background: color-mix(in srgb, var(--pm-cream) 55%, var(--pm-bg));
   color: var(--pm-teal-900);
-  box-shadow:
-    0 6px 22px color-mix(in srgb, var(--pm-teal-900) 7%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 14%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--pm-teal-900) 4%, transparent);
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-search__shell {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--pm-mint-500) 38%, var(--pm-cream)) 0%,
+    color-mix(in srgb, var(--pm-mint-50) 85%, var(--pm-bg)) 100%
+  );
 }
 
 .pm-site--has-hero .pm-header.is-scrolled .pm-search__icon {
@@ -266,6 +281,7 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 .pm-header__nav {
   justify-self: start;
   min-width: 0;
+  position: relative;
 }
 
 .pm-seg {
@@ -321,6 +337,100 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   font-weight: 700;
   background: none;
   box-shadow: inset 0 -2px 0 var(--pm-mint-500);
+}
+
+/* Shop mega menu (WooCommerce categories) */
+.pm-seg__mega {
+  position: static;
+}
+
+.pm-mega__trigger::after {
+  content: "";
+  display: inline-block;
+  width: 0.35rem;
+  height: 0.35rem;
+  margin-inline-start: 0.4rem;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-1px) rotate(45deg);
+  opacity: 0.65;
+  vertical-align: middle;
+}
+
+.pm-mega__panel {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  z-index: 140;
+  min-width: min(94vw, 820px);
+  padding: 0.35rem;
+  border-radius: calc(var(--pm-radius-lg) + 4px);
+  background: color-mix(in srgb, var(--pm-cream) 78%, transparent);
+  backdrop-filter: blur(20px) saturate(1.08);
+  box-shadow: var(--pm-shadow-md);
+}
+
+.pm-mega__inner {
+  background: color-mix(in srgb, var(--pm-surface) 94%, var(--pm-bg));
+  border-radius: var(--pm-radius-lg);
+  padding: 1.15rem 1.25rem 1rem;
+}
+
+.pm-mega__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 0.85rem 1.25rem;
+  max-height: min(62vh, 420px);
+  overflow: auto;
+}
+
+.pm-mega__parent {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--pm-teal-900);
+  margin-bottom: 0.45rem;
+}
+
+.pm-mega__parent:hover {
+  color: var(--pm-mint-600);
+}
+
+.pm-mega__sub {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.pm-mega__sub a {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--pm-teal-700);
+  opacity: var(--pm-text-muted-opacity);
+}
+
+.pm-mega__sub a:hover {
+  opacity: 1;
+  color: var(--pm-mint-600);
+}
+
+.pm-mega__all {
+  display: inline-flex;
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--pm-mint-600);
+}
+
+.pm-mega__loading,
+.pm-mega__empty {
+  margin: 0;
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  color: var(--pm-text-muted);
 }
 
 .pm-site--has-hero .pm-header.is-scrolled .pm-seg__link {
@@ -388,17 +498,33 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   position: relative;
   flex: 1;
   min-width: 0;
-  max-width: 280px;
+  max-width: 300px;
+}
+
+.pm-search__shell {
+  position: relative;
+  border-radius: var(--pm-pill);
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--pm-mint-500) 42%, var(--pm-cream)) 0%,
+    color-mix(in srgb, var(--pm-mint-50) 80%, var(--pm-bg)) 55%,
+    color-mix(in srgb, var(--pm-sand-200) 35%, var(--pm-cream)) 100%
+  );
+  box-shadow:
+    0 10px 32px color-mix(in srgb, var(--pm-teal-900) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
 }
 
 .pm-search--inline .pm-search__icon {
   position: absolute;
-  right: 0.85rem;
+  right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--pm-teal-700);
-  opacity: 0.55;
+  color: var(--pm-mint-600);
+  opacity: 0.72;
   pointer-events: none;
+  z-index: 2;
 }
 
 .pm-search__label {
@@ -411,42 +537,59 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 
 .pm-search__input {
   width: 100%;
-  padding: 0.62rem 2.45rem 0.62rem 1.05rem;
+  min-height: 44px;
+  padding: 0.72rem 2.65rem 0.72rem 1.15rem;
   border-radius: var(--pm-pill);
   border: none;
-  background: color-mix(in srgb, var(--pm-cream) 55%, var(--pm-bg));
+  appearance: none;
+  -webkit-appearance: none;
+  background: color-mix(in srgb, var(--pm-cream) 88%, #fff);
   color: var(--pm-teal-900);
   font-family: inherit;
-  font-size: 0.82rem;
-  box-shadow:
-    0 6px 22px color-mix(in srgb, var(--pm-teal-900) 7%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 14%, transparent);
-  transition: box-shadow 0.25s ease, background 0.25s ease;
+  font-size: 0.84rem;
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--pm-teal-900) 4%, transparent);
+  transition:
+    box-shadow 0.25s ease,
+    background 0.25s ease,
+    transform 0.2s ease;
+}
+
+.pm-search__input::-webkit-search-cancel-button,
+.pm-search__input::-webkit-search-decoration {
+  -webkit-appearance: none;
 }
 
 .pm-search__input::placeholder {
-  color: color-mix(in srgb, var(--pm-teal-700) 45%, transparent);
+  color: color-mix(in srgb, var(--pm-teal-700) 42%, transparent);
 }
 
 .pm-search__input:focus {
   outline: none;
-  background: color-mix(in srgb, var(--pm-cream) 70%, var(--pm-bg));
+  background: #fff;
   box-shadow:
-    0 8px 28px color-mix(in srgb, var(--pm-mint-500) 18%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 28%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 35%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--pm-mint-500) 14%, transparent);
+}
+
+.pm-search__shell:focus-within {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--pm-mint-500) 55%, var(--pm-cream)) 0%,
+    color-mix(in srgb, var(--pm-mint-50) 90%, var(--pm-bg)) 100%
+  );
 }
 
 .pm-search__results {
   position: absolute;
   right: 0;
   left: 0;
-  top: calc(100% + 0.35rem);
+  top: calc(100% + 0.45rem);
   z-index: 90;
   background: var(--pm-surface);
-  border: none; box-shadow: var(--pm-shadow-sm);
-  border-radius: var(--pm-radius);
-  padding: 0.5rem;
-  box-shadow: 0 12px 40px color-mix(in srgb, var(--pm-teal-900) 8%, transparent);
+  border: none;
+  border-radius: var(--pm-radius-lg);
+  padding: 0.55rem;
+  box-shadow: var(--pm-shadow-md);
 }
 
 .pm-search__list {
@@ -1067,7 +1210,11 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   border-radius: var(--pm-radius);
 }
 
-.pm-footer__enamad-slot:not(:has(.pm-footer__enamad-placeholder)) {
+.pm-footer__enamad-slot.is-loaded .pm-footer__enamad-placeholder {
+  display: none;
+}
+
+.pm-footer__enamad-slot.is-loaded {
   min-height: 0;
 }
 
@@ -1723,6 +1870,34 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
     max-width: none;
     flex: 1;
     min-width: 0;
+  }
+
+  .pm-header__nav {
+    position: relative;
+  }
+
+  .pm-mega__panel {
+    position: fixed;
+    inset: 0;
+    top: 0;
+    min-width: 0;
+    padding: 0;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--pm-teal-900) 42%, transparent);
+    backdrop-filter: blur(6px);
+  }
+
+  .pm-mega__inner {
+    margin: auto;
+    width: min(94vw, 420px);
+    max-height: min(88vh, 640px);
+    margin-top: max(4.5rem, env(safe-area-inset-top, 0px));
+    overflow: auto;
+  }
+
+  .pm-mega__grid {
+    max-height: none;
+    grid-template-columns: 1fr 1fr;
   }
 
   .pm-section__head {

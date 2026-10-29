@@ -61,6 +61,10 @@ def load_site_js(include_hero: bool = False, include_shop: bool = False) -> str:
         parts.append(f.read())
     with open("/workspace/pakanmental-home/assets/js/pm-header.js", encoding="utf-8") as f:
         parts.append(f.read())
+    with open("/workspace/pakanmental-home/assets/js/pm-mega-menu.js", encoding="utf-8") as f:
+        parts.append(f.read())
+    with open("/workspace/pakanmental-home/assets/js/pm-trust-badges.js", encoding="utf-8") as f:
+        parts.append(f.read())
     if include_hero:
         with open("/workspace/pakanmental-home/assets/js/home.js", encoding="utf-8") as f:
             parts.append(f.read())
@@ -89,6 +93,7 @@ def header(active: str) -> str:
         href = URLS.get(key, URLS["home"])
         return f'<a class="{cls}" href="{href}">{label}</a>'
 
+    shop_active = " is-active" if active == "shop" else ""
     return f"""
 <header class="pm-header">
   <div class="pm-container pm-header__wrap">
@@ -96,7 +101,17 @@ def header(active: str) -> str:
       <nav class="pm-header__nav" aria-label="منوی اصلی">
         <div class="pm-seg" role="list">
           {seg("home", "خانه")}
-          {seg("shop", "فروشگاه")}
+          <div class="pm-mega pm-seg__mega" data-pm-mega data-shop-url="{URLS["shop"]}">
+            <a class="pm-seg__link pm-mega__trigger{shop_active}" href="{URLS["shop"]}" aria-haspopup="true" aria-expanded="false" id="pm-mega-trigger">فروشگاه</a>
+            <div class="pm-mega__panel" hidden role="region" aria-labelledby="pm-mega-trigger">
+              <div class="pm-mega__inner pm-container">
+                <div class="pm-mega__grid" data-pm-mega-grid">
+                  <p class="pm-mega__loading">در حال بارگذاری دسته‌ها…</p>
+                </div>
+                <a class="pm-mega__all" href="{URLS["shop"]}">مشاهده همه محصولات</a>
+              </div>
+            </div>
+          </div>
           {seg("blog", "مجله")}
         </div>
       </nav>
@@ -107,10 +122,12 @@ def header(active: str) -> str:
       <div class="pm-header__tools">
         <div class="pm-search pm-search--inline">
           <label class="pm-search__label" for="pm-search-input">جستجو در محصولات</label>
-          <span class="pm-search__icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
-          </span>
-          <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" />
+          <div class="pm-search__shell">
+            <span class="pm-search__icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+            </span>
+            <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" enterkeyhint="search" />
+          </div>
           <div class="pm-search__results" hidden></div>
         </div>
         <a class="pm-header__icon-btn pm-cart" href="{URLS["cart"]}" aria-label="سبد خرید">
@@ -150,8 +167,7 @@ def footer() -> str:
     <div class="pm-footer__col pm-footer__enamad">
       <h2 class="pm-footer__title">نماد اعتماد</h2>
       <div class="pm-footer__enamad-slot" id="pm-enamad" data-pm-enamad>
-        <!-- کد HTML یا تصویر اینماد را داخل این div قرار دهید -->
-        <span class="pm-footer__enamad-placeholder">جایگاه اینماد</span>
+        <span class="pm-footer__enamad-placeholder">پس از فعال‌سازی افزونه، از منوی «پاکن منتال» در پیشخوان کد نماد را وارد کنید.</span>
       </div>
     </div>
   </div>
