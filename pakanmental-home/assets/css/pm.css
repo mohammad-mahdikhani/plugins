@@ -2421,10 +2421,37 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   font-size: 0.9rem;
 }
 
+.pm-wc-account__body {
+  width: 100%;
+}
+
 .pm-wc-account__body .woocommerce {
-  display: grid;
+  display: grid !important;
+  grid-template-columns: 1fr;
   gap: 1.25rem;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+  float: none !important;
+}
+
+.pm-wc-account__body .woocommerce::before,
+.pm-wc-account__body .woocommerce::after {
+  display: none !important;
+  content: none !important;
+}
+
+.pm-wc-account .woocommerce-MyAccount-navigation,
+.pm-wc-account .woocommerce-MyAccount-content {
+  float: none !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  clear: none !important;
+}
+
+.pm-wc-account .woocommerce-MyAccount-content {
+  min-width: 0;
 }
 
 .pm-wc-account .woocommerce-MyAccount-navigation ul {
@@ -2477,11 +2504,38 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 
 .pm-wc-account .woocommerce-MyAccount-content p {
   color: var(--pm-text-muted);
+  margin: 0 0 0.85rem;
 }
 
 @media (min-width: 901px) {
+  .pm-wc-account__intro {
+    text-align: start;
+    margin-bottom: 1.75rem;
+  }
+
   .pm-wc-account__body .woocommerce {
-    grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 272px) minmax(0, 1fr) !important;
+    gap: 1.75rem 2rem;
+  }
+
+  .pm-wc-account .woocommerce-MyAccount-navigation {
+    position: sticky;
+    top: clamp(5.5rem, 12vh, 7rem);
+  }
+
+  .pm-wc-account .woocommerce-MyAccount-navigation ul {
+    flex-direction: column;
+  }
+
+  .pm-wc-account .woocommerce-MyAccount-navigation li {
+    flex: none;
+    width: 100%;
+  }
+
+  .pm-wc-account .woocommerce-MyAccount-navigation a {
+    text-align: start;
+    font-size: 0.88rem;
+    padding: 0.6rem 0.85rem;
   }
 }
 
@@ -2500,4 +2554,11 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
     font-size: 0.78rem;
     padding: 0.5rem 0.45rem;
   }
+}
+
+/* WooCommerce float layout off on account (theme defaults) */
+body.woocommerce-account .woocommerce-MyAccount-navigation,
+body.woocommerce-account .woocommerce-MyAccount-content {
+  float: none !important;
+  width: auto !important;
 }

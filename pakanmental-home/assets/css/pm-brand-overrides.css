@@ -109,8 +109,23 @@ button[type="submit"] {
   text-decoration: none !important;
 }
 
+body.woocommerce-account .woocommerce-MyAccount-navigation,
+body.woocommerce-account .woocommerce-MyAccount-content {
+  float: none !important;
+  width: auto !important;
+}
+
+body.woocommerce-account .pm-wc-account .woocommerce {
+  display: grid !important;
+}
+
+@media (min-width: 901px) {
+  body.woocommerce-account .pm-wc-account .woocommerce {
+    grid-template-columns: minmax(240px, 272px) minmax(0, 1fr) !important;
+  }
+}
+
 .woocommerce-account .woocommerce-MyAccount-navigation li.is-active a,
-.woocommerce-account .woocommerce-MyAccount-navigation a:hover,
-.pm-wc-account .woocommerce-MyAccount-navigation li.is-active a {
+.woocommerce-account .woocommerce-MyAccount-navigation a:hover {
   color: var(--pm-brand-green) !important;
 }
