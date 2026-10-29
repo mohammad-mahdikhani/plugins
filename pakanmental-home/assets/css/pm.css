@@ -146,71 +146,45 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
     transform 0.45s ease;
 }
 
-/* روی هیرو: بدون «قرص» جدا — منو داخل خود اسلایدر */
+/* روی هیرو: هدر معمولی — یک ردیف، بدون باکس منو */
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__bar {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  row-gap: 0.55rem;
-  column-gap: 0.75rem;
+  gap: 0.75rem 1rem;
   background: transparent;
   backdrop-filter: none;
   box-shadow: none;
   border-radius: 0;
-  padding: 0.25rem 0;
+  padding: 0.35rem 0;
   transform: none;
 }
 
-.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__logo {
-  order: 1;
-  flex: 1 1 auto;
-  margin-inline: auto;
-}
-
-.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__tools {
-  order: 2;
-  flex: 0 1 auto;
-}
-
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__nav {
-  order: 3;
-  flex: 1 1 100%;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg {
-  background: color-mix(in srgb, var(--pm-cream) 10%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: none;
-  width: min(720px, 100%);
-  justify-content: stretch;
-  gap: 0.35rem;
-  padding: 0.35rem 0.45rem;
+  justify-self: start;
+  width: auto;
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link {
   color: var(--pm-cream);
   opacity: 0.92;
-  flex: 1 1 0;
-  min-width: 0;
-  text-align: center;
-  padding: 0.52rem 1.15rem;
-  font-size: 0.88rem;
+  flex: none;
+  padding: 0.35rem 0.1rem;
+  font-size: 0.92rem;
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link:hover {
   color: #fff;
   opacity: 1;
-  background: color-mix(in srgb, var(--pm-cream) 12%, transparent);
+  background: none;
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link.is-active {
-  color: var(--pm-cream);
-  background: linear-gradient(135deg, var(--pm-mint-500), var(--pm-teal-700));
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--pm-teal-900) 25%, transparent);
+  color: #fff;
+  opacity: 1;
+  font-weight: 700;
+  background: none;
+  box-shadow: inset 0 -2px 0 var(--pm-cream);
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input {
@@ -239,38 +213,19 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  padding: 0.38rem 0.75rem;
+  gap: 0.45rem 0.65rem;
+  padding: 0.32rem 0.65rem;
   background: color-mix(in srgb, var(--pm-cream) 62%, transparent);
   backdrop-filter: blur(22px) saturate(1.12);
   box-shadow: var(--pm-shadow-md);
   border-radius: var(--pm-radius-lg);
 }
 
-.pm-site--has-hero .pm-header.is-scrolled .pm-header__nav {
-  order: unset;
-  flex: unset;
-  width: auto;
-  justify-self: start;
-  justify-content: flex-start;
-}
-
-.pm-site--has-hero .pm-header.is-scrolled .pm-header__logo {
-  order: unset;
-  margin-inline: 0;
-}
-
-.pm-site--has-hero .pm-header.is-scrolled .pm-header__tools {
-  order: unset;
-}
-
-.pm-site--has-hero .pm-header.is-scrolled .pm-seg__link {
-  color: var(--pm-teal-700);
-  opacity: var(--pm-text-muted-opacity);
-}
-
 .pm-site--has-hero .pm-header.is-scrolled .pm-seg__link.is-active {
-  color: var(--pm-cream);
-  opacity: 1;
+  color: var(--pm-teal-900);
+  font-weight: 700;
+  background: none;
+  box-shadow: inset 0 -2px 0 var(--pm-mint-500);
 }
 
 .pm-site--has-hero .pm-header.is-scrolled .pm-search__input {
@@ -304,64 +259,61 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 .pm-seg {
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.2rem;
-  border-radius: var(--pm-pill);
-  background: color-mix(in srgb, var(--pm-mint-50) 65%, var(--pm-bg));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--pm-cream) 80%, transparent);
+  gap: clamp(0.85rem, 2.5vw, 1.65rem);
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   width: auto;
   max-width: 100%;
-  transition:
-    width 0.45s ease,
-    max-width 0.45s ease,
-    gap 0.45s ease,
-    padding 0.45s ease,
-    background 0.45s ease,
-    backdrop-filter 0.45s ease;
+  transition: gap 0.45s ease;
 }
 
-/* بعد از اسکرول: منو جمع و کم‌عرض داخل هدر */
 .pm-header.is-scrolled .pm-seg,
 .pm-site--has-hero .pm-header.is-scrolled .pm-seg {
-  width: auto;
-  max-width: none;
-  gap: 0.12rem;
-  padding: 0.2rem;
-  justify-content: center;
+  gap: 0.35rem;
 }
 
 .pm-header.is-scrolled .pm-seg__link {
-  flex: 0 0 auto;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.2rem 0.25rem;
+  font-size: 0.78rem;
 }
 
 .pm-seg__link {
-  padding: 0.42rem 0.85rem;
-  border-radius: var(--pm-pill);
-  font-size: 0.8rem;
+  padding: 0.35rem 0.15rem;
+  border-radius: 0;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--pm-teal-700);
   opacity: var(--pm-text-muted-opacity);
+  background: none;
+  box-shadow: none;
   transition:
-    background 0.35s ease,
     color 0.35s ease,
     opacity 0.35s ease,
     padding 0.45s ease,
-    flex 0.45s ease,
-    font-size 0.45s ease;
+    font-size 0.45s ease,
+    box-shadow 0.35s ease;
 }
 
 .pm-seg__link:hover {
   opacity: 1;
   color: var(--pm-teal-900);
+  background: none;
 }
 
 .pm-seg__link.is-active {
   opacity: 1;
-  color: var(--pm-cream);
-  background: linear-gradient(135deg, var(--pm-mint-500), var(--pm-teal-700));
-  box-shadow: var(--pm-shadow-sm);
+  color: var(--pm-teal-900);
+  font-weight: 700;
+  background: none;
+  box-shadow: inset 0 -2px 0 var(--pm-mint-500);
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-seg__link {
+  color: var(--pm-teal-700);
+  opacity: var(--pm-text-muted-opacity);
 }
 
 .pm-header__logo {
