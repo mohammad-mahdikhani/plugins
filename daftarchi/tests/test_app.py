@@ -120,6 +120,37 @@ class DaftarchiTest(unittest.TestCase):
         self.assertTrue(any("manylinux_2_17_aarch64" in name for name in names))
         self.assertEqual((info.external_attr >> 16) & 0o111, 0o111)
 
+    def test_general_customer_packages_are_sellable(self):
+        deploy = Path(__file__).resolve().parents[1] / "deploy"
+        expected = {
+            "Daftarchi-Customer.zip": "Daftarchi/Start-Daftarchi.bat",
+            "Daftarchi-Customer-Mac.zip": "Daftarchi/Start-Daftarchi.command",
+            "Daftarchi-Customer-Linux.zip": "Daftarchi/Start-Daftarchi.sh",
+        }
+        for filename, starter in expected.items():
+            zpath = deploy / filename
+            self.assertTrue(zpath.is_file(), zpath)
+            with zipfile.ZipFile(zpath) as archive:
+                names = archive.namelist()
+                script = archive.read(starter).decode()
+                app_text = archive.read("Daftarchi/app/app.py").decode()
+            self.assertIn("DAFTARCHI_CHANNEL=customer", script)
+            self.assertNotIn("DAFTARCHI_UNLOCK", script)
+            self.assertNotIn("DAFTARCHI_PRESET", script)
+            self.assertNotIn("CHANNEL=rst", script)
+            self.assertNotIn("رستوران", script)
+            self.assertIn('APP_VERSION = "1.1.13"', app_text)
+            self.assertFalse(any(name.endswith("preset.json") for name in names))
+            self.assertFalse(any("studio-unlock" in name for name in names))
+        with zipfile.ZipFile(deploy / "Daftarchi-Customer.zip") as archive:
+            self.assertIn("Daftarchi/python/python.exe", archive.namelist())
+        with zipfile.ZipFile(deploy / "Daftarchi-Customer-Mac.zip") as archive:
+            names = archive.namelist()
+            self.assertTrue(any("macosx_11_0_arm64" in name for name in names))
+        with zipfile.ZipFile(deploy / "Daftarchi-Customer-Linux.zip") as archive:
+            names = archive.namelist()
+            self.assertTrue(any("manylinux_2_17_x86_64" in name for name in names))
+
     def test_shop_mode_and_tour_setup(self):
         me = self.client.get("/api/auth/me").get_json()
         self.assertEqual(me["setup"]["mode"], "")

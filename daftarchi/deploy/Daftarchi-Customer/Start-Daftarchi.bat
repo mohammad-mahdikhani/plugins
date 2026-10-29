@@ -1,6 +1,7 @@
 @echo off
 cd /d "%~dp0"
 set "DAFTARCHI_DATA=%~dp0data"
+set "DAFTARCHI_CHANNEL=customer"
 set "DAFTARCHI_OPEN_BROWSER=1"
 set "PORT=8080"
 if not exist "%DAFTARCHI_DATA%" mkdir "%DAFTARCHI_DATA%"
