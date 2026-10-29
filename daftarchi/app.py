@@ -100,6 +100,8 @@ DEFAULT_SETTINGS = {
     "moadian_sandbox": "1",
     "shop_name": "دفترچی",
     "shop_logo": "",
+    "shop_mode": "",
+    "tour_done": "0",
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "woo_auto_sync": "1",
@@ -111,7 +113,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.10"
+APP_VERSION = "1.1.11"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -155,7 +157,7 @@ HOST_TELEGRAM_URLS = (
 SMS_PROVIDERS = {"internal", "kavenegar", "melipayamak"}
 BOOL_KEYS = {
     "gateway_sandbox", "sms_on_close", "sms_on_sale", "sms_low_stock",
-    "moadian_enabled", "moadian_sandbox", "woo_auto_sync",
+    "moadian_enabled", "moadian_sandbox", "woo_auto_sync", "tour_done",
 }
 SYSTEM_ACCOUNTS = [
     ("1000", "صندوق", "asset"),
@@ -2253,6 +2255,10 @@ def save_settings(conn, payload: dict):
                 raise AppError("کلید خصوصی خوانده نشد. فایل pem کارپوشه را بچسبانید.")
         elif key == "shop_name":
             stored = clean_text(value, "نام فروشگاه", 80) or "دفترچی"
+        elif key == "shop_mode":
+            stored = str(value or "").strip()
+            if stored not in {"", "offline", "hybrid", "online"}:
+                raise AppError("نوع فروشگاه نامعتبر است")
         elif key == "shop_logo":
             text = str(value or "").strip()
             stored = clean_image(text) if text else ""
@@ -3032,6 +3038,11 @@ def shop_profile(conn) -> dict:
     return {"name": settings.get("shop_name") or "دفترچی", "logo": settings.get("shop_logo") or ""}
 
 
+def setup_state(conn) -> dict:
+    settings = get_settings(conn)
+    return {"mode": settings.get("shop_mode") or "", "tour": settings.get("tour_done") or "0"}
+
+
 @app.get("/api/auth/bootstrap")
 def bootstrap():
     with connect() as conn:
@@ -3064,10 +3075,11 @@ def login():
         flag = get_settings(conn).get("must_change_password") == "1"
         access = ensure_access(conn)
         shop = shop_profile(conn)
+        setup = setup_state(conn)
     session.clear()
     session["uid"] = row["id"]
     session.permanent = True
-    return jsonify(user=user, must_change_password=flag, access=access, shop=shop)
+    return jsonify(user=user, must_change_password=flag, access=access, shop=shop, setup=setup)
 
 
 @app.post("/api/auth/register")
@@ -3198,7 +3210,8 @@ def me():
         flag = get_settings(conn).get("must_change_password") == "1" if user else False
         access = ensure_access(conn) if user else None
         shop = shop_profile(conn) if user else None
-    return jsonify(user=public_user(user) if user else None, must_change_password=flag if user else False, access=access, shop=shop)
+        setup = setup_state(conn) if user else None
+    return jsonify(user=public_user(user) if user else None, must_change_password=flag if user else False, access=access, shop=shop, setup=setup)
 
 
 @app.post("/api/auth/password")

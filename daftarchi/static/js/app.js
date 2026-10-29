@@ -78,6 +78,10 @@ const state = {
   plan: "12m",
   more: false,
   sms: [],
+  shopMode: "",
+  tourDone: false,
+  tourOn: false,
+  tourStep: 0,
   settings: null,
   users: [],
   importResult: null,
@@ -194,7 +198,8 @@ function isAdmin() { return state.user?.role === "admin"; }
 function allowed(page) {
   const item = NAV.find((row) => row[0] === page);
   if (!item) return false;
-  return item[2] !== "admin" || isAdmin();
+  if (item[2] === "admin" && !isAdmin()) return false;
+  return modeAllows(page);
 }
 async function guard(fn) {
   if (state.busy) return;
@@ -274,7 +279,8 @@ const loaders = {
 };
 
 async function navigate(page) {
-  if (!allowed(page)) page = "dashboard";
+  if (!allowed(page)) page = homePage();
+  if (!allowed(page)) page = NAV.map((row) => row[0]).find((id) => allowed(id)) || "pos";
   state.page = page;
   state.more = false;
   state.modal = null;
@@ -519,11 +525,182 @@ function receiptHtml(modal) {
   ${sale.moadian_error ? `<p class="hint">${esc(sale.moadian_error)}</p>` : ""}
   <div class="row-actions"><button type="button" class="btn" data-act="print">چاپ</button>${sale.moadian_status === "success" ? "" : `<button type="button" class="btn primary" data-act="moadian-send" data-id="${sale.id}">ارسال به سامانه مودیان</button>`}${sale.moadian_reference ? `<button type="button" class="btn" data-act="moadian-inquiry" data-id="${sale.id}">استعلام مودیان</button>` : ""}</div>`;
 }
+function homePage() {
+  if (state.shopMode === "online") return "settings";
+  if (state.shopMode === "offline" || state.shopMode === "hybrid") return "pos";
+  return "dashboard";
+}
+function modeAllows(page) {
+  if (page === "licenses") return true;
+  const allow = {
+    offline: ["pos", "products", "register", "customers", "settings", "updates"],
+    hybrid: ["pos", "dashboard", "products", "register", "inventory", "customers", "settings", "updates"],
+    online: ["products", "settings", "updates"],
+  }[state.shopMode];
+  if (!allow) return true;
+  return allow.includes(page);
+}
 function visibleNav(list) {
-  return list.filter((item) => item[2] !== "admin" || isAdmin());
+  return list.filter((item) => {
+    if (item[2] === "admin" && !isAdmin()) return false;
+    if (item[0] === "licenses" && state.shopMode && state.access?.active) return false;
+    return modeAllows(item[0]);
+  });
+}
+const TOURS = {
+  offline: [
+    { page: "pos", tour: "barcode", title: "فروش حضوری", body: "بارکد را بگیرید یا روی کالا بزنید تا به سبد بیاید." },
+    { page: "pos", tour: "buyer", title: "خریدار", body: "نام، فامیل و موبایل اختیاری است. اگر بنویسید در مشتریان حضوری می‌ماند." },
+    { page: "pos", tour: "pay", title: "ثبت و چاپ", body: "نقد یا کارت‌خوان را بزنید. فاکتور باز می‌شود و با دکمه چاپ به پرینتر ۸۰ میلی‌متری می‌رود." },
+    { page: "register", tour: "nav-register", title: "صندوق", body: "قبل از اولین فروش، صندوق را باز کنید. آخر شیفت همین‌جا بسته می‌شود." },
+    { page: "settings", tour: "pos-card", title: "کارت‌خوان", body: "شرکت دستگاه، آدرس و شماره پایانه را بنویسید و آزمایش اتصال را بزنید." },
+  ],
+  hybrid: [
+    { page: "pos", tour: "pay", title: "فروش حضوری", body: "نقد، کارت‌خوان یا نسیه. فاکتور بعد از ثبت چاپ می‌شود." },
+    { page: "products", tour: "nav-products", title: "کالاها", body: "کالا را اینجا بسازید یا از ووکامرس بگیرید تا صندوق و سایت یکی باشند." },
+    { page: "settings", tour: "woo", title: "اتصال سایت", body: "آدرس سایت و کلید REST ووکامرس را ذخیره کنید. همگام‌سازی قیمت و موجودی روشن بماند." },
+  ],
+  online: [
+    { page: "settings", tour: "woo-picture", title: "کلید را از کجا بگیرید", body: "در وردپرس همین مسیر را بروید: ووکامرس، پیکربندی، پیشرفته، REST API، افزودن کلید. دسترسی را خواندن و نوشتن بگذارید." },
+    { page: "settings", tour: "woo-url", title: "آدرس سایت", body: "آدرس همان فروشگاه را با https بنویسید. مثال: https://shop.ir" },
+    { page: "settings", tour: "woo-key", title: "Consumer key", body: "کلید مصرف‌کننده را بچسبانید. با ck_ شروع می‌شود." },
+    { page: "settings", tour: "woo-secret", title: "Consumer secret", body: "رمز مصرف‌کننده را بچسبانید. با cs_ شروع می‌شود و فقط یک بار در وردپرس نشان داده می‌شود." },
+    { page: "settings", tour: "woo-test", title: "آزمایش اتصال", body: "اول ذخیره کنید، بعد آزمایش ووکامرس را بزنید. اگر جواب داد، از زبانه کالا دریافت از ووکامرس را بزنید." },
+  ],
+};
+function tourSteps() {
+  return TOURS[state.shopMode] || [];
+}
+function readSetup(setup) {
+  state.shopMode = setup?.mode || "";
+  state.tourDone = setup?.tour === "1";
+  state.tourOn = Boolean(state.shopMode) && !state.tourDone;
+  state.tourStep = 0;
+}
+function wooFigure() {
+  const steps = [
+    "پیشخوان وردپرس",
+    "منوی ووکامرس",
+    "پیکربندی",
+    "زبانه پیشرفته",
+    "REST API",
+    "افزودن کلید، خواندن و نوشتن",
+  ];
+  return `<div class="woo-figure" data-tour="woo-picture">
+    <ol class="woo-steps">${steps.map((label, index) => `<li><b>${num(index + 1)}</b><span>${label}</span></li>`).join("")}</ol>
+    <p class="hint">Consumer key با ck_ و Consumer secret با cs_ شروع می‌شود.</p>
+  </div>`;
+}
+function modePickerHtml() {
+  return `<div class="tour-shade"></div>
+    <div class="tour-card" data-act="stop">
+      <h2>این فروشگاه چطور کار می‌کند؟</h2>
+      <p>یکی را انتخاب کنید. بعد فقط همان کارها، مرحله‌به‌مرحله، روشن می‌ماند و بقیه صفحه تار می‌شود.</p>
+      <div class="mode-grid">
+        <button type="button" class="btn mode-pick" data-act="pick-mode" data-mode="offline"><strong>فروشگاه حضوری</strong><span>فروش، فاکتور، کارت‌خوان و پرینتر. بدون سایت.</span></button>
+        <button type="button" class="btn mode-pick" data-act="pick-mode" data-mode="hybrid"><strong>حضوری و آنلاین</strong><span>صندوق ساده، به‌علاوه اتصال به ووکامرس.</span></button>
+        <button type="button" class="btn mode-pick" data-act="pick-mode" data-mode="online"><strong>فقط آنلاین</strong><span>فقط اتصال REST API ووکامرس، با راهنمای تصویری.</span></button>
+      </div>
+    </div>`;
+}
+function holeShade(rect) {
+  const pad = 8;
+  const top = Math.max(0, Math.round(rect.top - pad));
+  const left = Math.max(0, Math.round(rect.left - pad));
+  const right = Math.min(window.innerWidth, Math.round(rect.right + pad));
+  const bottom = Math.min(window.innerHeight, Math.round(rect.bottom + pad));
+  const pane = "position:fixed;z-index:80;background:rgba(8,18,42,.72);backdrop-filter:blur(4px)";
+  return `<div style="${pane};top:0;left:0;right:0;height:${top}px"></div>
+    <div style="${pane};top:${top}px;left:0;width:${left}px;height:${bottom - top}px"></div>
+    <div style="${pane};top:${top}px;left:${right}px;right:0;height:${bottom - top}px"></div>
+    <div style="${pane};top:${bottom}px;left:0;right:0;bottom:0"></div>
+    <div style="position:fixed;z-index:81;pointer-events:none;top:${top}px;left:${left}px;width:${Math.max(0, right - left)}px;height:${Math.max(0, bottom - top)}px;border-radius:14px;box-shadow:0 0 0 3px #f4f7fb"></div>`;
+}
+function paintTour() {
+  const host = document.getElementById("tour-host");
+  if (!host) return;
+  if (!state.user || state.modal) {
+    host.innerHTML = "";
+    return;
+  }
+  if (!state.shopMode) {
+    host.innerHTML = modePickerHtml();
+    return;
+  }
+  if (!state.tourOn) {
+    host.innerHTML = "";
+    return;
+  }
+  const steps = tourSteps();
+  const step = steps[state.tourStep];
+  if (!step) {
+    host.innerHTML = "";
+    return;
+  }
+  const target = step.tour ? document.querySelector(`[data-tour="${step.tour}"]`) : null;
+  if (target) target.scrollIntoView({ block: "center", inline: "nearest" });
+  const rect = target?.getBoundingClientRect();
+  const seen = rect && rect.width > 0 && rect.height > 0;
+  const shade = seen ? holeShade(rect) : `<div class="tour-shade"></div>`;
+  const last = state.tourStep >= steps.length - 1;
+  const high = seen && rect.bottom > window.innerHeight * 0.62;
+  host.innerHTML = `${shade}<div class="tour-card${high ? " top" : ""}" data-act="stop">
+    <p class="hint">مرحله ${num(state.tourStep + 1)} از ${num(steps.length)}</p>
+    <h2>${esc(step.title)}</h2>
+    <p>${esc(step.body)}</p>
+    <div class="row-actions">
+      <button type="button" class="btn" data-act="tour-skip">رد شدن</button>
+      <button type="button" class="btn" data-act="tour-back" ${state.tourStep ? "" : "disabled"}>قبلی</button>
+      <button type="button" class="btn primary" data-act="tour-next">${last ? "تمام" : "بعدی"}</button>
+    </div>
+  </div>`;
+}
+async function chooseMode(mode) {
+  if (!["offline", "hybrid", "online"].includes(mode)) return;
+  const saved = await api("/api/settings", { method: "PUT", body: { shop_mode: mode, tour_done: "0" } });
+  state.settings = saved.settings || state.settings;
+  state.shopMode = mode;
+  state.tourDone = false;
+  state.tourOn = true;
+  state.tourStep = 0;
+  await navigate(tourSteps()[0]?.page || homePage());
+}
+async function finishTour() {
+  state.tourOn = false;
+  state.tourDone = true;
+  try {
+    await api("/api/settings", { method: "PUT", body: { tour_done: "1" } });
+  } catch (err) {
+    toast(err.message || "آموزش همین‌جا بسته شد", { error: true });
+  }
+  render();
+}
+async function goTour(delta) {
+  const steps = tourSteps();
+  const next = state.tourStep + delta;
+  if (next < 0) return;
+  if (next >= steps.length) {
+    await finishTour();
+    return;
+  }
+  state.tourStep = next;
+  const page = steps[next].page;
+  if (page && page !== state.page) await navigate(page);
+  else render();
+}
+async function replayTour() {
+  state.tourDone = false;
+  state.tourOn = true;
+  state.tourStep = 0;
+  try {
+    await api("/api/settings", { method: "PUT", body: { tour_done: "0" } });
+  } catch (err) {
+    toast(err.message || "آموزش دوباره باز شد", { error: true });
+  }
+  await navigate(tourSteps()[0]?.page || homePage());
 }
 function tabButton([id, title]) {
-  return `<button type="button" class="tab" data-act="nav" data-page="${id}">${title}</button>`;
+  return `<button type="button" class="tab" data-act="nav" data-page="${id}" data-tour="nav-${id}">${title}</button>`;
 }
 function brandMark() {
   const url = shopBrand().logo;
@@ -531,7 +708,7 @@ function brandMark() {
   return logo();
 }
 function webShell() {
-  return `<div class="webapp" data-user="${state.user.id}">
+  return `<div class="webapp" data-user="${state.user.id}" data-mode="${state.shopMode}">
     <header class="apphead">
       <div class="appbar">
         <div class="brand"><div class="mark">${brandMark()}</div><strong>دفترچی</strong></div>
@@ -543,6 +720,7 @@ function webShell() {
     <main class="stage" id="view"></main>
     <div id="support-host"></div>
     <div id="modal-host"></div>
+    <div id="tour-host"></div>
   </div>`;
 }
 function paintChrome() {
@@ -571,7 +749,8 @@ function paintChrome() {
   const modal = document.getElementById("modal-host");
   if (modal) modal.innerHTML = modalHtml();
   const support = document.getElementById("support-host");
-  if (support) support.innerHTML = supportHtml();
+  if (support) support.innerHTML = state.tourOn || !state.shopMode ? "" : supportHtml();
+  paintTour();
 }
 
 function bars(summary) {
@@ -660,27 +839,27 @@ function posHtml() {
   return `<div class="pos">
     <section class="card cart">
       ${closed ? `<div class="banner">صندوق بسته است. <button type="button" class="btn" data-act="nav" data-page="register">باز کردن صندوق</button></div>` : ""}
-      <div class="field"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد را اینجا بگیرید"></div>
+      <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد را اینجا بگیرید"></div>
       ${lines}
       <div class="grid-2">
         <div class="field"><label>تخفیف</label><input id="discount" value="${esc(state.discountValue)}" inputmode="numeric"></div>
         <div class="field"><label>نوع</label><select id="discount-type"><option value="amount" ${state.discountType === "amount" ? "selected" : ""}>مبلغ</option><option value="percent" ${state.discountType === "percent" ? "selected" : ""}>درصد</option></select></div>
       </div>
+      <div data-tour="buyer">
       <div class="grid-2">
         <div class="field"><label>نام</label><input id="buyer-first" value="${esc(state.buyerFirst)}" autocomplete="off"></div>
         <div class="field"><label>نام خانوادگی</label><input id="buyer-last" value="${esc(state.buyerLast)}" autocomplete="off"></div>
       </div>
       <div class="field"><label>شماره موبایل</label><input id="buyer-phone" class="ltr" value="${esc(state.buyerPhone)}" inputmode="tel" autocomplete="off" placeholder="09..."></div>
-      <p class="hint">نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید، در مشتریان حضوری برنامه و سایت برای باشگاه مشتریان ذخیره می‌شود. برای نسیه موبایل لازم است.</p>
+      <p class="hint">${state.shopMode === "offline" ? "نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید در مشتریان حضوری ذخیره می‌شود." : "نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید، در مشتریان حضوری برنامه و سایت برای باشگاه مشتریان ذخیره می‌شود. برای نسیه موبایل لازم است."}</p>
+      </div>
       <p>جمع <strong class="num" id="pay-sub">${money(subtotal)}</strong></p>
       <p>تخفیف <strong class="num" id="pay-disc">${money(discount)}</strong></p>
       <p>قابل پرداخت <strong class="num" id="pay-due">${money(payable)}</strong></p>
-      <div class="pay-row">
+      <div class="pay-row" data-tour="pay">
         <button type="button" class="btn primary" data-act="pay" data-method="cash">نقد</button>
         <button type="button" class="btn" data-act="pay" data-method="card">کارت‌خوان</button>
-        <button type="button" class="btn" data-act="pay" data-method="gateway">درگاه</button>
-        <button type="button" class="btn" data-act="quick-pay-link">لینک / QR</button>
-        <button type="button" class="btn" data-act="pay" data-method="credit">نسیه</button>
+        ${state.shopMode === "offline" ? "" : state.shopMode === "hybrid" ? `<button type="button" class="btn" data-act="pay" data-method="credit">نسیه</button>` : `<button type="button" class="btn" data-act="pay" data-method="gateway">درگاه</button><button type="button" class="btn" data-act="quick-pay-link">لینک / QR</button><button type="button" class="btn" data-act="pay" data-method="credit">نسیه</button>`}
       </div>
       ${pending}
     </section>
@@ -706,14 +885,14 @@ function productsHtml() {
     ${imported.ids?.length ? `<button type="button" class="btn" data-act="woo-push-ids">ارسال همین‌ها به ووکامرس</button>` : ""}
     ${imported.errors?.length ? `<div>${imported.errors.map((row) => `<div>ردیف ${num(row.row)}: ${esc(row.error)}</div>`).join("")}</div>` : ""}
   </div>` : "";
+  const woo = state.shopMode !== "offline";
   return `<div class="stack">${banner}
     <section class="card"><div class="row-actions">
       <button type="button" class="btn primary" data-act="new-product">کالای جدید</button>
       <a class="btn" href="/api/products/template">نمونه اکسل</a>
       <button type="button" class="btn" data-act="open-import">ورود با اکسل</button>
-      <button type="button" class="btn" data-act="woo-push">ارسال همه به ووکامرس</button>
-      <button type="button" class="btn" data-act="woo-pull">دریافت از ووکامرس</button>
-    </div><p class="hint">ستون‌های اکسل: نام کالا، SKU، موجودی، قیمت فروش.</p></section>
+      ${woo ? `<button type="button" class="btn" data-act="woo-push">ارسال همه به ووکامرس</button><button type="button" class="btn" data-act="woo-pull">دریافت از ووکامرس</button>` : ""}
+    </div><p class="hint">${woo ? "ستون‌های اکسل: نام کالا، SKU، موجودی، قیمت فروش." : "برای فروش حضوری همین‌جا کالا بسازید یا از اکسل بیاورید."}</p></section>
     <section class="card"><input id="product-query" value="${esc(state.productQuery)}" placeholder="جستجو"><div id="product-table">${productRows()}</div></section>
   </div>`;
 }
@@ -844,75 +1023,71 @@ function smsHtml() {
 function options(pairs, current) {
   return pairs.map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join("");
 }
-function field(key, label, type = "text", placeholder = "") {
+function field(key, label, type = "text", placeholder = "", tour = "") {
   const hold = placeholder ? ` placeholder="${esc(placeholder)}"` : "";
-  return `<div class="field"><label>${label}</label><input name="${key}" type="${type}" value="${esc(state.settings[key] || "")}"${hold} ${type === "text" && /url|host|phone|sender|key|user|merchant|callback|chat/.test(key) ? `class="ltr"` : ""}></div>`;
+  const mark = tour ? ` data-tour="${tour}"` : "";
+  return `<div class="field"${mark}><label>${label}</label><input name="${key}" type="${type}" value="${esc(state.settings[key] || "")}"${hold} ${type === "text" && /url|host|phone|sender|key|user|merchant|callback|chat/.test(key) ? `class="ltr"` : ""}></div>`;
 }
 function settingsHtml() {
   const s = state.settings;
   if (!s) return "";
+  const mode = state.shopMode;
   const checked = (key) => s[key] === "1" ? "checked" : "";
-  return `<form class="stack" data-act="save-settings">
-    <section class="card"><h2 class="section-title">سربرگ فاکتور</h2>
+  const names = { offline: "فروشگاه حضوری", hybrid: "حضوری و آنلاین", online: "فقط آنلاین" };
+  const modeCard = `<section class="card"><h2 class="section-title">نوع فروشگاه</h2>
+    <p>${esc(names[mode] || "هنوز انتخاب نشده")}</p>
+    <div class="row-actions">
+      <button type="button" class="btn" data-act="pick-mode" data-mode="offline">حضوری</button>
+      <button type="button" class="btn" data-act="pick-mode" data-mode="hybrid">حضوری و آنلاین</button>
+      <button type="button" class="btn" data-act="pick-mode" data-mode="online">فقط آنلاین</button>
+      <button type="button" class="btn" data-act="tour-replay">آموزش دوباره</button>
+    </div>
+  </section>`;
+  const invoice = `<section class="card"><h2 class="section-title">سربرگ فاکتور</h2>
       ${field("shop_name", "نام فروشگاه روی فاکتور")}
       <input type="hidden" name="shop_logo" value="${esc(s.shop_logo || "")}">
-      <div class="field"><label>لوگوی سایت</label><input type="file" name="logo_file" accept="image/*"></div>
+      <div class="field"><label>لوگوی فروشگاه</label><input type="file" name="logo_file" accept="image/*"></div>
       ${s.shop_logo ? `<img class="logo-preview" src="${esc(s.shop_logo)}" alt="">` : ""}
       <label class="check"><input type="checkbox" name="clear_shop_logo">برداشتن لوگو و برگشت به نشان دفترچی</label>
-      <p class="hint">لوگو دور فاکتور و بالای آن می‌نشیند. لوگوی سایت را همین‌جا بگذارید. اگر خالی بماند، نشان دفترچی چاپ می‌شود.</p>
-    </section>
-    <section class="card"><h2 class="section-title">وردپرس و ووکامرس</h2>
-      ${field("wp_url", "آدرس سایت")}${field("woo_key", "Consumer key", "text", "ck_...")}${field("woo_secret", "Consumer secret", "password", "cs_...")}
-      <label class="check"><input type="checkbox" name="woo_auto_sync" ${checked("woo_auto_sync")}>همگام‌سازی فوری قیمت و موجودی با سایت</label>
-      <div class="row-actions"><button type="button" class="btn" data-act="test-setting" data-kind="wp">آزمایش وردپرس</button><button type="button" class="btn" data-act="test-setting" data-kind="woo">آزمایش ووکامرس</button></div>
-      <p class="hint">با روشن بودن همگام‌سازی فوری، هر تغییر قیمت یا موجودی در دفترچی (و بعد از فروش) ظرف چند ثانیه روی ووکامرس اعمال می‌شود. کالا باید قبلاً به ووکامرس وصل شده باشد.</p>
-    </section>
-    <section class="card"><h2 class="section-title">کارت‌خوان ایرانی</h2>
+      <p class="hint">بعد از ثبت فروش، فاکتور باز می‌شود. دکمه چاپ همان فاکتور را برای پرینتر ۸۰ میلی‌متری می‌فرستد.</p>
+    </section>`;
+  const woo = `<section class="card"${mode === "online" ? "" : ` data-tour="woo"`}><h2 class="section-title">اتصال REST ووکامرس</h2>
+      ${mode === "online" ? `${field("shop_name", "نام فروشگاه")}${wooFigure()}` : `<p class="hint">آدرس سایت و دو کلید REST را از ووکامرس، پیکربندی، پیشرفته بگیرید.</p>`}
+      ${field("wp_url", "آدرس سایت", "text", "https://", "woo-url")}
+      ${field("woo_key", "Consumer key", "text", "ck_...", "woo-key")}
+      ${field("woo_secret", "Consumer secret", "password", "cs_...", "woo-secret")}
+      <label class="check"><input type="checkbox" name="woo_auto_sync" ${checked("woo_auto_sync")}>همگام‌سازی قیمت و موجودی با سایت</label>
+      <div class="row-actions"><button type="button" class="btn" data-act="test-setting" data-kind="woo" data-tour="woo-test">آزمایش ووکامرس</button></div>
+    </section>`;
+  const pos = `<section class="card" data-tour="pos-card"><h2 class="section-title">کارت‌خوان</h2>
       <div class="field"><label>شرکت</label><select name="pos_provider">${options([["manual", "دستی"], ["saman", "سامان کیش"], ["behpardakht", "به‌پرداخت ملت"], ["parsian", "پارسیان"], ["irankish", "ایران‌کیش"], ["sepehr", "سپهر"], ["asanpardakht", "آسان‌پرداخت"]], s.pos_provider)}</select></div>
       <div class="grid-2">${field("pos_host", "آدرس یا IP")}${field("pos_port", "پورت")}</div>
       ${field("pos_terminal", "شماره پایانه")}
       <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش اتصال</button>
-      <p class="hint">اگر دستگاه وصل باشد ارتباط شبکه آزمایش می‌شود. پروتکل اختصاصی هر شرکت در خود دستگاه می‌ماند و شماره پیگیری رسید را موقع فروش وارد می‌کنید.</p>
-    </section>
-    <section class="card"><h2 class="section-title">درگاه پرداخت</h2>
+      <p class="hint">اگر دستگاه روی شبکه باشد، اتصال آزمایش می‌شود. شماره پیگیری رسید را موقع فروش وارد می‌کنید.</p>
+    </section>`;
+  const extra = `<details><summary>تنظیمات بیشتر</summary>
+      <h2 class="section-title">درگاه پرداخت</h2>
       <div class="field"><label>درگاه</label><select name="gateway">${options([["zarinpal", "زرین‌پال"], ["idpay", "آی‌دی‌پی"], ["zibal", "زیبال"]], s.gateway)}</select></div>
-      ${field("license_merchant", "مرچنت زیبال لایسنس")}${field("gateway_merchant", "مرچنت فروش کالا")}${field("gateway_callback", "آدرس بازگشت")}
-      <label class="check"><input type="checkbox" name="gateway_sandbox" ${checked("gateway_sandbox")}>حالت آزمایشی زرین‌پال برای فروش کالا</label>
-      <p class="hint">درگاه پیش‌فرض زیبال است. فروش کالا و لایسنس با مرچنت وب‌بیکری پرداخت می‌شوند. مبلغ تومان است و برای زیبال به ریال تبدیل می‌شود. بازگشت پیش‌فرض https://webakery.ir است.</p>
-    </section>
-    <section class="card"><h2 class="section-title">پیامک</h2>
+      ${field("gateway_merchant", "مرچنت فروش کالا")}${field("gateway_callback", "آدرس بازگشت")}
+      <label class="check"><input type="checkbox" name="gateway_sandbox" ${checked("gateway_sandbox")}>حالت آزمایشی زرین‌پال</label>
+      <h2 class="section-title">پیامک</h2>
       <div class="field"><label>سامانه</label><select name="sms_provider">${options([["internal", "فقط داخل دفترچی"], ["kavenegar", "کاوه‌نگار"], ["melipayamak", "ملی‌پیامک"]], s.sms_provider)}</select></div>
       <div class="grid-2">${field("sms_api_key", "کلید کاوه‌نگار", "password")}${field("sms_sender", "شماره خط")}</div>
-      <div class="grid-2">${field("sms_username", "نام کاربری ملی‌پیامک")}${field("sms_password", "رمز ملی‌پیامک", "password")}</div>
-      ${field("manager_phone", "موبایل مدیر")}${field("low_stock", "آستانه موجودی کم")}
-      <label class="check"><input type="checkbox" name="sms_on_close" ${checked("sms_on_close")}>پیامک بعد از بستن صندوق</label>
+      ${field("manager_phone", "موبایل مدیر")}
       <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>پیامک هر فروش به مدیر</label>
-      <p class="hint">پیامک خرید حضوری جداگانه به موبایل خود خریدار می‌رود، به شرط نام، نام خانوادگی و شماره.</p>
-      <label class="check"><input type="checkbox" name="sms_low_stock" ${checked("sms_low_stock")}>پیامک موجودی کم</label>
-      <button type="button" class="btn" data-act="test-setting" data-kind="sms">پیام آزمایشی</button>
-    </section>
-    <section class="card"><h2 class="section-title">سامانه مودیان</h2>
-      <div class="grid-2"><div class="field"><label>شناسه یکتای حافظه مالیاتی</label><input class="ltr" name="moadian_fiscal_id" maxlength="6" value="${esc(s.moadian_fiscal_id || "")}"></div><div class="field"><label>کد اقتصادی</label><input class="ltr" name="moadian_economic_code" value="${esc(s.moadian_economic_code || "")}"></div></div>
-      <div class="field"><label>کلید خصوصی کارپوشه</label><textarea class="ltr" name="moadian_private_key" rows="4" placeholder="${s.moadian_key_saved === "1" ? "کلید ذخیره شده است. برای عوض کردن، کلید تازه را بچسبانید." : "متن فایل pem"}"></textarea></div>
-      ${field("moadian_vat", "نرخ مالیات، درصد")}
-      <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>بعد از هر فروش، صورتحساب به سامانه برود</label>
-      <label class="check"><input type="checkbox" name="moadian_sandbox" ${checked("moadian_sandbox")}>ارسال آزمایشی. صورتحساب واقعی ثبت نمی‌شود</label>
-      <button type="button" class="btn" data-act="test-setting" data-kind="moadian">آزمایش اتصال</button>
-      <p class="hint">شناسه حافظه مالیاتی، کد اقتصادی و کلید خصوصی را از کارپوشه بگیرید. شناسه ۱۳ رقمی کالا/خدمت را روی هر کالا بگذارید. تا وقتی ارسال آزمایشی روشن است، فاکتور به سامانه واقعی نمی‌رود. مبلغ فروش تومان است و برای مودیان به ریال تبدیل می‌شود.</p>
-    </section>
-    <section class="card"><h2 class="section-title">جیمیل حساب کاربری</h2>
-      <button type="button" class="btn" data-act="test-setting" data-kind="email">آزمایش هاست جیمیل</button>
-      <p class="hint">کد تأیید و بازیابی رمز از هاست وب‌بیکری به جیمیل می‌رود. فایل mail.php باید در public_html/daftarchi باشد. رمز ورود جیمیل روی این رایانه لازم نیست.</p>
-    </section>
-    <section class="card"><h2 class="section-title">پشتیبانی تلگرام</h2>
-      ${field("telegram_bot_token", "توکن ربات", "password", s.telegram_token_saved === "1" ? "توکن ذخیره شده است" : "123456:ABC...")}
-      ${field("telegram_chat_id", "شناسه چت", "text", "عدد چت یا کانال")}
-      <p class="hint">ربات را در تلگرام با BotFather بسازید و توکن را اینجا بگذارید. شناسه چت همان عددی است که پیام‌ها باید به آن برسد. اگر این رایانه به تلگرام نرسد، فایل telegram.php و telegram.json را کنار version.json روی هاست بگذارید.</p>
-    </section>
-    <section class="card"><h2 class="section-title">به‌روزرسانی</h2>
-      <p class="hint">نسخه نصب‌شده: ${esc(state.update?.current || "")}. برای عوض کردن پنل و برنامه، بدون هاست، از بخش به‌روزرسانی استفاده کنید. داده فروشگاه سر جایش می‌ماند.</p>
-      <button type="button" class="btn" data-act="nav" data-page="updates">باز کردن به‌روزرسانی</button>
-    </section>
+      <h2 class="section-title">سامانه مودیان</h2>
+      ${field("moadian_fiscal_id", "شناسه حافظه مالیاتی")}
+      <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>ارسال فاکتور به سامانه</label>
+      <label class="check"><input type="checkbox" name="moadian_sandbox" ${checked("moadian_sandbox")}>ارسال آزمایشی</label>
+    </details>`;
+  const parts = [modeCard];
+  if (mode === "online") parts.push(woo);
+  else if (mode === "offline") parts.push(invoice, pos, extra);
+  else if (mode === "hybrid") parts.push(invoice, woo, pos, extra);
+  else parts.push(invoice, woo, pos, extra);
+  return `<form class="stack" data-act="save-settings">
+    ${parts.join("")}
     <button class="btn primary" type="submit">ذخیره تنظیمات</button>
   </form>
   <section class="card" style="margin-top:14px"><h2 class="section-title">ساخت اکانت</h2>
@@ -1036,7 +1211,7 @@ function render() {
     return;
   }
   const shell = document.querySelector(".webapp");
-  if (!shell || shell.dataset.user !== String(state.user.id)) $app().innerHTML = webShell();
+  if (!shell || shell.dataset.user !== String(state.user.id) || shell.dataset.mode !== state.shopMode) $app().innerHTML = webShell();
   const view = document.getElementById("view");
   if (view) view.innerHTML = pageHtml();
   paintChrome();
@@ -1118,8 +1293,9 @@ async function onSubmit(event) {
         state.mustChange = result.must_change_password;
         state.access = result.access || null;
         state.shop = result.shop || null;
+        readSetup(result.setup);
         hideToast();
-        await navigate("dashboard");
+        await navigate(homePage());
       } catch (err) {
         if (err.data?.needs_verify) {
           state.pendingEmail = err.data.ident || data.ident;
@@ -1310,7 +1486,8 @@ async function saveSettings(form) {
   delete data.logo_file;
   delete data.clear_shop_logo;
   for (const key of ["gateway_sandbox", "sms_on_close", "sms_on_sale", "sms_low_stock", "moadian_enabled", "moadian_sandbox", "woo_auto_sync"]) {
-    data[key] = form.querySelector(`[name="${key}"]`)?.checked ? "1" : "0";
+    const box = form.querySelector(`[name="${key}"]`);
+    if (box) data[key] = box.checked ? "1" : "0";
   }
   state.settings = (await api("/api/settings", { method: "PUT", body: data })).settings;
   state.shop = { name: state.settings.shop_name || "دفترچی", logo: state.settings.shop_logo || "" };
@@ -1413,6 +1590,11 @@ async function onClick(event) {
     });
     return;
   }
+  if (act === "pick-mode") { await guard(() => chooseMode(el.dataset.mode)); return; }
+  if (act === "tour-next") { await guard(() => goTour(1)); return; }
+  if (act === "tour-back") { await guard(() => goTour(-1)); return; }
+  if (act === "tour-skip") { await guard(() => finishTour()); return; }
+  if (act === "tour-replay") { await guard(() => replayTour()); return; }
   if (act === "nav") { await guard(() => navigate(el.dataset.page)); return; }
   if (act === "chart") { state.chart = el.dataset.range; render(); return; }
   if (act === "pick-plan") {
@@ -1701,6 +1883,9 @@ window.addEventListener("unhandledrejection", (event) => {
   const message = event.reason && event.reason.message ? event.reason.message : "";
   if (message) toast(message, { error: true });
 });
+window.addEventListener("resize", () => {
+  if (state.user && (state.tourOn || !state.shopMode)) paintTour();
+});
 window.addEventListener("hashchange", () => {
   const page = location.hash.replace("#", "");
   if (state.user && page && page !== state.page) guard(() => navigate(page));
@@ -1719,7 +1904,9 @@ api("/api/auth/me").then(async (me) => {
   state.mustChange = me.must_change_password;
   state.access = me.access || null;
   state.shop = me.shop || null;
-  await navigate(location.hash.replace("#", "") || "dashboard");
+  readSetup(me.setup);
+  const opened = location.hash.replace("#", "");
+  await navigate(opened && allowed(opened) ? opened : homePage());
 }).catch((err) => {
   $app().innerHTML = `<p class="empty">${esc(err.message || "برنامه باز نشد")}</p>`;
 });
