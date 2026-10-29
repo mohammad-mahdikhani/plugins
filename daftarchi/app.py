@@ -111,7 +111,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.9"
+APP_VERSION = "1.1.10"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -657,60 +657,84 @@ def person_part(value: str) -> bool:
     return bool(re.fullmatch(r"[\u0600-\u06FFa-zA-Z\u200c]{2,40}", value or ""))
 
 
-def walk_in_name(payload: dict) -> str:
+def walk_in_name(payload: dict) -> tuple[str, str, str]:
     first = clean_text(payload.get("customer_first"), "نام", 40)
     last = clean_text(payload.get("customer_last"), "نام خانوادگی", 40)
-    if first or last:
-        if person_part(first) and person_part(last):
-            return f"{first} {last}"
-        raise AppError("نام و نام خانوادگی خریدار را بنویسید")
-    parts = [part for part in re.split(r"\s+", clean_text(payload.get("customer_name"), "نام خریدار", 80)) if part]
-    if len(parts) < 2 or any(not person_part(part) for part in parts):
-        raise AppError("نام و نام خانوادگی خریدار را بنویسید")
-    return " ".join(parts)
+    if not first and not last:
+        parts = [part for part in re.split(r"\s+", clean_text(payload.get("customer_name"), "نام خریدار", 80)) if part]
+        if parts:
+            first = parts[0]
+            last = " ".join(parts[1:])
+    name = " ".join(part for part in (first, last) if part)
+    return first, last, name
 
 
 def walk_in_customer(conn, payload: dict, credit: bool) -> dict:
-    name = walk_in_name(payload)
-    phone = norm_phone(payload.get("customer_phone") or "")
-    if not re.fullmatch(r"09\d{9}", phone):
-        raise AppError("شماره موبایل خریدار را وارد کنید")
-    return ensure_customer(conn, name, phone, credit)
+    first, last, name = walk_in_name(payload)
+    phone_raw = str(payload.get("customer_phone") or "").strip()
+    phone = norm_phone(phone_raw) if phone_raw else ""
+    if phone and not re.fullmatch(r"0\d{10}", phone):
+        raise AppError("شماره تماس معتبر نیست")
+    if credit and not re.fullmatch(r"09\d{9}", phone):
+        raise AppError("برای فروش نسیه شماره موبایل خریدار لازم است")
+    if not name and not phone:
+        return {"id": None, "name": "", "phone": "", "account_id": None, "first_name": "", "last_name": ""}
+    return ensure_customer(conn, name, phone, credit, first, last, walk_in=True)
 
 
-def ensure_customer(conn, name: str, phone: str, credit: bool) -> dict:
+def ensure_customer(conn, name: str, phone: str, credit: bool, first: str = "", last: str = "", walk_in: bool = False) -> dict:
     name = clean_text(name, "نام خریدار", 80)
     phone_raw = str(phone or "").strip()
     if not phone_raw and not name:
         if credit:
             raise AppError("برای فروش نسیه شماره تماس خریدار لازم است")
-        return {"id": None, "name": "", "phone": "", "account_id": None}
+        return {"id": None, "name": "", "phone": "", "account_id": None, "first_name": "", "last_name": ""}
     phone_n = norm_phone(phone_raw) if phone_raw else ""
     if credit and not phone_n:
         raise AppError("برای فروش نسیه شماره تماس خریدار لازم است")
     if phone_n and not re.fullmatch(r"0\d{10}", phone_n):
         raise AppError("شماره تماس معتبر نیست")
-    display = name or "مشتری"
+    display = name or "مشتری حضوری"
     if not phone_n:
-        return {"id": None, "name": display, "phone": "", "account_id": None}
+        account_id = create_person_account(conn, display) if credit else None
+        cur = conn.execute(
+            """INSERT INTO customers (name, phone, account_id, created_at, first_name, last_name, walk_in)
+               VALUES (?,?,?,?,?,?,?)""",
+            (display, None, account_id, iso(), first or None, last or None, 1 if walk_in else 0),
+        )
+        return {
+            "id": cur.lastrowid, "name": display, "phone": "", "account_id": account_id,
+            "first_name": first, "last_name": last,
+        }
     row = conn.execute("SELECT * FROM customers WHERE phone=?", (phone_n,)).fetchone()
     if row:
+        display = name or row["name"]
         if name and name != row["name"]:
             conn.execute("UPDATE customers SET name=? WHERE id=?", (name, row["id"]))
-            display = name
-        else:
-            display = row["name"]
+        if first or last or walk_in:
+            conn.execute(
+                """UPDATE customers SET first_name=COALESCE(?, first_name), last_name=COALESCE(?, last_name),
+                   walk_in=CASE WHEN ?=1 THEN 1 ELSE walk_in END WHERE id=?""",
+                (first or None, last or None, 1 if walk_in else 0, row["id"]),
+            )
         account_id = row["account_id"]
         if credit and not account_id:
             account_id = create_person_account(conn, display)
             conn.execute("UPDATE customers SET account_id=? WHERE id=?", (account_id, row["id"]))
-        return {"id": row["id"], "name": display, "phone": phone_n, "account_id": account_id}
+        return {
+            "id": row["id"], "name": display, "phone": phone_n, "account_id": account_id,
+            "first_name": first or row["first_name"] or "", "last_name": last or row["last_name"] or "",
+        }
     account_id = create_person_account(conn, display) if credit else None
     cur = conn.execute(
-        "INSERT INTO customers (name, phone, account_id, created_at) VALUES (?,?,?,?)",
-        (display, phone_n, account_id, iso()),
+        """INSERT INTO customers (name, phone, account_id, created_at, first_name, last_name, walk_in)
+           VALUES (?,?,?,?,?,?,?)""",
+        (display, phone_n, account_id, iso(), first or None, last or None, 1 if walk_in else 0),
     )
-    return {"id": cur.lastrowid, "name": display, "phone": phone_n, "account_id": account_id}
+    return {
+        "id": cur.lastrowid, "name": display, "phone": phone_n, "account_id": account_id,
+        "first_name": first, "last_name": last,
+    }
 
 
 def is_payment_product(row) -> bool:
@@ -2292,9 +2316,13 @@ def init_db():
             CREATE TABLE IF NOT EXISTS customers (
               id INTEGER PRIMARY KEY,
               name TEXT NOT NULL,
-              phone TEXT UNIQUE NOT NULL,
+              phone TEXT UNIQUE,
               account_id INTEGER,
-              created_at TEXT NOT NULL
+              created_at TEXT NOT NULL,
+              first_name TEXT,
+              last_name TEXT,
+              walk_in INTEGER NOT NULL DEFAULT 0,
+              woo_customer_id INTEGER
             );
             CREATE TABLE IF NOT EXISTS products (
               id INTEGER PRIMARY KEY,
@@ -2526,7 +2554,45 @@ def init_db():
             for row in conn.execute("SELECT id FROM sales"):
                 conn.execute("UPDATE sales SET invoice_code=? WHERE id=?", (f"D{int(row['id']):08d}", row["id"]))
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_invoice_code ON sales(invoice_code)")
+        relax_customer_phone(conn)
         apply_site_preset(conn)
+
+
+def relax_customer_phone(conn) -> None:
+    cols = list(conn.execute("PRAGMA table_info(customers)"))
+    names = {row["name"] for row in cols}
+    phone = next((row for row in cols if row["name"] == "phone"), None)
+    if phone and phone["notnull"]:
+        conn.executescript(
+            """
+            CREATE TABLE customers_next (
+              id INTEGER PRIMARY KEY,
+              name TEXT NOT NULL,
+              phone TEXT UNIQUE,
+              account_id INTEGER,
+              created_at TEXT NOT NULL,
+              first_name TEXT,
+              last_name TEXT,
+              walk_in INTEGER NOT NULL DEFAULT 0,
+              woo_customer_id INTEGER
+            );
+            INSERT INTO customers_next (id, name, phone, account_id, created_at, first_name, last_name, walk_in, woo_customer_id)
+            SELECT id, name, NULLIF(phone, ''), account_id, created_at,
+                   NULL, NULL, 0, NULL
+            FROM customers;
+            DROP TABLE customers;
+            ALTER TABLE customers_next RENAME TO customers;
+            """
+        )
+        return
+    if "first_name" not in names:
+        conn.execute("ALTER TABLE customers ADD COLUMN first_name TEXT")
+    if "last_name" not in names:
+        conn.execute("ALTER TABLE customers ADD COLUMN last_name TEXT")
+    if "walk_in" not in names:
+        conn.execute("ALTER TABLE customers ADD COLUMN walk_in INTEGER NOT NULL DEFAULT 0")
+    if "woo_customer_id" not in names:
+        conn.execute("ALTER TABLE customers ADD COLUMN woo_customer_id INTEGER")
 
 
 def preset_path() -> Path | None:
@@ -4221,6 +4287,60 @@ def quick_payment_link():
     return jsonify(**result)
 
 
+def sync_walk_in_club(conn, settings: dict, customer: dict) -> dict:
+    if not customer.get("id"):
+        return {"saved": False, "detail": ""}
+    if not (settings.get("wp_url") and settings.get("woo_key") and settings.get("woo_secret")):
+        return {
+            "saved": False,
+            "detail": "در مشتریان حضوری برنامه ذخیره شد. برای کپی روی سایت، کلید ووکامرس را در تنظیمات بگذارید.",
+        }
+    phone = str(customer.get("phone") or "")
+    email = f"walkin-{phone or customer['id']}@daftarchi.invalid"
+    body = {
+        "email": email,
+        "first_name": customer.get("first_name") or customer.get("name") or "مشتری",
+        "last_name": customer.get("last_name") or "",
+        "username": f"walkin{phone or customer['id']}",
+        "billing": {
+            "first_name": customer.get("first_name") or customer.get("name") or "",
+            "last_name": customer.get("last_name") or "",
+            "phone": phone,
+            "email": email,
+        },
+        "meta_data": [
+            {"key": "daftarchi_walk_in", "value": "1"},
+            {"key": "daftarchi_section", "value": "مشتریان حضوری"},
+        ],
+    }
+    try:
+        existing = customer.get("woo_customer_id")
+        if not existing:
+            _status, found = woo_request(settings, "GET", "customers", {"email": email, "per_page": "1"})
+            if isinstance(found, list) and found and found[0].get("id"):
+                existing = found[0]["id"]
+        if existing:
+            _status, saved = woo_request(settings, "PUT", f"customers/{int(existing)}", payload=body)
+        else:
+            _status, saved = woo_request(settings, "POST", "customers", payload=body)
+        woo_id = int(saved["id"]) if isinstance(saved, dict) and str(saved.get("id") or "").isdigit() else None
+        if woo_id:
+            conn.execute("UPDATE customers SET woo_customer_id=? WHERE id=?", (woo_id, customer["id"]))
+        return {"saved": True, "woo_id": woo_id, "detail": "در مشتریان حضوری سایت ذخیره شد"}
+    except (AppError, TypeError, ValueError) as exc:
+        return {"saved": False, "detail": str(exc)}
+
+
+def attach_club(result: dict, settings: dict) -> dict:
+    sale = result.get("sale") or {}
+    with connect() as conn:
+        row = None
+        if sale.get("customer_id"):
+            row = conn.execute("SELECT * FROM customers WHERE id=?", (sale["customer_id"],)).fetchone()
+        result["club"] = sync_walk_in_club(conn, settings, dict(row) if row else {})
+    return result
+
+
 @app.post("/api/sales")
 def create_sale():
     user = require_user()
@@ -4272,6 +4392,7 @@ def create_sale():
     with connect() as conn:
         result = sale_payload(conn, sale_id)
     result["sms"] = notify_buyer(result["sale"])
+    attach_club(result, settings)
     return jsonify(**result)
 
 
@@ -4336,6 +4457,7 @@ def confirm_sale(sale_id: int):
     with connect() as conn:
         result = sale_payload(conn, sale_id)
     result["sms"] = notify_buyer(result["sale"])
+    attach_club(result, settings)
     return jsonify(**result)
 
 

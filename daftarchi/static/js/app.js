@@ -671,7 +671,7 @@ function posHtml() {
         <div class="field"><label>نام خانوادگی</label><input id="buyer-last" value="${esc(state.buyerLast)}" autocomplete="off"></div>
       </div>
       <div class="field"><label>شماره موبایل</label><input id="buyer-phone" class="ltr" value="${esc(state.buyerPhone)}" inputmode="tel" autocomplete="off" placeholder="09..."></div>
-      <p class="hint">خرید حضوری بدون نام، نام خانوادگی و موبایل تمام نمی‌شود. پیامک ثبت خرید به همین شماره می‌رود.</p>
+      <p class="hint">نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید، در مشتریان حضوری برنامه و سایت برای باشگاه مشتریان ذخیره می‌شود. برای نسیه موبایل لازم است.</p>
       <p>جمع <strong class="num" id="pay-sub">${money(subtotal)}</strong></p>
       <p>تخفیف <strong class="num" id="pay-disc">${money(discount)}</strong></p>
       <p>قابل پرداخت <strong class="num" id="pay-due">${money(payable)}</strong></p>
@@ -823,9 +823,14 @@ function pendingLicenses(data) {
 
 function customersHtml() {
   const debtors = state.customers.filter((row) => row.balance > 0 && row.account_id);
+  const walk = state.customers.filter((row) => row.walk_in);
+  const table = (rows) => rows.map((row) => `<tr><td>${esc(row.name)}</td><td class="ltr">${esc(row.phone || "—")}</td><td class="num">${num(row.purchases)}</td><td class="num">${money(row.amount)}</td><td>${esc(row.side)}</td></tr>`).join("") || `<tr><td colspan="5">موردی نیست.</td></tr>`;
   return `<div class="stack"><section class="card">${debtors.length && isAdmin() ? `<form data-act="receipt"><div class="grid-2"><div class="field"><label>مشتری بدهکار</label><select name="account_id">${debtors.map((row) => `<option value="${row.account_id}">${esc(row.name)} — ${money(row.balance)}</option>`).join("")}</select></div><div class="field"><label>مبلغ</label><input name="amount" inputmode="numeric" required></div></div><div class="field"><label>روش</label><select name="payment_method"><option value="cash">نقد</option><option value="card">کارت</option></select></div><button class="btn primary" type="submit">دریافت طلب</button></form>` : `<p class="empty">مانده نسیه‌ای برای دریافت نیست.</p>`}</section>
-    <section class="card"><table><thead><tr><th>نام</th><th>تماس</th><th>خرید</th><th>مانده</th><th>سمت</th></tr></thead><tbody>
-      ${state.customers.map((row) => `<tr><td>${esc(row.name)}</td><td class="ltr">${esc(row.phone)}</td><td class="num">${num(row.purchases)}</td><td class="num">${money(row.amount)}</td><td>${esc(row.side)}</td></tr>`).join("") || `<tr><td colspan="5">هنوز مشتری‌ای ثبت نشده.</td></tr>`}
+    <section class="card"><h2 class="section-title">مشتریان حضوری</h2><p class="hint">برای باشگاه مشتریان. همین فهرست، اگر کلید ووکامرس باشد، در سایت هم ذخیره می‌شود.</p><table><thead><tr><th>نام</th><th>تماس</th><th>خرید</th><th>مانده</th><th>سمت</th></tr></thead><tbody>
+      ${table(walk)}
+    </tbody></table></section>
+    <section class="card"><h2 class="section-title">همه مشتریان</h2><table><thead><tr><th>نام</th><th>تماس</th><th>خرید</th><th>مانده</th><th>سمت</th></tr></thead><tbody>
+      ${table(state.customers)}
     </tbody></table></section></div>`;
 }
 
@@ -1326,7 +1331,7 @@ async function saveJournal(data) {
   toast("سند ثبت شد");
   render();
 }
-function buyerReady() {
+function buyerFields() {
   syncPos();
   const first = state.buyerFirst.trim();
   const last = state.buyerLast.trim();
@@ -1334,22 +1339,22 @@ function buyerReady() {
     .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
     .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
     .replace(/\D/g, "");
-  if (first.length < 2 || last.length < 2) {
-    toast("نام و نام خانوادگی خریدار را بنویسید");
-    return null;
-  }
-  if (!/^09\d{9}$/.test(phone)) {
-    toast("شماره موبایل خریدار را وارد کنید");
+  if (phone && !/^09\d{9}$/.test(phone)) {
+    toast("شماره موبایل را کامل وارد کنید یا خالی بگذارید");
     return null;
   }
   return { first, last, phone };
 }
 async function submitSale(method, posRef, popup) {
-  const buyer = buyerReady();
+  const buyer = buyerFields();
   if (!buyer || !state.cart.length) {
     closePopup(popup);
     if (!buyer) return;
     return toast("سبد خالی است");
+  }
+  if (method === "credit" && !/^09\d{9}$/.test(buyer.phone)) {
+    closePopup(popup);
+    return toast("برای نسیه شماره موبایل لازم است");
   }
   let result;
   try {
@@ -1446,7 +1451,7 @@ async function onClick(event) {
     return;
   }
   if (act === "pay" && el.dataset.method === "gateway") {
-    if (!buyerReady()) return;
+    if (!buyerFields()) return;
     const popup = window.open("about:blank", "_blank");
     await guard(() => submitSale("gateway", "", popup));
     return;
@@ -1487,7 +1492,7 @@ async function onClick(event) {
       if (line.qty <= 0) state.cart = state.cart.filter((item) => item !== line);
       render();
     } else if (act === "pay") {
-      if (!buyerReady()) return;
+      if (!buyerFields()) return;
       if (el.dataset.method === "card") {
         const prep = await api("/api/pos/prepare", { method: "POST", body: { amount: cartSubtotal() - cartDiscount() } });
         state.modal = { type: "card", message: prep.message, ok: prep.ok };

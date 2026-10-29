@@ -1,9 +1,9 @@
 {
-  "version": "1.1.9",
+  "version": "1.1.10",
   "channel": "rst",
   "customer_no": 1,
   "business": "restaurant",
-  "notes": "به‌روزرسانی مخصوص مشتری اول، رستوران. کانال rst.",
+  "notes": "فروش حضوری: نام، فامیل و موبایل اختیاری است. اگر نوشته شود در برنامه و در مشتریان حضوری سایت برای باشگاه مشتریان ذخیره می‌شود.",
   "app_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/channels/rst/Daftarchi-rst-App.zip",
   "full_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-rst.zip"
 }

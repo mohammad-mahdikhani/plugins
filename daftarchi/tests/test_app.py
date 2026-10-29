@@ -82,23 +82,6 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(closed.status_code, 400)
         self.open_register(0)
         product = self.add_product()
-        nameless = self.client.post("/api/sales", json={
-            "items": [{"product_id": product["id"], "qty": 1}],
-            "payment_method": "cash",
-            "customer_name": "علی",
-            "customer_phone": "09121111111",
-        })
-        self.assertEqual(nameless.status_code, 400, nameless.get_json())
-        self.assertIn("نام خانوادگی", nameless.get_json()["error"])
-        nophone = self.client.post("/api/sales", json={
-            "items": [{"product_id": product["id"], "qty": 1}],
-            "payment_method": "cash",
-            "customer_first": "علی",
-            "customer_last": "رضایی",
-        })
-        self.assertEqual(nophone.status_code, 400, nophone.get_json())
-        self.assertIn("موبایل", nophone.get_json()["error"])
-        self.assertEqual(self.client.get("/api/products").get_json()["products"][0]["stock"], 5)
         response = self.client.post("/api/sales", json={
             "items": [{"product_id": product["id"], "qty": 2}],
             "discount_type": "percent",
@@ -139,6 +122,69 @@ class DaftarchiTest(unittest.TestCase):
         customers = self.client.get("/api/customers").get_json()["customers"]
         self.assertEqual(customers[0]["phone"], "09121111111")
         self.assertEqual(customers[0]["balance"], 0)
+
+    def test_walk_in_buyer_is_optional_and_kept_for_the_club(self):
+        self.open_register(0)
+        product = self.add_product(barcode="walk-1")
+        anonymous = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}],
+            "payment_method": "cash",
+        })
+        self.assertEqual(anonymous.status_code, 200, anonymous.get_json())
+        self.assertFalse(anonymous.get_json()["club"]["saved"])
+        self.assertEqual(self.client.get("/api/customers").get_json()["customers"], [])
+        named = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}],
+            "payment_method": "cash",
+            "customer_first": "علی",
+            "customer_last": "رضایی",
+        })
+        self.assertEqual(named.status_code, 200, named.get_json())
+        self.assertIn("برنامه", named.get_json()["club"]["detail"])
+        credit = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}],
+            "payment_method": "credit",
+            "customer_first": "علی",
+        })
+        self.assertEqual(credit.status_code, 400, credit.get_json())
+        self.assertIn("نسیه", credit.get_json()["error"])
+        saved = self.client.put("/api/settings", json={
+            "wp_url": "https://shop.example",
+            "woo_key": "ck_test",
+            "woo_secret": "cs_test",
+        })
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        calls = []
+
+        def fake_woo(settings, method, path, extra=None, payload=None):
+            calls.append((method, path, payload))
+            if method == "GET":
+                return 200, []
+            return 200, {"id": 44}
+
+        original = appmod.woo_request
+        appmod.woo_request = fake_woo
+        try:
+            sent = self.client.post("/api/sales", json={
+                "items": [{"product_id": product["id"], "qty": 1}],
+                "payment_method": "cash",
+                "customer_first": "سارا",
+                "customer_last": "کریمی",
+                "customer_phone": "09120001122",
+            })
+        finally:
+            appmod.woo_request = original
+        self.assertEqual(sent.status_code, 200, sent.get_json())
+        self.assertTrue(sent.get_json()["club"]["saved"])
+        self.assertEqual(sent.get_json()["club"]["woo_id"], 44)
+        self.assertEqual(calls[-1][0], "POST")
+        self.assertEqual(calls[-1][1], "customers")
+        self.assertEqual(calls[-1][2]["meta_data"][1]["value"], "مشتریان حضوری")
+        rows = self.client.get("/api/customers").get_json()["customers"]
+        club = next(row for row in rows if row["phone"] == "09120001122")
+        self.assertEqual(club["walk_in"], 1)
+        self.assertEqual(club["first_name"], "سارا")
+        self.assertEqual(club["woo_customer_id"], 44)
 
     def test_credit_receipt_purchase_and_close(self):
         self.open_register(100000)
@@ -773,7 +819,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.9", seen["text"])
+        self.assertIn("1.1.10", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -1419,7 +1465,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.9")
+        self.assertEqual(appmod.APP_VERSION, "1.1.10")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -1484,7 +1530,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.9")
+        self.assertEqual(boot["version"], "1.1.10")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -1493,7 +1539,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.9", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.10", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)
