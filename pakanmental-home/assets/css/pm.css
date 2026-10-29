@@ -148,6 +148,12 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 
 /* روی هیرو: بدون «قرص» جدا — منو داخل خود اسلایدر */
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  row-gap: 0.55rem;
+  column-gap: 0.75rem;
   background: transparent;
   backdrop-filter: none;
   box-shadow: none;
@@ -156,15 +162,43 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   transform: none;
 }
 
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__logo {
+  order: 1;
+  flex: 1 1 auto;
+  margin-inline: auto;
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__tools {
+  order: 2;
+  flex: 0 1 auto;
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-header__nav {
+  order: 3;
+  flex: 1 1 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg {
   background: color-mix(in srgb, var(--pm-cream) 10%, transparent);
   backdrop-filter: blur(10px);
   box-shadow: none;
+  width: min(720px, 100%);
+  justify-content: stretch;
+  gap: 0.35rem;
+  padding: 0.35rem 0.45rem;
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link {
   color: var(--pm-cream);
   opacity: 0.92;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding: 0.52rem 1.15rem;
+  font-size: 0.88rem;
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-seg__link:hover {
@@ -202,11 +236,31 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 }
 
 .pm-header.is-scrolled .pm-header__bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   padding: 0.38rem 0.75rem;
   background: color-mix(in srgb, var(--pm-cream) 62%, transparent);
   backdrop-filter: blur(22px) saturate(1.12);
   box-shadow: var(--pm-shadow-md);
   border-radius: var(--pm-radius-lg);
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-header__nav {
+  order: unset;
+  flex: unset;
+  width: auto;
+  justify-self: start;
+  justify-content: flex-start;
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-header__logo {
+  order: unset;
+  margin-inline: 0;
+}
+
+.pm-site--has-hero .pm-header.is-scrolled .pm-header__tools {
+  order: unset;
 }
 
 .pm-site--has-hero .pm-header.is-scrolled .pm-seg__link {
@@ -244,6 +298,7 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
 
 .pm-header__nav {
   justify-self: start;
+  min-width: 0;
 }
 
 .pm-seg {
@@ -254,6 +309,31 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   border-radius: var(--pm-pill);
   background: color-mix(in srgb, var(--pm-mint-50) 65%, var(--pm-bg));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--pm-cream) 80%, transparent);
+  width: auto;
+  max-width: 100%;
+  transition:
+    width 0.45s ease,
+    max-width 0.45s ease,
+    gap 0.45s ease,
+    padding 0.45s ease,
+    background 0.45s ease,
+    backdrop-filter 0.45s ease;
+}
+
+/* بعد از اسکرول: منو جمع و کم‌عرض داخل هدر */
+.pm-header.is-scrolled .pm-seg,
+.pm-site--has-hero .pm-header.is-scrolled .pm-seg {
+  width: auto;
+  max-width: none;
+  gap: 0.12rem;
+  padding: 0.2rem;
+  justify-content: center;
+}
+
+.pm-header.is-scrolled .pm-seg__link {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
 }
 
 .pm-seg__link {
@@ -263,7 +343,13 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   font-weight: 600;
   color: var(--pm-teal-700);
   opacity: var(--pm-text-muted-opacity);
-  transition: background 0.2s, color 0.2s, opacity 0.2s;
+  transition:
+    background 0.35s ease,
+    color 0.35s ease,
+    opacity 0.35s ease,
+    padding 0.45s ease,
+    flex 0.45s ease,
+    font-size 0.45s ease;
 }
 
 .pm-seg__link:hover {
