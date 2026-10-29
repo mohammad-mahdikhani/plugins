@@ -39,12 +39,7 @@ def wrap_blog_posts():
         print("wrapped post", pid)
 
 
-def main():
-    from .deploy_elementor import main as deploy_elementor
-
-    deploy_elementor()
-    return
-
+def deploy_html_legacy() -> None:
     home_id = upsert_page("%d8%ae%d8%a7%d9%86%d9%87", "خانه", wrap_page("home", home_main(), include_hero_js=True))
     upsert_page(
         "%d9%81%d8%b1%d9%88%d8%b4%da%af%d8%a7%d9%87",
@@ -52,7 +47,7 @@ def main():
         wrap_page("shop", shop_main(), include_shop_js=True),
     )
     upsert_page("%d8%b3%d8%a8%d8%af-%d8%ae%d8%b1%db%8c%d8%af", "سبد خرید", wrap_page("cart", cart_main()))
-    blog_id = upsert_page("%d9%85%d8%ac%d9%84%d9%87", "مجله", wrap_page("blog", blog_main()))
+    upsert_page("%d9%85%d8%ac%d9%84%d9%87", "مجله", wrap_page("blog", blog_main()))
     upsert_page("%d9%86%d9%85%d9%88%d9%86%d9%87-%d9%85%d8%ad%d8%b5%d9%88%d9%84", "نمونه محصول", wrap_page("shop", product_single_main()))
 
     req(
@@ -70,7 +65,18 @@ def main():
     except Exception as exc:
         print("elementor sync skipped", exc)
     print("reading settings OK", URLS["home"])
-    print("shop", URLS["shop"], "cart", URLS["cart"], "blog", URLS["blog"], "product", URLS["product_demo"])
+
+
+def main():
+    import os
+
+    if os.environ.get("PM_DEPLOY_MODE") == "html":
+        deploy_html_legacy()
+        return
+
+    from .deploy_elementor import main as deploy_elementor
+
+    deploy_elementor()
 
 
 if __name__ == "__main__":

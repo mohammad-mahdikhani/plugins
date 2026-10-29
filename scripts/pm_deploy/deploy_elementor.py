@@ -7,6 +7,7 @@ from urllib.parse import quote
 from .builder import req, BASE
 from .elementor_client import ElementorMcp
 from .elementor_globals import PAGE_CHROME_CSS, sync_all
+from .elementor_scripts import build_boot_js
 from .elementor_layout import (
     PAGE_IDS,
     blog_main_config,
@@ -71,6 +72,7 @@ def _apply_page_settings(client: ElementorMcp, post_id: int) -> None:
                 "hide_title": "yes",
                 "page_layout": "elementor_canvas",
                 "custom_css": PAGE_CHROME_CSS,
+                "custom_javascript": build_boot_js(),
             },
         },
     )
@@ -130,6 +132,23 @@ def main() -> None:
         _build_document(client, post_id, xml, ec, st, cl)
         _apply_page_settings(client, post_id)
         print("elementor page", post_id, "ok")
+
+    for lib_id in (header_section_id, footer_section_id):
+        _apply_page_settings(client, lib_id)
+
+    try:
+        client.call(
+            "elementor-update-page-settings",
+            {
+                "post_id": 6,
+                "settings": {
+                    "custom_css": PAGE_CHROME_CSS,
+                    "custom_javascript": build_boot_js(),
+                },
+            },
+        )
+    except Exception as exc:
+        print("kit settings skipped", exc)
 
     req(
         "POST",

@@ -79,11 +79,12 @@ def header_config(active: str) -> tuple[dict, dict, dict]:
 
     classes = {
         "pm-header": ["pm-header"],
-        "pm-header-bar": ["PM Header Bar"],
-        "pm-nav-seg": ["PM Nav Seg"],
+        "pm-header-bar": ["PM Header Bar", "pm-header-bar"],
+        "pm-nav-seg": ["PM Nav Seg", "pm-nav-seg"],
         "pm-nav-home": ["PM Nav Link Active" if nav_active == "pm-nav-home" else "PM Nav Link"],
         "pm-nav-shop": ["PM Nav Link Active" if nav_active == "pm-nav-shop" else "PM Nav Link"],
         "pm-nav-blog": ["PM Nav Link Active" if nav_active == "pm-nav-blog" else "PM Nav Link"],
+        "pm-header-tools": ["pm-header-tools"],
         "pm-cart-btn": ["PM Btn Ghost"],
     }
 

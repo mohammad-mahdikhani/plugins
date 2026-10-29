@@ -1,6 +1,5 @@
 (function () {
-  var root = document.querySelector(".pm-site");
-  if (!root) return;
+  var root = document.querySelector(".pm-site") || document.documentElement;
 
   var input = root.querySelector(".pm-search__input");
   var panel = root.querySelector(".pm-search__results");
