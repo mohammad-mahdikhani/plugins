@@ -1116,6 +1116,7 @@ function updatesHtml() {
       <p class="hint">هاست و کانفیگ لازم نیست. برنامه نسخه را از گیت‌هاب می‌گیرد، فقط فایل‌های پنل و اپ را عوض می‌کند و داده فروشگاه را نگه می‌دارد. بعد از نصب، صفحه خودش تازه می‌شود.</p>
       ${info.full_url ? `<p class="hint">اگر این رایانه به گیت‌هاب نرسید، نسخه ویندوز را از این آدرس دانلود کنید:</p><p class="ltr">${esc(info.full_url)}</p>` : ""}
       ${info.mac_url ? `<p class="hint">نسخه مک:</p><p class="ltr">${esc(info.mac_url)}</p>` : ""}
+      ${info.linux_url ? `<p class="hint">نسخه لینوکس:</p><p class="ltr">${esc(info.linux_url)}</p>` : ""}
     </section>
     <section class="card"><h2 class="section-title">نصب از فایل</h2>
       <div class="field"><label>فایل زیپ پنل یا نسخه کامل</label><input id="update-file" type="file" accept=".zip,application/zip"></div>

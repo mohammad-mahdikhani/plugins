@@ -12,6 +12,10 @@ case "$ARCH" in
     ;;
 esac
 xattr -dr com.apple.quarantine "$ROOT" 2>/dev/null || true
+chmod +x "$ROOT/python-arm64/bin/python3.12" "$ROOT/python-x64/bin/python3.12" 2>/dev/null || true
+if [ ! -x "$PY" ]; then
+  PY="$(dirname "$PY")/python3.12"
+fi
 if [ ! -x "$PY" ]; then
   echo "Python for this Mac is missing. Unzip the whole folder, then run this file again."
   read -r _

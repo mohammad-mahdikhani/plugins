@@ -1,4 +1,4 @@
-const CACHE = "daftarchi-1.1.12";
+const CACHE = "daftarchi-1.1.13";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
   event.waitUntil(

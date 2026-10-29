@@ -113,7 +113,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.12"
+APP_VERSION = "1.1.13"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2844,6 +2844,7 @@ def panel_update_status() -> dict:
         "app_url": str(body.get("app_url") or ""),
         "full_url": str(body.get("full_url") or ""),
         "mac_url": str(body.get("mac_url") or ""),
+        "linux_url": str(body.get("linux_url") or ""),
         "manifest": remote.get("manifest") or studio_manifest_url(),
         "reachable": bool(remote.get("ok")),
         "error": remote.get("error") or "",
