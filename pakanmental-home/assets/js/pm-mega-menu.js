@@ -89,10 +89,19 @@
         "</a>";
       if (kids.length) {
         html += '<ul class="pm-mega__sub">';
-        kids.forEach(function (child) {
+        var maxSub = isDesktop() ? 6 : 12;
+        kids.slice(0, maxSub).forEach(function (child) {
           html +=
             '<li><a href="' + child.link + '">' + child.name + "</a></li>";
         });
+        if (kids.length > maxSub) {
+          html +=
+            '<li><a class="pm-mega__more" href="' +
+            rootCat.link +
+            '">+ ' +
+            (kids.length - maxSub) +
+            " مورد دیگر</a></li>";
+        }
         html += "</ul>";
       }
       html += "</div>";
