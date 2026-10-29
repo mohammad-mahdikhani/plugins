@@ -40,6 +40,11 @@ def wrap_blog_posts():
 
 
 def main():
+    from .deploy_elementor import main as deploy_elementor
+
+    deploy_elementor()
+    return
+
     home_id = upsert_page("%d8%ae%d8%a7%d9%86%d9%87", "خانه", wrap_page("home", home_main(), include_hero_js=True))
     upsert_page(
         "%d9%81%d8%b1%d9%88%d8%b4%da%af%d8%a7%d9%87",

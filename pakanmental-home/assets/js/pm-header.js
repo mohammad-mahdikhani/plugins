@@ -1,6 +1,11 @@
 (function () {
   var header = document.querySelector(".pm-header");
+  if (!header) {
+    header = document.querySelector("header.e-flexbox");
+  }
   if (!header) return;
+
+  header.classList.add("pm-header");
 
   var threshold = 24;
 
