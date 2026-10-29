@@ -318,72 +318,39 @@ def shop_filters_sidebar() -> str:
 """
 
 
-def _dice_face_svg(dice_id: str, pips: list[tuple[float, float]], rotate: float, dx: float, dy: float) -> str:
-    """Single isometric die for 404 art (viewBox unit coords)."""
+def _die_flat_svg(pips: list[tuple[int, int]]) -> str:
     dots = "".join(
-        f'<circle cx="{x}" cy="{y}" r="4.2" fill="#faf7f2"/>' for x, y in pips
+        f'<circle cx="{x}" cy="{y}" r="3.25" fill="#2a5f52"/>'
+        for x, y in pips
     )
-    return f"""
-  <g class="pm-dice-404__die" transform="translate({dx} {dy}) rotate({rotate} 50 50)">
-    <ellipse cx="50" cy="92" rx="34" ry="6" fill="#1e4339" opacity="0.14"/>
-    <path d="M50 18 L88 36 L88 74 L50 92 L12 74 L12 36 Z" fill="url(#{dice_id}-top)" stroke="#2a5f52" stroke-width="1.6"/>
-    <path d="M88 36 L102 44 L102 82 L88 74 Z" fill="url(#{dice_id}-side)" stroke="#1e4339" stroke-width="1.2"/>
-    <path d="M12 36 L50 18 L88 36 L50 54 Z" fill="url(#{dice_id}-face)" stroke="#1e4339" stroke-width="1.2"/>
-    {dots}
-  </g>"""
+    return f"""<svg class="pm-not-found__die" viewBox="0 0 48 48" width="52" height="52" aria-hidden="true">
+  <rect x="3.5" y="3.5" width="41" height="41" rx="11" fill="#ffffff" stroke="#1e4339" stroke-width="1.6"/>
+  {dots}
+</svg>"""
 
 
-def _dice_404_svg() -> str:
-    die_a = _dice_face_svg("dA", [(50, 54)], -14, 8, 18)
-    die_b = _dice_face_svg(
-        "dB",
-        [(38, 48), (62, 48), (38, 62), (62, 62)],
-        6,
-        72,
-        8,
-    )
-    die_c = _dice_face_svg(
-        "dC",
-        [(38, 46), (62, 46), (50, 54), (38, 62), (62, 62), (50, 70)],
-        18,
-        132,
-        22,
-    )
+def _dice_404_row() -> str:
+    four = [(16, 16), (32, 16), (16, 32), (32, 32)]
     return f"""
-<svg class="pm-not-found__dice-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 130" role="img" aria-label="سه تاس بازی">
-  <defs>
-    <linearGradient id="dA-top" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#faf7f2"/><stop offset="100%" stop-color="#e8f6f1"/></linearGradient>
-    <linearGradient id="dA-side" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#4aa88e"/><stop offset="100%" stop-color="#2a5f52"/></linearGradient>
-    <linearGradient id="dA-face" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3d8f78"/><stop offset="100%" stop-color="#1e4339"/></linearGradient>
-    <linearGradient id="dB-top" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#e8f6f1"/></linearGradient>
-    <linearGradient id="dB-side" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#5bb89e"/><stop offset="100%" stop-color="#357a68"/></linearGradient>
-    <linearGradient id="dB-face" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4aa88e"/><stop offset="100%" stop-color="#1e4339"/></linearGradient>
-    <linearGradient id="dC-top" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#faf7f2"/><stop offset="100%" stop-color="#dceede"/></linearGradient>
-    <linearGradient id="dC-side" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#3d8f78"/><stop offset="100%" stop-color="#1e4339"/></linearGradient>
-    <linearGradient id="dC-face" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2a5f52"/><stop offset="100%" stop-color="#163830"/></linearGradient>
-  </defs>
-  {die_a}
-  {die_b}
-  {die_c}
-</svg>
-"""
+<div class="pm-not-found__code-row" aria-label="۴۰۴">
+  <span class="pm-not-found__die-slot" style="--pm-rot:-10deg">{_die_flat_svg(four)}</span>
+  <span class="pm-not-found__zero" aria-hidden="true">۰</span>
+  <span class="pm-not-found__die-slot" style="--pm-rot:8deg">{_die_flat_svg(four)}</span>
+</div>"""
 
 
 def not_found_main() -> str:
-    dice = _dice_404_svg()
+    dice_row = _dice_404_row()
     return f"""
 <section class="pm-not-found">
-  <div class="pm-container">
-    <div class="pm-not-found__hero">
-      <p class="pm-not-found__code" aria-hidden="true">404</p>
-      <div class="pm-not-found__art">{dice}</div>
-    </div>
-    <p class="pm-not-found__kicker">اوه! تاس بد آورد</p>
-    <h1>این صفحه پیدا نشد</h1>
-    <p>شاید لینک قدیمی باشد یا آدرس را اشتباه زده‌اید. یک بار دیگر تاس بیندازید — یا از فروشگاه یک بازی تازه انتخاب کنید.</p>
+  <div class="pm-not-found__bg" aria-hidden="true"></div>
+  <div class="pm-container pm-not-found__inner">
+    {dice_row}
+    <h1 class="pm-not-found__title">صفحه‌ای که دنبالش بودید اینجا نیست</h1>
+    <p class="pm-not-found__lead">احتمالاً آدرس عوض شده یا اشتباه تایپ شده. از خانه یا فروشگاه بازی ادامه دهید.</p>
     <div class="pm-not-found__actions">
       <a class="pm-btn pm-btn--primary" href="{URLS["home"]}">بازگشت به خانه</a>
-      <a class="pm-btn pm-btn--ghost" href="{URLS["shop"]}">رفتن به فروشگاه</a>
+      <a class="pm-btn pm-btn--ghost" href="{URLS["shop"]}">فروشگاه پاکان منتال</a>
     </div>
   </div>
 </section>

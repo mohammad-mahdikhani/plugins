@@ -104,7 +104,7 @@ def main() -> None:
         (PAGE_IDS["cart"], "cart", cart_main(), False, False),
         (PAGE_IDS["blog"], "blog", blog_main(), False, False),
         (PAGE_IDS["product"], "shop", product_single_main(), False, False),
-        (not_found_id, "home", not_found_main(), False, False),
+        (not_found_id, "404", not_found_main(), False, False),
         (PAGE_IDS["account"], "account", account_main(), False, False),
     ]
 
