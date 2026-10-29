@@ -108,7 +108,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.7"
+APP_VERSION = "1.1.7-test"
 TRIAL_DAYS = 7
 UPDATE_MANIFEST_URLS = (
     "https://webakery.ir/daftarchi/version.json",

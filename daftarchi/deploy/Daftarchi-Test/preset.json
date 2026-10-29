@@ -1,0 +1,15 @@
+{
+  "site_id": "test-kit",
+  "label": "کیت تست",
+  "note": "فقط برای آزمایش — داده جدا از فروش واقعی",
+  "settings": {
+    "shop_name": "فروشگاه تست",
+    "wp_url": "https://webakery.ir",
+    "gateway_callback": "https://webakery.ir",
+    "gateway_sandbox": "1",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "0",
+    "manager_phone": ""
+  }
+}

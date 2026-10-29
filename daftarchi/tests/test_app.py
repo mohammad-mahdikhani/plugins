@@ -685,7 +685,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.7", seen["text"])
+        self.assertIn("1.1.7-test", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -1331,7 +1331,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.7")
+        self.assertEqual(appmod.APP_VERSION, "1.1.7-test")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -1356,7 +1356,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertNotIn("MUI_PAGE", run)
         self.assertNotIn('RMDir /r "$INSTDIR\\data"', run)
         self.assertIn("Call LaunchApp", run)
-        self.assertIn("1.1.7", run)
+        self.assertIn("1.1.7-test", run)
         self.assertIn("invoice-edge", script)
         self.assertIn("نوع متغیر را انتخاب کنید", script)
         self.assertIn("همین مقدارهای نوشته‌شده", script)
@@ -1396,7 +1396,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.7")
+        self.assertEqual(boot["version"], "1.1.7-test")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -1405,7 +1405,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.7", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.7-test", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)
