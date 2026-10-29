@@ -10,7 +10,15 @@ body .site-footer,
 body .page-header { display: none !important; }
 body #content.site-main,
 body .site-main { max-width: none; padding: 0; margin: 0; }
+.elementor-html-widget,
+.elementor-widget-html,
+.elementor-widget-wrap,
+.elementor-element,
+.e-con,
+.e-con-inner { overflow: visible !important; }
 .elementor-html-widget { width: 100%; }
+.pm-elementor-chrome,
+.pm-elementor-main { width: 100%; }
 """
 
 

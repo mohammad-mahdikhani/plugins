@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from .builder import req, BASE, wrap_page, header, footer
+from .builder import req, BASE, wrap_page_elementor_widgets, header, footer
 from .elementor_client import ElementorMcp
-from .elementor_document import set_elementor_html, set_library_html
+from .elementor_document import set_elementor_html_split, set_library_html
 from .elementor_globals import PAGE_CHROME_CSS, sync_all
 from .elementor_layout import PAGE_IDS, NOT_FOUND_PAGE_SLUG, NOT_FOUND_PAGE_TITLE
 from .pages_content import (
@@ -107,16 +107,15 @@ def main() -> None:
     ]
 
     for post_id, active, main_html, hero_js, shop_js in pages:
-        html = wrap_page(
+        wh, wm, wf = wrap_page_elementor_widgets(
             active,
             main_html,
             include_hero_js=hero_js,
             include_shop_js=shop_js,
-            elementor=True,
         )
-        set_elementor_html(post_id, html)
+        set_elementor_html_split(post_id, wh, wm, wf)
         _apply_page_settings(client, post_id)
-        print("elementor html page", post_id, "ok")
+        print("elementor split page", post_id, "ok")
 
     try:
         client.call(

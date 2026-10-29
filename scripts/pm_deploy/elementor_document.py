@@ -11,32 +11,72 @@ def _element_id() -> str:
     return secrets.token_hex(4)
 
 
+def _container_settings() -> dict:
+    return {
+        "content_width": "full",
+        "padding": {
+            "unit": "px",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "isLinked": True,
+        },
+        "flex_gap": {"unit": "px", "size": 0, "column": "0", "row": "0"},
+    }
+
+
+def _html_widget(html: str) -> dict:
+    return {
+        "id": _element_id(),
+        "elType": "widget",
+        "widgetType": "html",
+        "isInner": False,
+        "settings": {"html": html},
+        "elements": [],
+    }
+
+
+def _container(html: str) -> dict:
+    return {
+        "id": _element_id(),
+        "elType": "container",
+        "isInner": False,
+        "settings": _container_settings(),
+        "elements": [_html_widget(html)],
+    }
+
+
 def html_widget_tree(html: str) -> list:
-    """Elementor document: one container + legacy HTML widget (full design markup)."""
-    root = _element_id()
-    widget = _element_id()
+    """Single HTML widget (library sections)."""
+    return [_container(html)]
+
+
+def html_widget_tree_split(header_html: str, main_html: str, footer_html: str) -> list:
+    """Three HTML widgets: header chrome, editable main, footer chrome."""
     return [
-        {
-            "id": root,
-            "elType": "container",
-            "isInner": False,
-            "settings": {"content_width": "full", "padding": {"unit": "px", "top": "0", "right": "0", "bottom": "0", "left": "0", "isLinked": True}},
-            "elements": [
-                {
-                    "id": widget,
-                    "elType": "widget",
-                    "widgetType": "html",
-                    "isInner": False,
-                    "settings": {"html": html},
-                    "elements": [],
-                }
-            ],
-        }
+        _container(header_html),
+        _container(main_html),
+        _container(footer_html),
     ]
 
 
 def set_elementor_html(post_id: int, html: str) -> None:
     tree = html_widget_tree(html)
+    _push_elementor_page(post_id, tree)
+
+
+def set_elementor_html_split(
+    post_id: int,
+    header_html: str,
+    main_html: str,
+    footer_html: str,
+) -> None:
+    tree = html_widget_tree_split(header_html, main_html, footer_html)
+    _push_elementor_page(post_id, tree)
+
+
+def _push_elementor_page(post_id: int, tree: list) -> None:
     req(
         "POST",
         f"{BASE}/pages/{post_id}",

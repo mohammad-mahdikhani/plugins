@@ -60,6 +60,11 @@ body.blog .pm-blog-archive-fallback { margin: 0; }
   -webkit-tap-highlight-color: transparent;
 }
 .pm-site .pm-search__input::-moz-focus-inner { border: 0; }
+.elementor-widget-html .pm-header,
+.elementor-widget-html .pm-header__bar,
+.elementor-widget-html .pm-header__nav,
+.elementor-widget-html .pm-seg,
+.elementor-widget-html .pm-mega { overflow: visible !important; }
 """
     return css
 
@@ -111,10 +116,15 @@ def header(active: str) -> str:
         <div class="pm-seg" role="list">
           {seg("home", "خانه")}
           <div class="pm-mega pm-seg__mega" data-pm-mega data-shop-url="{URLS["shop"]}">
-            <a class="pm-seg__link pm-mega__trigger{shop_active}" href="{URLS["shop"]}" aria-haspopup="true" aria-expanded="false" id="pm-mega-trigger">فروشگاه</a>
-            <div class="pm-mega__panel" hidden role="region" aria-labelledby="pm-mega-trigger">
-              <div class="pm-mega__inner pm-container">
-                <div class="pm-mega__grid" data-pm-mega-grid">
+            <a class="pm-seg__link pm-mega__trigger{shop_active}" href="{URLS["shop"]}" aria-haspopup="dialog" aria-expanded="false" id="pm-mega-trigger">فروشگاه</a>
+            <div class="pm-mega__panel" hidden role="dialog" aria-labelledby="pm-mega-trigger">
+              <div class="pm-mega__inner">
+                <div class="pm-mega__head">
+                  <span class="pm-mega__head-title">دسته‌بندی فروشگاه</span>
+                  <button type="button" class="pm-mega__close" data-pm-mega-close aria-label="بستن منو">×</button>
+                </div>
+                <div class="pm-mega__custom" data-pm-elementor-slot="mega-promo"></div>
+                <div class="pm-mega__grid" data-pm-mega-grid>
                   <p class="pm-mega__loading">در حال بارگذاری دسته‌ها…</p>
                 </div>
                 <a class="pm-mega__all" href="{URLS["shop"]}">مشاهده همه محصولات</a>
@@ -211,3 +221,40 @@ def wrap_page(
     return f"""<!-- wp:html -->
 {inner}
 <!-- /wp:html -->"""
+
+
+def wrap_page_elementor_widgets(
+    active: str,
+    main_html: str,
+    include_hero_js: bool = False,
+    include_shop_js: bool = False,
+) -> tuple[str, str, str]:
+    """
+    Three Elementor HTML widgets (header / main / footer) so manual edits in Elementor
+    stay isolated. Each chunk carries pm-site for typography tokens.
+    """
+    css = load_css()
+    js = load_site_js(include_hero=include_hero_js, include_shop=include_shop_js)
+    site_class = f"pm-site{' pm-site--has-hero' if include_hero_js else ''}"
+    assets = f"""<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style id="pm-site-css">{css}</style>
+{catalog_script()}"""
+    widget_header = f"""<!-- PM Elementor: هدر + مگامenu — ویرایش بنر data-pm-elementor-slot="mega-promo" -->
+<div class="{site_class} pm-elementor-chrome" dir="rtl">
+{assets}
+{header(active)}
+</div>"""
+    widget_main = f"""<!-- PM Elementor: محتوای اصلی صفحه — این ویجت را دستی ویرایش کنید -->
+<div class="{site_class} pm-elementor-main" dir="rtl">
+<main id="pm-main">
+{main_html}
+</main>
+</div>"""
+    widget_footer = f"""<!-- PM Elementor: فوتر + اسکریپت -->
+<div class="{site_class} pm-elementor-chrome" dir="rtl">
+{footer()}
+<script id="pm-site-js">{js}</script>
+</div>"""
+    return widget_header, widget_main, widget_footer
