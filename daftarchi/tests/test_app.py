@@ -151,6 +151,19 @@ class DaftarchiTest(unittest.TestCase):
             names = archive.namelist()
             self.assertTrue(any("manylinux_2_17_x86_64" in name for name in names))
 
+    def test_source_zip_is_the_program(self):
+        zpath = Path(__file__).resolve().parents[1] / "deploy" / "Daftarchi-Source.zip"
+        self.assertTrue(zpath.is_file(), zpath)
+        with zipfile.ZipFile(zpath) as archive:
+            names = archive.namelist()
+            app_text = archive.read("Daftarchi-Source/app.py").decode()
+        self.assertIn('APP_VERSION = "1.1.13"', app_text)
+        self.assertIn("Daftarchi-Source/requirements.txt", names)
+        self.assertIn("Daftarchi-Source/static/js/app.js", names)
+        self.assertIn("Daftarchi-Source/templates/index.html", names)
+        self.assertIn("Daftarchi-Source/tests/test_app.py", names)
+        self.assertFalse(any(name.endswith(".zip") or name.endswith("python.exe") or "studio-unlock" in name for name in names))
+
     def test_shop_mode_and_tour_setup(self):
         me = self.client.get("/api/auth/me").get_json()
         self.assertEqual(me["setup"]["mode"], "")
