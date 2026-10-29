@@ -4,9 +4,9 @@
 
   var trigger = root.querySelector(".pm-mega__trigger");
   var panel = root.querySelector(".pm-mega__panel");
-  var grid = root.querySelector("[data-pm-mega-grid]");
+  var grids = document.querySelectorAll("[data-pm-mega-grid]");
   var shopUrl = root.getAttribute("data-shop-url") || "/";
-  if (!trigger || !panel || !grid) return;
+  if (!trigger || !panel || !grids.length) return;
 
   var closeTimer = null;
   var desktopMq = window.matchMedia("(min-width: 901px)");
@@ -69,8 +69,11 @@
     });
 
     if (!roots.length) {
-      grid.innerHTML =
+      var empty =
         '<p class="pm-mega__empty">دسته‌بندی محصولات به‌زودی اینجا نمایش داده می‌شود.</p>';
+      grids.forEach(function (el) {
+        el.innerHTML = empty;
+      });
       return;
     }
 
@@ -94,7 +97,9 @@
       }
       html += "</div>";
     });
-    grid.innerHTML = html;
+    grids.forEach(function (el) {
+      el.innerHTML = html;
+    });
   }
 
   fetch("/wp-json/wp/v2/product_cat?per_page=100&hide_empty=false", {
@@ -105,10 +110,13 @@
     })
     .then(renderMenu)
     .catch(function () {
-      grid.innerHTML =
+      var fail =
         '<p class="pm-mega__empty">بارگذاری دسته‌ها ممکن نشد. <a href="' +
         shopUrl +
         '">رفتن به فروشگاه</a></p>';
+      grids.forEach(function (el) {
+        el.innerHTML = fail;
+      });
     });
 
   trigger.addEventListener("click", function (e) {

@@ -17,6 +17,7 @@ URLS = {
     "cart": f"{SITE}/%d8%b3%d8%a8%d8%af-%d8%ae%d8%b1%db%8c%d8%af/",
     "blog": f"{SITE}/%d9%85%d8%ac%d9%84%d9%87/",
     "product_demo": f"{SITE}/%d9%86%d9%85%d9%88%d9%86%d9%87-%d9%85%d8%ad%d8%b5%d9%88%d9%84/",
+    "account": f"{SITE}/my-account/",
 }
 
 
@@ -79,6 +80,8 @@ def load_site_js(include_hero: bool = False, include_shop: bool = False) -> str:
         parts.append(f.read())
     with open("/workspace/pakanmental-home/assets/js/pm-trust-badges.js", encoding="utf-8") as f:
         parts.append(f.read())
+    with open("/workspace/pakanmental-home/assets/js/pm-mobile.js", encoding="utf-8") as f:
+        parts.append(f.read())
     if include_hero:
         with open("/workspace/pakanmental-home/assets/js/home.js", encoding="utf-8") as f:
             parts.append(f.read())
@@ -101,6 +104,29 @@ def logo_picture(footer: bool = False) -> str:
     )
 
 
+def mobile_dock(active: str) -> str:
+    def item(key: str, label: str, href: str, svg: str) -> str:
+        cls = "pm-dock__item is-active" if active == key else "pm-dock__item"
+        return f"""<a class="{cls}" href="{href}">
+  <span class="pm-dock__icon-wrap">{svg}</span>
+  <span class="pm-dock__label">{label}</span>
+</a>"""
+
+    ic_home = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>'
+    ic_shop = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><path d="M4 10h16l-1.2 9H5.2L4 10z"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'
+    ic_cart = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1.2"/><circle cx="18" cy="20" r="1.2"/></svg>'
+    ic_user = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M6 20v-1a6 6 0 0 1 12 0v1"/></svg>'
+
+    return f"""
+<nav class="pm-dock pm-mobile-only" aria-label="ناوبری پایین موبایل">
+  {item("home", "خانه", URLS["home"], ic_home)}
+  {item("shop", "فروشگاه", URLS["shop"], ic_shop)}
+  {item("cart", "سبد خرید", URLS["cart"], ic_cart)}
+  {item("account", "حساب کاربری", URLS["account"], ic_user)}
+</nav>
+"""
+
+
 def header(active: str) -> str:
     def seg(key: str, label: str) -> str:
         cls = "pm-seg__link is-active" if active == key else "pm-seg__link"
@@ -108,11 +134,15 @@ def header(active: str) -> str:
         return f'<a class="{cls}" href="{href}">{label}</a>'
 
     shop_active = " is-active" if active == "shop" else ""
+    cart_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L5 3H2"/></svg>'
     return f"""
 <header class="pm-header">
   <div class="pm-container pm-header__wrap">
     <div class="pm-header__bar">
-      <nav class="pm-header__nav" aria-label="منوی اصلی">
+      <button type="button" class="pm-burger pm-mobile-only" data-pm-drawer-open aria-controls="pm-drawer" aria-expanded="false" aria-label="باز کردن منو">
+        <span class="pm-burger__lines" aria-hidden="true"><i></i><i></i><i></i></span>
+      </button>
+      <nav class="pm-header__nav pm-desktop-only" aria-label="منوی اصلی">
         <div class="pm-seg" role="list">
           {seg("home", "خانه")}
           <div class="pm-mega pm-seg__mega" data-pm-mega data-shop-url="{URLS["shop"]}">
@@ -138,7 +168,10 @@ def header(active: str) -> str:
         <span class="pm-header__logo-glow" aria-hidden="true"></span>
         {logo_picture()}
       </a>
-      <div class="pm-header__tools">
+      <a class="pm-header__icon-btn pm-cart pm-mobile-only pm-header__cart-mobile" href="{URLS["cart"]}" aria-label="سبد خرید">
+        {cart_svg}
+      </a>
+      <div class="pm-header__tools pm-desktop-only">
         <div class="pm-search pm-search--inline">
           <label class="pm-search__label" for="pm-search-input">جستجو در محصولات</label>
           <span class="pm-search__icon" aria-hidden="true">
@@ -148,10 +181,42 @@ def header(active: str) -> str:
           <div class="pm-search__results" hidden></div>
         </div>
         <a class="pm-header__icon-btn pm-cart" href="{URLS["cart"]}" aria-label="سبد خرید">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L5 3H2"/></svg>
+          {cart_svg}
         </a>
       </div>
     </div>
+  </div>
+  <div id="pm-drawer" class="pm-drawer" data-pm-drawer hidden>
+    <div class="pm-drawer__backdrop" data-pm-drawer-close tabindex="-1" aria-hidden="true"></div>
+    <aside class="pm-drawer__panel" role="dialog" aria-label="منوی موبایل">
+      <div class="pm-drawer__head">
+        <span class="pm-drawer__title">منوی پاکان منتال</span>
+        <button type="button" class="pm-drawer__close" data-pm-drawer-close aria-label="بستن">×</button>
+      </div>
+      <div class="pm-drawer__search">
+        <div class="pm-search pm-search--inline">
+          <label class="pm-search__label" for="pm-search-input-mobile">جستجو</label>
+          <span class="pm-search__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+          </span>
+          <input id="pm-search-input-mobile" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" />
+          <div class="pm-search__results" hidden></div>
+        </div>
+      </div>
+      <nav class="pm-drawer__links">
+        {seg("home", "خانه")}
+        <a class="pm-drawer__link{' is-active' if active == 'shop' else ''}" href="{URLS["shop"]}">فروشگاه</a>
+        {seg("blog", "مجله")}
+        <a class="pm-drawer__link" href="{URLS["cart"]}">سبد خرید</a>
+        <a class="pm-drawer__link" href="{URLS["account"]}">حساب کاربری</a>
+      </nav>
+      <div class="pm-drawer__cats">
+        <p class="pm-drawer__cats-title">دسته‌بندی‌ها</p>
+        <div class="pm-mega__grid pm-drawer__mega-grid" data-pm-mega-grid>
+          <p class="pm-mega__loading">در حال بارگذاری…</p>
+        </div>
+      </div>
+    </aside>
   </div>
 </header>
 """
@@ -214,6 +279,7 @@ def wrap_page(
 {main_html}
 </main>
 {footer()}
+{mobile_dock(active)}
 <script id="pm-site-js">{js}</script>
 </div>"""
     if elementor:
@@ -255,6 +321,7 @@ def wrap_page_elementor_widgets(
     widget_footer = f"""<!-- PM Elementor: فوتر + اسکریپت -->
 <div class="{site_class} pm-elementor-chrome" dir="rtl">
 {footer()}
+{mobile_dock(active)}
 <script id="pm-site-js">{js}</script>
 </div>"""
     return widget_header, widget_main, widget_footer

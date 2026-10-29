@@ -1,41 +1,46 @@
 (function () {
-  var root = document.querySelector(".pm-site") || document.documentElement;
-
-  var input = root.querySelector(".pm-search__input");
-  var panel = root.querySelector(".pm-search__results");
-  if (!input || !panel) return;
-
+  var siteRoot = document.querySelector(".pm-site") || document.documentElement;
   var catalog = window.PM_PRODUCT_CATALOG || [];
   var shopUrl = window.PM_SHOP_URL || "/";
   var site = window.PM_SITE_URL || "";
-  var timer;
 
-  input.addEventListener("input", function () {
-    clearTimeout(timer);
-    var q = input.value.trim();
-    if (q.length < 2) {
-      panel.hidden = true;
-      panel.innerHTML = "";
-      return;
-    }
-    timer = setTimeout(function () {
-      runSearch(q);
-    }, 250);
+  siteRoot.querySelectorAll(".pm-search").forEach(function (wrap) {
+    initSearch(wrap);
   });
 
-  input.addEventListener("focus", function () {
-    if (input.value.trim().length >= 2) {
-      panel.hidden = false;
-    }
-  });
+  function initSearch(wrap) {
+    var input = wrap.querySelector(".pm-search__input");
+    var panel = wrap.querySelector(".pm-search__results");
+    if (!input || !panel) return;
+    var timer;
 
-  document.addEventListener("click", function (e) {
-    if (!root.querySelector(".pm-search").contains(e.target)) {
-      panel.hidden = true;
-    }
-  });
+    input.addEventListener("input", function () {
+      clearTimeout(timer);
+      var q = input.value.trim();
+      if (q.length < 2) {
+        panel.hidden = true;
+        panel.innerHTML = "";
+        return;
+      }
+      timer = setTimeout(function () {
+        runSearch(q, panel);
+      }, 250);
+    });
 
-  function runSearch(q) {
+    input.addEventListener("focus", function () {
+      if (input.value.trim().length >= 2) {
+        panel.hidden = false;
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!wrap.contains(e.target)) {
+        panel.hidden = true;
+      }
+    });
+  }
+
+  function runSearch(q, panel) {
     var storeUrl =
       site +
       "/wp-json/wc/store/v1/products?search=" +
@@ -50,6 +55,7 @@
       .then(function (items) {
         if (items && items.length) {
           render(
+            panel,
             items.map(function (p) {
               return {
                 title: p.name || p.title,
@@ -59,7 +65,7 @@
             })
           );
         } else {
-          render(filterLocal(q));
+          render(panel, filterLocal(q));
         }
       })
       .catch(function () {
@@ -78,10 +84,10 @@
               return { title: p.title.rendered, url: p.link, price: "" };
             });
             var local = filterLocal(q);
-            render(local.length ? local : fromPages);
+            render(panel, local.length ? local : fromPages);
           })
           .catch(function () {
-            render(filterLocal(q));
+            render(panel, filterLocal(q));
           });
       });
   }
@@ -104,7 +110,7 @@
     return n.toLocaleString("fa-IR") + " تومان";
   }
 
-  function render(items) {
+  function render(panel, items) {
     if (!items.length) {
       panel.innerHTML =
         '<p class="pm-search__empty">محصولی پیدا نشد.</p><a class="pm-search__all" href="' +

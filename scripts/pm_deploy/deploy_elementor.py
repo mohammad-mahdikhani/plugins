@@ -100,7 +100,7 @@ def main() -> None:
     pages = [
         (PAGE_IDS["home"], "home", home_main(), True, False),
         (PAGE_IDS["shop"], "shop", shop_main(), False, True),
-        (PAGE_IDS["cart"], "shop", cart_main(), False, False),
+        (PAGE_IDS["cart"], "cart", cart_main(), False, False),
         (PAGE_IDS["blog"], "blog", blog_main(), False, False),
         (PAGE_IDS["product"], "shop", product_single_main(), False, False),
         (not_found_id, "home", not_found_main(), False, False),
