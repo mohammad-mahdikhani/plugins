@@ -18,7 +18,55 @@ URLS = {
     "blog": f"{SITE}/%d9%85%d8%ac%d9%84%d9%87/",
     "product_demo": f"{SITE}/%d9%86%d9%85%d9%88%d9%86%d9%87-%d9%85%d8%ad%d8%b5%d9%88%d9%84/",
     "account": f"{SITE}/my-account/",
+    "checkout": f"{SITE}/checkout/",
 }
+
+
+def pm_cart_config_script() -> str:
+    import json as _json
+
+    cfg = {
+        "storeApi": f"{SITE}/wp-json/wc/store/v1",
+        "cartUrl": URLS["cart"],
+        "checkoutUrl": URLS["checkout"],
+        "shopUrl": URLS["shop"],
+    }
+    return f'<script>window.pmCart={_json.dumps(cfg, ensure_ascii=False)};</script>'
+
+
+def cart_icon_inner() -> str:
+    cart_svg = (
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'
+        '<path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L5 3H2"/></svg>'
+    )
+    return (
+        f"{cart_svg}"
+        '<span class="pm-cart-count" data-pm-cart-count hidden aria-live="polite"></span>'
+    )
+
+
+def mini_cart_panel() -> str:
+    return f"""
+<div id="pm-mini-cart" class="pm-mini-cart" data-pm-mini-cart hidden>
+  <div class="pm-mini-cart__backdrop" data-pm-cart-close tabindex="-1" aria-hidden="true"></div>
+  <aside class="pm-mini-cart__panel" role="dialog" aria-modal="true" aria-labelledby="pm-mini-cart-title">
+    <header class="pm-mini-cart__head">
+      <h2 id="pm-mini-cart-title" class="pm-mini-cart__title">سبد خرید</h2>
+      <button type="button" class="pm-mini-cart__close" data-pm-cart-close aria-label="بستن">×</button>
+    </header>
+    <div class="pm-mini-cart__body" data-pm-mini-cart-body>
+      <p class="pm-mini-cart__loading">در حال بارگذاری…</p>
+    </div>
+    <footer class="pm-mini-cart__foot">
+      <p class="pm-mini-cart__subtotal"><span>جمع</span> <strong data-pm-mini-cart-subtotal>۰</strong></p>
+      <div class="pm-mini-cart__actions">
+        <a class="pm-btn pm-btn--ghost" href="{URLS["cart"]}">مشاهده سبد</a>
+        <a class="pm-btn pm-btn--primary" href="{URLS["checkout"]}">تسویه حساب</a>
+      </div>
+    </footer>
+  </aside>
+</div>
+"""
 
 
 def req(method: str, url: str, data=None):
@@ -84,6 +132,8 @@ def load_site_js(include_hero: bool = False, include_shop: bool = False) -> str:
         parts.append(f.read())
     with open("/workspace/pakanmental-home/assets/js/pm-mobile.js", encoding="utf-8") as f:
         parts.append(f.read())
+    with open("/workspace/pakanmental-home/assets/js/pm-cart.js", encoding="utf-8") as f:
+        parts.append(f.read())
     if include_hero:
         with open("/workspace/pakanmental-home/assets/js/home.js", encoding="utf-8") as f:
             parts.append(f.read())
@@ -117,13 +167,17 @@ def mobile_dock(active: str) -> str:
     ic_home = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>'
     ic_shop = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><path d="M4 10h16l-1.2 9H5.2L4 10z"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'
     ic_cart = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1.2"/><circle cx="18" cy="20" r="1.2"/></svg>'
+    cart_dock = f"""<a class="{('pm-dock__item is-active' if active == 'cart' else 'pm-dock__item')}" href="{URLS["cart"]}" data-pm-cart-open>
+  <span class="pm-dock__icon-wrap">{ic_cart}<span class="pm-cart-count pm-cart-count--dock" data-pm-cart-count hidden aria-live="polite"></span></span>
+  <span class="pm-dock__label">سبد خرید</span>
+</a>"""
     ic_user = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M6 20v-1a6 6 0 0 1 12 0v1"/></svg>'
 
     return f"""
 <nav class="pm-dock pm-mobile-only" aria-label="ناوبری پایین موبایل">
   {item("home", "خانه", URLS["home"], ic_home)}
   {item("shop", "فروشگاه", URLS["shop"], ic_shop)}
-  {item("cart", "سبد خرید", URLS["cart"], ic_cart)}
+  {cart_dock}
   {item("account", "حساب کاربری", URLS["account"], ic_user)}
 </nav>
 """
@@ -136,7 +190,11 @@ def header(active: str) -> str:
         return f'<a class="{cls}" href="{href}">{label}</a>'
 
     shop_active = " is-active" if active == "shop" else ""
-    cart_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L5 3H2"/></svg>'
+    cart_btn = lambda extra: (
+        f'<a class="pm-header__icon-btn pm-cart {extra}" href="{URLS["cart"]}" data-pm-cart-open '
+        f'aria-label="سبد خرید" aria-haspopup="dialog" aria-controls="pm-mini-cart">'
+        f"{cart_icon_inner()}</a>"
+    )
     return f"""
 <header class="pm-header">
   <div class="pm-container pm-header__wrap">
@@ -170,9 +228,7 @@ def header(active: str) -> str:
         <span class="pm-header__logo-glow" aria-hidden="true"></span>
         {logo_picture()}
       </a>
-      <a class="pm-header__icon-btn pm-cart pm-mobile-only pm-header__cart-mobile" href="{URLS["cart"]}" aria-label="سبد خرید">
-        {cart_svg}
-      </a>
+      {cart_btn("pm-mobile-only pm-header__cart-mobile")}
       <div class="pm-header__tools pm-desktop-only">
         <div class="pm-search pm-search--inline">
           <label class="pm-search__label" for="pm-search-input">جستجو در محصولات</label>
@@ -182,9 +238,7 @@ def header(active: str) -> str:
           <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" enterkeyhint="search" />
           <div class="pm-search__results" hidden></div>
         </div>
-        <a class="pm-header__icon-btn pm-cart" href="{URLS["cart"]}" aria-label="سبد خرید">
-          {cart_svg}
-        </a>
+        {cart_btn("")}
       </div>
     </div>
   </div>
@@ -209,7 +263,7 @@ def header(active: str) -> str:
         {seg("home", "خانه")}
         <a class="pm-drawer__link{' is-active' if active == 'shop' else ''}" href="{URLS["shop"]}">فروشگاه</a>
         {seg("blog", "مجله")}
-        <a class="pm-drawer__link" href="{URLS["cart"]}">سبد خرید</a>
+        <a class="pm-drawer__link" href="{URLS["cart"]}" data-pm-cart-open>سبد خرید</a>
         <a class="pm-drawer__link" href="{URLS["account"]}">حساب کاربری</a>
       </nav>
       <div class="pm-drawer__cats">
@@ -221,6 +275,7 @@ def header(active: str) -> str:
     </aside>
   </div>
 </header>
+{mini_cart_panel()}
 """
 
 
@@ -276,6 +331,7 @@ def wrap_page(
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style id="pm-site-css">{css}</style>
 {catalog_script()}
+{pm_cart_config_script()}
 {header(active)}
 <main id="pm-main">
 {main_html}
@@ -312,6 +368,7 @@ def wrap_page_elementor_widgets(
     widget_header = f"""<!-- PM Elementor: هدر + مگامenu — ویرایش بنر data-pm-elementor-slot="mega-promo" -->
 <div class="{site_class} pm-elementor-chrome" dir="rtl">
 {assets}
+{pm_cart_config_script()}
 {header(active)}
 </div>"""
     widget_main = f"""<!-- PM Elementor: محتوای اصلی صفحه — این ویجت را دستی ویرایش کنید -->

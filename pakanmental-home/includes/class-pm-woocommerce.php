@@ -14,6 +14,40 @@ final class PM_WooCommerce {
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'woocommerce_before_main_content', array( __CLASS__, 'maybe_hide_wc_wrappers' ), 1 );
 		add_filter( 'woocommerce_show_page_title', array( __CLASS__, 'hide_page_title' ) );
+		add_filter( 'woocommerce_add_to_cart_fragments', array( __CLASS__, 'cart_fragments' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_cart' ), 20 );
+	}
+
+	public static function enqueue_cart(): void {
+		if ( is_admin() || ! PM_Assets::should_load_pm_shell() ) {
+			return;
+		}
+		if ( wp_script_is( 'wc-cart-fragments', 'registered' ) ) {
+			wp_enqueue_script( 'wc-cart-fragments' );
+		}
+	}
+
+	/**
+	 * @param array<string, string> $fragments Cart fragments.
+	 * @return array<string, string>
+	 */
+	public static function cart_fragments( array $fragments ): array {
+		if ( ! WC()->cart ) {
+			return $fragments;
+		}
+		$count = WC()->cart->get_cart_contents_count();
+		ob_start();
+		self::render_cart_count_badge( $count );
+		$fragments['span.pm-cart-count'] = ob_get_clean();
+		return $fragments;
+	}
+
+	public static function render_cart_count_badge( int $count ): void {
+		echo '<span class="pm-cart-count" data-pm-cart-count' . ( $count < 1 ? ' hidden' : '' ) . ' aria-live="polite">';
+		if ( $count > 0 ) {
+			echo esc_html( (string) $count );
+		}
+		echo '</span>';
 	}
 
 	public static function is_pm_wc_page(): bool {

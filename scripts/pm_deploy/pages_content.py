@@ -435,30 +435,15 @@ def shop_main() -> str:
 
 
 def cart_main() -> str:
-    return f"""
-<section class="pm-page-head">
+    return """
+<section class="pm-wc-cart">
   <div class="pm-container">
-    <h1>سبد خرید</h1>
-    <p>هنوز محصولی اضافه نکرده‌اید — پس از فعال‌سازی ووکامرس، سبد اینجا به‌روز می‌شود.</p>
-  </div>
-</section>
-<section class="pm-cart-page">
-  <div class="pm-container">
-    <div class="pm-cart-empty">
-      <div class="pm-cart-empty__icon" aria-hidden="true"></div>
-      <h2>سبد خرید شما خالی است</h2>
-      <p>از فروشگاه یک سرگرمی رومیزی برای خودتان یا هدیه انتخاب کنید.</p>
-      <a class="pm-btn pm-btn--primary" href="{URLS["shop"]}">رفتن به فروشگاه</a>
-    </div>
-    <div class="pm-cart-table-wrap" hidden>
-      <table class="pm-cart-table">
-        <thead><tr><th>محصول</th><th>قیمت</th><th>تعداد</th><th>جمع</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="pm-cart-summary">
-        <p><span>جمع جزء</span><strong>۰ تومان</strong></p>
-        <a class="pm-btn pm-btn--primary" href="#">تسویه حساب</a>
-      </div>
+    <header class="pm-wc-cart__intro">
+      <h1>سبد خرید</h1>
+      <p>محصولات انتخاب‌شده — به‌روزرسانی بدون بارگذاری مجدد صفحه</p>
+    </header>
+    <div class="pm-wc-cart__body">
+      [woocommerce_cart]
     </div>
   </div>
 </section>

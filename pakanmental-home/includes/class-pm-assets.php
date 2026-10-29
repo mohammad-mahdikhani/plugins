@@ -35,6 +35,19 @@ final class PM_Assets {
 		echo '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
 	}
 
+	private static function pm_cart_config_js(): string {
+		if ( ! function_exists( 'wc_get_cart_url' ) ) {
+			return 'window.pmCart=window.pmCart||{};';
+		}
+		$cfg = array(
+			'storeApi'    => rest_url( 'wc/store/v1' ),
+			'cartUrl'     => wc_get_cart_url(),
+			'checkoutUrl' => wc_get_checkout_url(),
+			'shopUrl'     => wc_get_page_permalink( 'shop' ),
+		);
+		return 'window.pmCart=' . wp_json_encode( $cfg ) . ';';
+	}
+
 	public static function enqueue(): void {
 		if ( is_admin() ) {
 			return;
@@ -47,7 +60,7 @@ final class PM_Assets {
 			PM_HOME_VERSION
 		);
 
-		if ( self::should_load_pm_shell() ) {
+		if ( self::should_load_pm_shell() && class_exists( 'WooCommerce' ) ) {
 			wp_enqueue_style(
 				'pm-fonts',
 				'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap',
@@ -59,6 +72,21 @@ final class PM_Assets {
 				PM_HOME_URL . 'assets/css/pm.css',
 				array( 'pm-fonts', 'pm-brand-overrides' ),
 				PM_HOME_VERSION
+			);
+			wp_enqueue_script(
+				'pm-cart',
+				PM_HOME_URL . 'assets/js/pm-cart.js',
+				array(),
+				PM_HOME_VERSION,
+				array(
+					'in_footer' => true,
+					'strategy'  => 'defer',
+				)
+			);
+			wp_add_inline_script(
+				'pm-cart',
+				self::pm_cart_config_js(),
+				'before'
 			);
 		}
 
