@@ -225,6 +225,21 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(body["latest"], "9.9.9-studio")
         self.assertIn("github.com", body["app_url"])
 
+    def test_rst_channel_reads_its_own_manifest(self):
+        prev = os.environ.get("DAFTARCHI_CHANNEL")
+        os.environ["DAFTARCHI_CHANNEL"] = "rst"
+        try:
+            url = appmod.studio_manifest_url()
+            self.assertIn("/channels/rst/version.json", url)
+            self.assertEqual(appmod.update_channel(), "rst")
+        finally:
+            if prev is None:
+                os.environ.pop("DAFTARCHI_CHANNEL", None)
+            else:
+                os.environ["DAFTARCHI_CHANNEL"] = prev
+        self.assertEqual(appmod.clean_channel("RST"), "rst")
+        self.assertEqual(appmod.clean_channel("../x"), "")
+
     def test_studio_unlock_skips_trial_limit(self):
         product = self.add_product(barcode="studio-open")
         self.open_register(0)

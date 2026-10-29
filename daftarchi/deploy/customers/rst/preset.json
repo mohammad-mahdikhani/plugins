@@ -1,0 +1,10 @@
+{
+  "customer_no": 1,
+  "site_id": "rst",
+  "channel": "rst",
+  "business": "restaurant",
+  "label": "مشتری اول — رستوران",
+  "settings": {
+    "shop_name": "رستوران"
+  }
+}

@@ -2575,6 +2575,13 @@ def apply_site_preset(conn) -> None:
             "INSERT INTO settings (key, value) VALUES ('site_id', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (site_id,),
         )
+    channel = clean_channel(payload.get("channel") or "")
+    if channel:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('update_channel', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (channel,),
+        )
     conn.execute(
         "INSERT INTO settings (key, value) VALUES ('site_preset_applied', '1') ON CONFLICT(key) DO UPDATE SET value='1'",
     )
@@ -2699,7 +2706,45 @@ def panel_root() -> Path:
 
 
 def studio_manifest_url() -> str:
-    return os.environ.get("DAFTARCHI_UPDATE_MANIFEST", "").strip() or STUDIO_UPDATE_MANIFEST
+    override = os.environ.get("DAFTARCHI_UPDATE_MANIFEST", "").strip()
+    if override:
+        return override
+    channel = update_channel()
+    if channel:
+        return (
+            "https://github.com/mohammad-mahdikhani/plugins/raw/"
+            "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/channels/"
+            f"{channel}/version.json"
+        )
+    return STUDIO_UPDATE_MANIFEST
+
+
+def clean_channel(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,15}", text):
+        return text
+    return ""
+
+
+def update_channel() -> str:
+    forced = clean_channel(os.environ.get("DAFTARCHI_CHANNEL", ""))
+    if forced:
+        return forced
+    side = DATA.parent / "channel.txt"
+    if side.is_file():
+        try:
+            first = side.read_text(encoding="utf-8").strip().split()
+        except OSError:
+            first = []
+        found = clean_channel(first[0] if first else "")
+        if found:
+            return found
+    try:
+        with connect() as conn:
+            row = conn.execute("SELECT value FROM settings WHERE key='update_channel'").fetchone()
+    except sqlite3.Error:
+        return ""
+    return clean_channel(row["value"]) if row else ""
 
 
 def read_studio_manifest() -> dict:
@@ -2730,6 +2775,7 @@ def panel_update_status() -> dict:
         "reachable": bool(remote.get("ok")),
         "error": remote.get("error") or "",
         "writable": os.access(panel_root(), os.W_OK),
+        "channel": update_channel(),
     }
 
 

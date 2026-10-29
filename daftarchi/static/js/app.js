@@ -924,6 +924,7 @@ function updatesHtml() {
   return `<div class="stack">
     <section class="card"><h2 class="section-title">به‌روزرسانی پنل و اپ</h2>
       <p>نسخه این برنامه: <strong class="ltr">${esc(info.current || "")}</strong></p>
+      ${info.channel ? `<p>کانال این مشتری: <strong class="ltr">${esc(info.channel)}</strong></p>` : ""}
       ${info.latest ? `<p>نسخه موجود: <strong class="ltr">${esc(info.latest)}</strong></p>` : ""}
       ${remote}
       ${info.notes ? `<p class="hint">${esc(info.notes)}</p>` : ""}
