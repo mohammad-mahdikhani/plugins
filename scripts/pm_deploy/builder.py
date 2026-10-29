@@ -158,11 +158,12 @@ def wrap_page(
     main_html: str,
     include_hero_js: bool = False,
     include_shop_js: bool = False,
+    *,
+    elementor: bool = False,
 ) -> str:
     css = load_css()
     js = load_site_js(include_hero=include_hero_js, include_shop=include_shop_js)
-    return f"""<!-- wp:html -->
-<div class="pm-site{' pm-site--has-hero' if include_hero_js else ''}" dir="rtl">
+    inner = f"""<div class="pm-site{' pm-site--has-hero' if include_hero_js else ''}" dir="rtl">
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -174,5 +175,9 @@ def wrap_page(
 </main>
 {footer()}
 <script id="pm-site-js">{js}</script>
-</div>
+</div>"""
+    if elementor:
+        return inner
+    return f"""<!-- wp:html -->
+{inner}
 <!-- /wp:html -->"""

@@ -1,29 +1,22 @@
 #!/usr/bin/env python3
-"""Deploy Pakan Mental layouts as native Elementor documents (editable in the editor)."""
+"""
+Deploy Pakan Mental: original pm.css layout inside Elementor HTML widget (editable in editor).
+"""
 from __future__ import annotations
 
 from urllib.parse import quote
 
-from .builder import req, BASE
+from .builder import req, BASE, wrap_page, header, footer
 from .elementor_client import ElementorMcp
+from .elementor_document import set_elementor_html, set_library_html
 from .elementor_globals import PAGE_CHROME_CSS, sync_all
-from .elementor_scripts import build_boot_js
-from .elementor_layout import (
-    PAGE_IDS,
-    blog_main_config,
-    blog_main_xml,
-    cart_main_config,
-    cart_main_xml,
-    footer_config,
-    footer_xml,
-    header_config,
-    header_xml,
-    home_main_config,
-    home_main_xml,
-    product_single_config,
-    product_single_xml,
-    shop_main_config,
-    shop_main_xml,
+from .elementor_layout import PAGE_IDS
+from .pages_content import (
+    home_main,
+    shop_main,
+    cart_main,
+    blog_main,
+    product_single_main,
 )
 
 SECTION_HEADER_TITLE = "PM Header Elementor"
@@ -51,18 +44,6 @@ def _ensure_section(title: str) -> int:
     return int(created["id"])
 
 
-def _prepare_wp_page(post_id: int) -> None:
-    req(
-        "POST",
-        f"{BASE}/pages/{post_id}",
-        {
-            "content": "",
-            "template": "elementor_canvas",
-            "meta": {"_wp_page_template": "elementor_canvas"},
-        },
-    )
-
-
 def _apply_page_settings(client: ElementorMcp, post_id: int) -> None:
     client.call(
         "elementor-update-page-settings",
@@ -72,38 +53,11 @@ def _apply_page_settings(client: ElementorMcp, post_id: int) -> None:
                 "hide_title": "yes",
                 "page_layout": "elementor_canvas",
                 "custom_css": PAGE_CHROME_CSS,
-                "custom_javascript": build_boot_js(),
+                "custom_javascript": "",
             },
         },
     )
-
-
-def _build_document(
-    client: ElementorMcp,
-    post_id: int,
-    xml: str,
-    element_config: dict,
-    style: dict,
-    classes: dict,
-) -> None:
-    client.call(
-        "elementor-build-composition",
-        {
-            "post_id": post_id,
-            "xml_structure": xml,
-            "element_config": element_config,
-            "style": style,
-            "classes": classes,
-            "parent_id": "document",
-            "mode": "replace_children",
-        },
-    )
     client.call("elementor-publish-document", {"post_id": post_id})
-
-
-def _build_section(client: ElementorMcp, post_id: int, xml: str, cfg: tuple[dict, dict, dict]) -> None:
-    ec, st, cl = cfg
-    _build_document(client, post_id, xml, ec, st, cl)
 
 
 def main() -> None:
@@ -112,39 +66,38 @@ def main() -> None:
 
     header_section_id = _ensure_section(SECTION_HEADER_TITLE)
     footer_section_id = _ensure_section(SECTION_FOOTER_TITLE)
-
-    hx, hc = header_xml("home"), header_config("home")
-    fx, fc = footer_xml(), footer_config()
-    _build_section(client, header_section_id, hx, hc)
-    _build_section(client, footer_section_id, fx, fc)
+    set_library_html(
+        header_section_id,
+        f'<div class="pm-site" dir="rtl">{header("home")}</div>',
+    )
+    set_library_html(footer_section_id, f'<div class="pm-site" dir="rtl">{footer()}</div>')
 
     pages = [
-        (PAGE_IDS["home"], home_main_xml(), home_main_config()),
-        (PAGE_IDS["shop"], shop_main_xml(), shop_main_config()),
-        (PAGE_IDS["cart"], cart_main_xml(), cart_main_config()),
-        (PAGE_IDS["blog"], blog_main_xml(), blog_main_config()),
-        (PAGE_IDS["product"], product_single_xml(), product_single_config()),
+        (PAGE_IDS["home"], "home", home_main(), True, False),
+        (PAGE_IDS["shop"], "shop", shop_main(), False, True),
+        (PAGE_IDS["cart"], "shop", cart_main(), False, False),
+        (PAGE_IDS["blog"], "blog", blog_main(), False, False),
+        (PAGE_IDS["product"], "shop", product_single_main(), False, False),
     ]
 
-    for post_id, xml, cfg in pages:
-        _prepare_wp_page(post_id)
-        ec, st, cl = cfg
-        _build_document(client, post_id, xml, ec, st, cl)
+    for post_id, active, main_html, hero_js, shop_js in pages:
+        html = wrap_page(
+            active,
+            main_html,
+            include_hero_js=hero_js,
+            include_shop_js=shop_js,
+            elementor=True,
+        )
+        set_elementor_html(post_id, html)
         _apply_page_settings(client, post_id)
-        print("elementor page", post_id, "ok")
-
-    for lib_id in (header_section_id, footer_section_id):
-        _apply_page_settings(client, lib_id)
+        print("elementor html page", post_id, "ok")
 
     try:
         client.call(
             "elementor-update-page-settings",
             {
                 "post_id": 6,
-                "settings": {
-                    "custom_css": PAGE_CHROME_CSS,
-                    "custom_javascript": build_boot_js(),
-                },
+                "settings": {"custom_css": PAGE_CHROME_CSS, "custom_javascript": ""},
             },
         )
     except Exception as exc:
@@ -159,8 +112,8 @@ def main() -> None:
             "hello_elementor_settings_page_title": "",
         },
     )
-    print("saved sections: header", header_section_id, "footer", footer_section_id)
-    print("edit home:", f"https://www.pakanmental.com/wp-admin/post.php?post={PAGE_IDS['home']}&action=elementor")
+    print("sections header", header_section_id, "footer", footer_section_id)
+    print("edit:", f"https://www.pakanmental.com/wp-admin/post.php?post={PAGE_IDS['home']}&action=elementor")
 
 
 if __name__ == "__main__":
