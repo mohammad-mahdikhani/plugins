@@ -1436,28 +1436,40 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 .pm-footer__enamad-slot {
   min-height: 120px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
+  width: fit-content;
+  max-width: min(100%, 200px);
+  padding: 0.65rem 0.85rem;
+  background: #fff;
+  border-radius: var(--pm-radius-lg, var(--pm-radius));
+  box-shadow: 0 4px 20px rgba(8, 28, 24, 0.28);
 }
 
 .pm-footer__enamad-slot img,
-.pm-footer__enamad-slot a {
+.pm-footer__enamad-slot a,
+.pm-footer__enamad-slot iframe {
   max-width: 100%;
+  display: block;
+}
+
+.pm-footer__enamad-slot a {
+  line-height: 0;
 }
 
 .pm-footer__enamad-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 110px;
-  min-height: 110px;
-  padding: 0.5rem;
+  width: 100%;
+  min-height: 100px;
+  padding: 0.35rem;
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.45;
   text-align: center;
-  color: color-mix(in srgb, var(--pm-sand-200) 75%, var(--pm-cream));
-  background: color-mix(in srgb, var(--pm-teal-700) 35%, var(--pm-teal-900));
+  color: color-mix(in srgb, var(--pm-teal-800) 55%, var(--pm-teal-900));
+  background: transparent;
   border-radius: var(--pm-radius);
 }
 
@@ -2212,6 +2224,7 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 
   .pm-footer__enamad-slot {
     justify-content: center;
+    margin-inline: auto;
   }
 
   .pm-shop__layout {
