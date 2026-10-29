@@ -202,23 +202,23 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   box-shadow: inset 0 -2px 0 var(--pm-cream);
 }
 
-.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__shell {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--pm-cream) 35%, transparent) 0%,
-    color-mix(in srgb, var(--pm-mint-500) 22%, transparent) 100%
-  );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 28%, transparent);
-}
-
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input {
-  background: color-mix(in srgb, var(--pm-teal-900) 18%, transparent);
+  background: color-mix(in srgb, var(--pm-cream) 14%, transparent);
   color: var(--pm-cream);
-  box-shadow: none;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 26%, transparent);
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input::placeholder {
-  color: color-mix(in srgb, var(--pm-cream) 70%, transparent);
+  color: color-mix(in srgb, var(--pm-cream) 72%, transparent);
+}
+
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input:focus,
+.pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__input:focus-visible {
+  background: color-mix(in srgb, var(--pm-cream) 20%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--pm-cream) 40%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--pm-mint-500) 22%, transparent);
 }
 
 .pm-site--has-hero .pm-header:not(.is-scrolled) .pm-search__icon {
@@ -256,14 +256,6 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   background: color-mix(in srgb, var(--pm-cream) 55%, var(--pm-bg));
   color: var(--pm-teal-900);
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--pm-teal-900) 4%, transparent);
-}
-
-.pm-site--has-hero .pm-header.is-scrolled .pm-search__shell {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--pm-mint-500) 38%, var(--pm-cream)) 0%,
-    color-mix(in srgb, var(--pm-mint-50) 85%, var(--pm-bg)) 100%
-  );
 }
 
 .pm-site--has-hero .pm-header.is-scrolled .pm-search__icon {
@@ -504,21 +496,6 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   max-width: 300px;
 }
 
-.pm-search__shell {
-  position: relative;
-  border-radius: var(--pm-pill);
-  padding: 2px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--pm-mint-500) 42%, var(--pm-cream)) 0%,
-    color-mix(in srgb, var(--pm-mint-50) 80%, var(--pm-bg)) 55%,
-    color-mix(in srgb, var(--pm-sand-200) 35%, var(--pm-cream)) 100%
-  );
-  box-shadow:
-    0 10px 32px color-mix(in srgb, var(--pm-teal-900) 8%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
-}
-
 .pm-search--inline .pm-search__icon {
   position: absolute;
   right: 1rem;
@@ -536,50 +513,50 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  margin: -1px;
 }
 
 .pm-search__input {
+  display: block;
   width: 100%;
   min-height: 44px;
   padding: 0.72rem 2.65rem 0.72rem 1.15rem;
   border-radius: var(--pm-pill);
   border: none;
+  outline: none;
   appearance: none;
   -webkit-appearance: none;
   background: color-mix(in srgb, var(--pm-cream) 88%, #fff);
   color: var(--pm-teal-900);
   font-family: inherit;
   font-size: 0.84rem;
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--pm-teal-900) 4%, transparent);
-  transition:
-    box-shadow 0.25s ease,
-    background 0.25s ease,
-    transform 0.2s ease;
+  box-shadow:
+    0 8px 26px color-mix(in srgb, var(--pm-teal-900) 7%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 12%, transparent);
+  transition: box-shadow 0.25s ease, background 0.25s ease;
 }
 
 .pm-search__input::-webkit-search-cancel-button,
-.pm-search__input::-webkit-search-decoration {
+.pm-search__input::-webkit-search-decoration,
+.pm-search__input::-webkit-search-results-button {
   -webkit-appearance: none;
+  display: none;
 }
 
 .pm-search__input::placeholder {
   color: color-mix(in srgb, var(--pm-teal-700) 42%, transparent);
 }
 
-.pm-search__input:focus {
+.pm-search__input:focus,
+.pm-search__input:focus-visible {
   outline: none;
   background: #fff;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 35%, transparent),
-    0 0 0 4px color-mix(in srgb, var(--pm-mint-500) 14%, transparent);
-}
-
-.pm-search__shell:focus-within {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--pm-mint-500) 55%, var(--pm-cream)) 0%,
-    color-mix(in srgb, var(--pm-mint-50) 90%, var(--pm-bg)) 100%
-  );
+    0 10px 30px color-mix(in srgb, var(--pm-mint-500) 16%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--pm-mint-500) 32%, transparent);
 }
 
 .pm-search__results {

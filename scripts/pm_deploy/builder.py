@@ -51,6 +51,14 @@ body.blog #content.site-main,
 body.archive #content.site-main { max-width: none; padding: 0; margin: 0; background: #fafaf9 !important; }
 body.single .pm-single-post-wrap,
 body.blog .pm-blog-archive-fallback { margin: 0; }
+.pm-site .pm-search__input,
+.pm-site .pm-search__input:focus,
+.pm-site .pm-search__input:focus-visible {
+  outline: none !important;
+  border: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+.pm-site .pm-search__input::-moz-focus-inner { border: 0; }
 """
     return css
 
@@ -122,12 +130,10 @@ def header(active: str) -> str:
       <div class="pm-header__tools">
         <div class="pm-search pm-search--inline">
           <label class="pm-search__label" for="pm-search-input">جستجو در محصولات</label>
-          <div class="pm-search__shell">
-            <span class="pm-search__icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
-            </span>
-            <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" enterkeyhint="search" />
-          </div>
+          <span class="pm-search__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+          </span>
+          <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" enterkeyhint="search" />
           <div class="pm-search__results" hidden></div>
         </div>
         <a class="pm-header__icon-btn pm-cart" href="{URLS["cart"]}" aria-label="سبد خرید">
