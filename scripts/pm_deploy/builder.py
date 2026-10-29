@@ -251,7 +251,7 @@ def footer() -> str:
     <div class="pm-footer__col pm-footer__enamad">
       <h2 class="pm-footer__title">نماد اعتماد</h2>
       <div class="pm-footer__enamad-slot" id="pm-enamad" data-pm-enamad>
-        <span class="pm-footer__enamad-placeholder">پس از فعال‌سازی افزونه، از منوی «پاکن منتال» در پیشخوان کد نماد را وارد کنید.</span>
+        <span class="pm-footer__enamad-placeholder">برای تنظیم از پیشخوان: افزونهٔ «Pakan Mental Home» را نصب و فعال کنید (منوی پاکن منتال). بدون افزونه: در المنتور همین div را باز کنید و کد اینماد را اینجا بچسبانید.</span>
       </div>
     </div>
   </div>
