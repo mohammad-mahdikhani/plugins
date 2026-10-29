@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = tempfile.mkdtemp(prefix="daftarchi-test-")
@@ -76,6 +77,28 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(health.get_json()["name"], "دفترچی")
         bad = self.client.post("/api/auth/login", json={"ident": "09120000000", "password": "wrong"})
         self.assertEqual(bad.status_code, 401)
+
+    def test_mac_restaurant_package(self):
+        zpath = Path(__file__).resolve().parents[1] / "deploy" / "Daftarchi-rst-Mac.zip"
+        self.assertTrue(zpath.is_file(), zpath)
+        with zipfile.ZipFile(zpath) as archive:
+            names = archive.namelist()
+            script = archive.read("Daftarchi-rst-Mac/Start-Daftarchi.command").decode()
+            app_text = archive.read("Daftarchi-rst-Mac/app/app.py").decode()
+            preset = archive.read("Daftarchi-rst-Mac/preset.json").decode()
+            info = archive.getinfo("Daftarchi-rst-Mac/Start-Daftarchi.command")
+        self.assertIn("DAFTARCHI_CHANNEL=rst", script)
+        self.assertNotIn("DAFTARCHI_UNLOCK", script)
+        self.assertIn("python-arm64/bin/python3", script)
+        self.assertIn("python-x64/bin/python3", script)
+        self.assertNotIn("\r", script)
+        self.assertIn('APP_VERSION = "1.1.12"', app_text)
+        self.assertIn('"channel": "rst"', preset)
+        self.assertTrue(any(name.startswith("Daftarchi-rst-Mac/python-arm64/bin/python3") for name in names))
+        self.assertTrue(any(name.startswith("Daftarchi-rst-Mac/python-x64/bin/python3") for name in names))
+        self.assertTrue(any("macosx_11_0_arm64" in name for name in names))
+        self.assertTrue(any("x86_64" in name or "universal2" in name for name in names))
+        self.assertEqual((info.external_attr >> 16) & 0o111, 0o111)
 
     def test_shop_mode_and_tour_setup(self):
         me = self.client.get("/api/auth/me").get_json()
@@ -834,7 +857,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.11", seen["text"])
+        self.assertIn("1.1.12", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -1480,7 +1503,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.11")
+        self.assertEqual(appmod.APP_VERSION, "1.1.12")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -1545,7 +1568,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.11")
+        self.assertEqual(boot["version"], "1.1.12")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -1554,7 +1577,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.11", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.12", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)

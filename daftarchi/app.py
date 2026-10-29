@@ -113,7 +113,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.11"
+APP_VERSION = "1.1.12"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2843,6 +2843,7 @@ def panel_update_status() -> dict:
         "notes": str(body.get("notes") or "")[:400],
         "app_url": str(body.get("app_url") or ""),
         "full_url": str(body.get("full_url") or ""),
+        "mac_url": str(body.get("mac_url") or ""),
         "manifest": remote.get("manifest") or studio_manifest_url(),
         "reachable": bool(remote.get("ok")),
         "error": remote.get("error") or "",
@@ -2932,6 +2933,8 @@ def schedule_restart() -> None:
     kwargs = {"cwd": str(root), "env": os.environ.copy(), "close_fds": True}
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
     subprocess.Popen(cmd, **kwargs)
     threading.Timer(0.8, lambda: os._exit(0)).start()
 
