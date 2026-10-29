@@ -24,6 +24,13 @@ final class PM_Settings {
 			'dashicons-store',
 			58
 		);
+		add_options_page(
+			__( 'نماد اعتماد (اینماد)', 'pakanmental-home' ),
+			__( 'نماد اعتماد پاکن منتال', 'pakanmental-home' ),
+			'manage_options',
+			'pm-settings',
+			array( __CLASS__, 'render_page' )
+		);
 	}
 
 	public static function register_settings(): void {
