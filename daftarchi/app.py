@@ -1924,8 +1924,58 @@ def days_left(end: datetime) -> int:
     return (int(seconds) + 86399) // 86400
 
 
+def app_bundle_dir() -> Path:
+    return DATA.parent
+
+
+def studio_unlock_active(settings: dict | None = None) -> bool:
+    flag = os.environ.get("DAFTARCHI_UNLOCK", "").strip().lower()
+    if flag in ("1", "true", "yes", "on"):
+        return True
+    if (app_bundle_dir() / "studio-unlock.txt").is_file():
+        return True
+    if settings is None:
+        return False
+    return str(settings.get("studio_unlock") or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def seed_studio_license(conn) -> None:
+    now = now_dt()
+    paid = conn.execute(
+        """SELECT 1 FROM licenses
+           WHERE status='paid' AND plan!='7d' AND ends_at>? LIMIT 1""",
+        (iso(now),),
+    ).fetchone()
+    if paid:
+        return
+    admin = conn.execute("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    user_id = int(admin["id"]) if admin else None
+    settings = get_settings(conn)
+    shop = str(settings.get("shop_name") or "استودیو").strip() or "استودیو"
+    start = now.replace(microsecond=0)
+    end = add_months(start, PLANS["50y"][1])
+    conn.execute(
+        """INSERT INTO licenses (plan, list_price, discount, payable, buyer_name, phone, starts_at, ends_at,
+           payment_method, session_id, user_id, created_at, status, host_saved)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        ("50y", 0, 0, 0, shop, INITIAL_PHONE, iso(start), iso(end), "cash", None, user_id, iso(), "paid", 1),
+    )
+
+
 def ensure_access(conn) -> dict:
     now = now_dt()
+    settings = get_settings(conn)
+    if studio_unlock_active(settings):
+        end = add_months(now.replace(microsecond=0), PLANS["50y"][1])
+        ends_at = iso(end)
+        return {
+            "mode": "studio",
+            "active": True,
+            "title": "نسخه استودیو (بدون اشتراک)",
+            "days_left": days_left(end),
+            "ends_at": ends_at,
+            "ends_jalali": to_jalali(ends_at),
+        }
     paid = conn.execute(
         """SELECT * FROM licenses
            WHERE status='paid' AND plan!='7d' AND ends_at>?
@@ -1945,7 +1995,6 @@ def ensure_access(conn) -> dict:
             "ends_at": paid["ends_at"],
             "ends_jalali": to_jalali(paid["ends_at"]),
         }
-    settings = get_settings(conn)
     started = str(settings.get("trial_started_at") or "").strip()
     ends_at = str(settings.get("trial_ends_at") or "").strip()
     if not started or not ends_at:
@@ -2492,6 +2541,19 @@ def apply_site_preset(conn) -> None:
     block = payload.get("settings")
     if isinstance(block, dict) and block:
         save_settings(conn, block)
+    unlock = payload.get("studio_unlock") is True or str(payload.get("studio_unlock") or "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if not unlock and isinstance(block, dict):
+        unlock = studio_unlock_active(block)
+    if unlock:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('studio_unlock', '1') "
+            "ON CONFLICT(key) DO UPDATE SET value='1'",
+        )
+        seed_studio_license(conn)
     site_id = clean_text(payload.get("site_id"), "site", 40) if payload.get("site_id") else ""
     if site_id:
         conn.execute(

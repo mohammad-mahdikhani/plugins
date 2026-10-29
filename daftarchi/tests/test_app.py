@@ -181,6 +181,35 @@ class DaftarchiTest(unittest.TestCase):
         again = self.client.post("/api/sales", json={"items": [{"product_id": product["id"], "qty": 1}], "payment_method": "cash"})
         self.assertEqual(again.status_code, 400)
 
+    def test_studio_unlock_skips_trial_limit(self):
+        product = self.add_product(barcode="studio-open")
+        self.open_register(0)
+        past = (appmod.now_dt() - appmod.timedelta(days=1)).isoformat(timespec="seconds")
+        import sqlite3
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE settings SET value=? WHERE key='trial_ends_at'", (past,))
+        db.commit()
+        db.close()
+        prev = os.environ.get("DAFTARCHI_UNLOCK")
+        os.environ["DAFTARCHI_UNLOCK"] = "1"
+        try:
+            access = self.client.get("/api/auth/me").get_json()["access"]
+            self.assertEqual(access["mode"], "studio")
+            self.assertTrue(access["active"])
+            sale = self.client.post("/api/sales", json={
+                "items": [{"product_id": product["id"], "qty": 1}],
+                "payment_method": "cash",
+                "customer_first": "تست",
+                "customer_last": "استودیو",
+                "customer_phone": "09120000001",
+            })
+            self.assertEqual(sale.status_code, 200, sale.get_json())
+        finally:
+            if prev is None:
+                os.environ.pop("DAFTARCHI_UNLOCK", None)
+            else:
+                os.environ["DAFTARCHI_UNLOCK"] = prev
+
     def test_trial_lasts_seven_days_then_blocks_sales(self):
         access = self.client.get("/api/auth/me").get_json()["access"]
         self.assertEqual(access["mode"], "trial")
