@@ -102,6 +102,20 @@ button[type="submit"] {
   background: var(--pm-brand-green) !important;
 }
 
+.pm-site .pm-btn--ghost,
+.pm-mini-cart .pm-btn--ghost {
+  background: #fff !important;
+  background-image: none !important;
+  color: var(--pm-brand-green-deep) !important;
+  border: 1.5px solid color-mix(in srgb, var(--pm-brand-green) 45%, var(--pm-brand-green-deep)) !important;
+}
+
+.pm-site .pm-btn--ghost:hover,
+.pm-mini-cart .pm-btn--ghost:hover {
+  color: var(--pm-brand-green-deep) !important;
+  background: color-mix(in srgb, #faf7f2 80%, #fff) !important;
+}
+
 .woocommerce-account .woocommerce-MyAccount-navigation a,
 .woocommerce-account .woocommerce-MyAccount-content a,
 .pm-wc-account a {
