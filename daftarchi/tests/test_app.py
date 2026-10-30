@@ -100,6 +100,25 @@ class DaftarchiTest(unittest.TestCase):
         self.assertTrue(any("x86_64" in name or "universal2" in name for name in names))
         self.assertEqual((info.external_attr >> 16) & 0o111, 0o111)
 
+    def test_mac_setup_dmg_is_an_installer(self):
+        deploy = Path(__file__).resolve().parents[1] / "deploy"
+        cases = (
+            ("Daftarchi-rst-setup.dmg", "setup-rst.command", "Daftarchi-rst-Mac"),
+            ("Daftarchi-Customer-setup.dmg", "setup-customer.command", 'DEST="$HOME/Applications/Daftarchi"'),
+        )
+        for filename, script_name, marker in cases:
+            blob = (deploy / filename).read_bytes()
+            self.assertGreater(len(blob), 20_000_000, filename)
+            self.assertEqual(blob[-512:-508], b"koly", filename)
+            script = (deploy / "mac" / script_name).read_text(encoding="utf-8")
+            self.assertNotIn("\r", script)
+            self.assertIn("payload.zip", script)
+            self.assertIn(marker, script)
+            self.assertIn("دفترچی.command", script)
+        customer = (deploy / "mac" / "setup-customer.command").read_text(encoding="utf-8")
+        self.assertNotIn("رستوران", customer)
+        self.assertNotIn("Daftarchi-rst", customer)
+
     def test_linux_restaurant_package(self):
         zpath = Path(__file__).resolve().parents[1] / "deploy" / "Daftarchi-rst-Linux.zip"
         self.assertTrue(zpath.is_file(), zpath)
