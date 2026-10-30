@@ -1,0 +1,145 @@
+/**
+ * Force Pakan Mental mint green over theme / Elementor / WooCommerce accent (pink).
+ */
+:root {
+  --pm-brand-green: #4aa88e;
+  --pm-brand-green-hover: #3d8f78;
+  --pm-brand-green-deep: #2a5f52;
+  --woocommerce: var(--pm-brand-green);
+  --wc-green: var(--pm-brand-green);
+  --wp--preset--color--primary: var(--pm-brand-green);
+  --wp--preset--color--vivid-red: var(--pm-brand-green);
+}
+
+.elementor-kit-6,
+.elementor-kit-6.elementor-kit,
+body.elementor-default {
+  --e-global-color-primary: var(--pm-brand-green) !important;
+  --e-global-color-accent: var(--pm-brand-green) !important;
+  --e-global-color-secondary: var(--pm-brand-green-deep) !important;
+}
+
+.elementor-button,
+.elementor-widget-button .elementor-button,
+.elementor-button.elementor-button-primary,
+a.elementor-button,
+button.elementor-button {
+  background-color: var(--pm-brand-green) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: #faf7f2 !important;
+}
+
+.elementor-button:hover,
+.elementor-widget-button .elementor-button:hover {
+  background-color: var(--pm-brand-green-hover) !important;
+  color: #fff !important;
+}
+
+.woocommerce a.button,
+.woocommerce button.button,
+.woocommerce input.button,
+.woocommerce #respond input#submit,
+.woocommerce a.button.alt,
+.woocommerce button.button.alt,
+.woocommerce input.button.alt,
+.woocommerce .added_to_cart,
+.woocommerce-message a.button,
+.woocommerce .widget_shopping_cart .buttons a,
+.woocommerce.widget_shopping_cart .buttons a.checkout,
+#add_payment_method .wc-proceed-to-checkout a.checkout-button,
+.woocommerce-cart .wc-proceed-to-checkout a.checkout-button,
+.single_add_to_cart_button,
+button.single_add_to_cart_button.button {
+  background-color: var(--pm-brand-green) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: #faf7f2 !important;
+}
+
+.woocommerce a.button:hover,
+.woocommerce button.button:hover,
+.single_add_to_cart_button:hover {
+  background-color: var(--pm-brand-green-hover) !important;
+}
+
+.wc-block-components-button:not(.is-link),
+.wc-block-components-button.contained,
+.wc-block-cart__submit-button,
+.wc-block-components-checkout-place-order-button,
+.wc-block-grid__product-add-to-cart.wp-block-button__link,
+.wc-block-mini-cart__footer-actions .wc-block-components-button,
+.wc-block-filter-submit-button,
+.wc-block-components-drawer__close,
+.wc-block-components-modal__close {
+  background-color: var(--pm-brand-green) !important;
+  background-image: none !important;
+  color: #faf7f2 !important;
+}
+
+.wc-block-components-button.is-link {
+  color: var(--pm-brand-green) !important;
+}
+
+.wp-block-button__link,
+.wp-element-button,
+input[type="submit"],
+button[type="submit"] {
+  background-color: var(--pm-brand-green) !important;
+  color: #faf7f2 !important;
+}
+
+.dialog-close-button,
+.elementor-lightbox .dialog-close-button,
+.wc-block-components-chip__remove,
+.pm-drawer__close,
+.pm-mega__close {
+  background-color: var(--pm-brand-green) !important;
+  color: #faf7f2 !important;
+}
+
+.pm-site .pm-btn--primary {
+  background: var(--pm-brand-green) !important;
+}
+
+.pm-site .pm-btn--ghost,
+.pm-mini-cart .pm-btn--ghost {
+  background: #fff !important;
+  background-image: none !important;
+  color: var(--pm-brand-green-deep) !important;
+  border: 1.5px solid color-mix(in srgb, var(--pm-brand-green) 45%, var(--pm-brand-green-deep)) !important;
+}
+
+.pm-site .pm-btn--ghost:hover,
+.pm-mini-cart .pm-btn--ghost:hover {
+  color: var(--pm-brand-green-deep) !important;
+  background: color-mix(in srgb, #faf7f2 80%, #fff) !important;
+}
+
+.woocommerce-account .woocommerce-MyAccount-navigation a,
+.woocommerce-account .woocommerce-MyAccount-content a,
+.pm-wc-account a {
+  color: var(--pm-brand-green-deep) !important;
+  text-decoration: none !important;
+}
+
+body.woocommerce-account .woocommerce-MyAccount-navigation,
+body.woocommerce-account .woocommerce-MyAccount-content {
+  float: none !important;
+  width: auto !important;
+}
+
+body.woocommerce-account .pm-wc-account .woocommerce {
+  display: grid !important;
+}
+
+@media (min-width: 901px) {
+  body.woocommerce-account .pm-wc-account .woocommerce {
+    grid-template-columns: minmax(240px, 272px) minmax(0, 1fr) !important;
+  }
+}
+
+.woocommerce-account .woocommerce-MyAccount-navigation li.is-active a,
+.woocommerce-account .woocommerce-MyAccount-navigation a:hover {
+  color: var(--pm-brand-green) !important;
+}
