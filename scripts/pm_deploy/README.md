@@ -30,6 +30,16 @@ PYTHONPATH=/workspace/scripts python3 -m pm_deploy.deploy_elementor
 
 پس از نصب **Elementor Pro** می‌توانید همان هدر/فوتر را در Theme Builder به‌صورت سراسری assign کنید.
 
+### 404 (همهٔ آدرس‌های ناموجود)
+
+قالب فرزند **`hello-pakan`** را نصب و فعال کنید (بدون افزونهٔ جدا):
+
+```bash
+PYTHONPATH=/workspace/scripts python3 -m pm_deploy.build_theme_404
+```
+
+سپس zip را در **ظاهر → پوسته‌ها → بارگذاری** آپلود کنید.
+
 ### افزونه `pakanmental-home` (اینماد + REST)
 
 برای **تنظیم اینماد از پیشخوان** (منوی «پاکن منتال»)، پوشه `pakanmental-home` را روی سرور در `wp-content/plugins/` به‌روز کنید (نسخه **1.1.0+**) و افزونه را فعال کنید. سپس یک بار دیپلوی Elementor را اجرا کنید تا JS فوتر/مگامenu در HTML صفحات باشد.
