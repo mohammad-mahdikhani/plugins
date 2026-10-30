@@ -1,0 +1,32 @@
+<!-- ویجت HTML المنتور — روزشمار انتشار (سبک gta-6.ir). تاریخ: ۲۸ آبان ۱۴۰۵ -->
+<div id="gta-countdown-box" class="gta-countdown-premium">
+	<div class="countdown-glass-container">
+		<div class="countdown-glass-panel">
+			<div class="countdown-content">
+				<h2 class="gta-section-title">تاریخ انتشار جی تی ای ۶</h2>
+				<p class="gta-subtitle">شمارش معکوس تا تجربه بزرگ‌ترین رویداد سرگرمی جهان</p>
+				<div class="days-display">
+					<span id="gta-days-only">۰۰۰</span>
+					<span class="days-label">روز مانده تا انتشار</span>
+				</div>
+				<div class="gta-release-date">📅 موعد مقرر: ۲۸ آبان ۱۴۰۵</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+(function () {
+	var release = new Date('2026-11-19T00:00:00+03:30');
+	var el = document.getElementById('gta-days-only');
+	if (!el) return;
+	function tick() {
+		var diff = release - Date.now();
+		var days = Math.max(0, Math.ceil(diff / 86400000));
+		el.textContent = String(days).padStart(3, '۰').replace(/\d/g, function (d) {
+			return '۰۱۲۳۴۵۶۷۸۹'[d];
+		});
+	}
+	tick();
+	setInterval(tick, 60000);
+})();
+</script>
