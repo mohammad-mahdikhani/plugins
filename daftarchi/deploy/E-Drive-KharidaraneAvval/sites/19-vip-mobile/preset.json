@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-19",
+  "label": "موبایل VIP",
+  "note": "کسب‌وکار VIP شماره ۱۹",
+  "settings": {
+    "shop_name": "موبایل VIP",
+    "wp_url": "https://example-shop-19.ir",
+    "gateway_callback": "https://example-shop-19.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-09",
+  "label": "کودک VIP",
+  "note": "کسب‌وکار VIP شماره ۹",
+  "settings": {
+    "shop_name": "کودک VIP",
+    "wp_url": "https://example-shop-09.ir",
+    "gateway_callback": "https://example-shop-09.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

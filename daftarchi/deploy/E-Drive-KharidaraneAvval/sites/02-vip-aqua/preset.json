@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-02",
+  "label": "آب‌فروشی VIP",
+  "note": "کسب‌وکار VIP شماره ۲",
+  "settings": {
+    "shop_name": "آب‌فروشی VIP",
+    "wp_url": "https://example-shop-02.ir",
+    "gateway_callback": "https://example-shop-02.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

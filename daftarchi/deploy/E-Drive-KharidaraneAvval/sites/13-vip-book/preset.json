@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-13",
+  "label": "لوازم‌التحریر VIP",
+  "note": "کسب‌وکار VIP شماره ۱۳",
+  "settings": {
+    "shop_name": "لوازم‌التحریر VIP",
+    "wp_url": "https://example-shop-13.ir",
+    "gateway_callback": "https://example-shop-13.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}
