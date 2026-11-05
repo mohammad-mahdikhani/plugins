@@ -15,6 +15,7 @@ from .pages_content import (
     home_main,
     shop_main,
     cart_main,
+    checkout_main,
     blog_main,
     product_single_main,
     not_found_main,
@@ -68,6 +69,11 @@ def _ensure_page(title: str, slug: str) -> int:
 
 
 def _apply_page_settings(client: ElementorMcp, post_id: int) -> None:
+    req(
+        "POST",
+        f"{BASE}/pages/{post_id}",
+        {"template": "elementor_canvas"},
+    )
     client.call(
         "elementor-update-page-settings",
         {
@@ -102,6 +108,8 @@ def main() -> None:
         (PAGE_IDS["home"], "home", home_main(), True, False),
         (PAGE_IDS["shop"], "shop", shop_main(), False, True),
         (PAGE_IDS["cart"], "cart", cart_main(), False, False),
+        (PAGE_IDS["wc_cart"], "cart", cart_main(), False, False),
+        (PAGE_IDS["checkout"], "cart", checkout_main(), False, False),
         (PAGE_IDS["blog"], "blog", blog_main(), False, False),
         (PAGE_IDS["product"], "shop", product_single_main(), False, False),
         (not_found_id, "404", not_found_main(), False, False),

@@ -9,6 +9,8 @@ PAGE_IDS = {
     "home": 13,
     "shop": 15,
     "cart": 19,
+    "wc_cart": 68,
+    "checkout": 69,
     "blog": 20,
     "product": 21,
     "not_found": 229,

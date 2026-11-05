@@ -469,10 +469,36 @@ def cart_main() -> str:
   <div class="pm-container">
     <header class="pm-wc-cart__intro">
       <h1>سبد خرید</h1>
-      <p>محصولات انتخاب‌شده — به‌روزرسانی بدون بارگذاری مجدد صفحه</p>
+      <p>محصولات از ووکامرس — تعداد را تغییر دهید یا به پرداخت بروید</p>
     </header>
+    <ol class="pm-checkout-steps" aria-label="مراحل خرید">
+      <li class="is-current">سبد</li>
+      <li>اطلاعات</li>
+      <li>پرداخت</li>
+    </ol>
     <div class="pm-wc-cart__body">
       [woocommerce_cart]
+    </div>
+  </div>
+</section>
+"""
+
+
+def checkout_main() -> str:
+    return """
+<section class="pm-wc-checkout">
+  <div class="pm-container">
+    <header class="pm-wc-checkout__intro">
+      <h1>تسویه حساب</h1>
+      <p>آدرس، روش ارسال و درگاه پرداخت — همه از ووکامرس</p>
+    </header>
+    <ol class="pm-checkout-steps" aria-label="مراحل خرید">
+      <li>سبد</li>
+      <li class="is-current">اطلاعات</li>
+      <li>پرداخت</li>
+    </ol>
+    <div class="pm-wc-checkout__body">
+      [woocommerce_checkout]
     </div>
   </div>
 </section>
