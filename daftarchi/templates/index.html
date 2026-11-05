@@ -12,13 +12,20 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/icon-192.png">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v={{VERSION}}">
+  <script>
+    window.__desk = { event: null };
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      window.__desk.event = event;
+    });
+  </script>
 </head>
 <body>
   <div id="app"></div>
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v={{VERSION}}" defer></script>
   <script>
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
   </script>
 </body>
 </html>

@@ -90,6 +90,8 @@ const state = {
   supportTab: "chat",
   supportLog: [],
   lastError: "",
+  desktopIcon: false,
+  installedApp: window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true,
 };
 
 const $app = () => document.getElementById("app");
@@ -477,10 +479,67 @@ function authHtml() {
     <button class="btn primary block" type="submit">ورود</button>
     <button class="btn block" type="button" data-act="show-register">ساخت حساب با جیمیل</button>
     <button class="btn block" type="button" data-act="show-forgot">رمز را فراموش کرده‌ام</button>
+    ${desktopIconButton(true)}
     ${updateBanner()}
     ${initial}
     <p class="hint">نسخه ${esc(state.bootstrap?.version || state.update?.current || "")}</p>
   </form></div>`;
+}
+function showDesktopIcon() {
+  return state.desktopIcon && !state.installedApp;
+}
+function desktopIconButton(block) {
+  if (!showDesktopIcon()) return "";
+  return `<button type="button" class="btn ${block ? "block" : ""}" data-act="desktop-icon">آیکون روی دسکتاپ</button>`;
+}
+function shortcutFile() {
+  const url = `${location.origin}/`;
+  const ua = navigator.userAgent || "";
+  if (/Windows/i.test(ua)) {
+    return { name: "Daftarchi.url", type: "application/internet-shortcut", body: `[InternetShortcut]\r\nURL=${url}\r\n` };
+  }
+  if (/Mac OS X|Macintosh/i.test(ua)) {
+    const body = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>URL</key><string>${url}</string></dict></plist>\n`;
+    return { name: "Daftarchi.webloc", type: "application/xml", body };
+  }
+  return {
+    name: "Daftarchi.desktop",
+    type: "application/x-desktop",
+    body: `[Desktop Entry]\nType=Application\nName=دفترچی\nComment=صندوق فروش دفترچی\nExec=xdg-open ${url}\nTerminal=false\nCategories=Office;\n`,
+  };
+}
+function downloadShortcut() {
+  const file = shortcutFile();
+  const blob = new Blob([file.body], { type: file.type });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+}
+async function createDesktopIcon() {
+  const held = window.__desk && window.__desk.event;
+  if (held) {
+    window.__desk.event = null;
+    try {
+      await held.prompt();
+      const choice = await held.userChoice;
+      if (choice && choice.outcome === "accepted") {
+        state.installedApp = true;
+        toast("آیکون دفترچی اضافه شد. از دسکتاپ یا منوی شروع بازش کنید.");
+        render();
+        return;
+      }
+      toast("آیکون ساخته نشد. هر وقت خواستید دوباره بزنید.");
+      return;
+    } catch {
+      /* مرورگر دیالوگ نصب را نداد؛ فایل میانبر می‌سازیم */
+    }
+  }
+  downloadShortcut();
+  toast("فایل آیکون دانلود شد. آن را روی دسکتاپ بگذارید و باز کنید.");
 }
 function logo() {
   return `<svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="4" width="20" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v24M16 12h6M16 17h6" stroke="currentColor" stroke-width="2"/></svg>`;
@@ -738,7 +797,7 @@ function paintChrome() {
     ? `<span class="pill ${access.active ? "" : "warn"}">${access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
     : "";
   const status = document.getElementById("app-status");
-  if (status) status.innerHTML = `${accessPill}${pill}<button type="button" class="btn" data-act="password-modal">رمز</button><button type="button" class="btn" data-act="logout">خروج</button>`;
+  if (status) status.innerHTML = `${accessPill}${pill}${desktopIconButton(false)}<button type="button" class="btn" data-act="password-modal">رمز</button><button type="button" class="btn" data-act="logout">خروج</button>`;
   const banner = document.getElementById("banner-host");
   if (banner) {
     banner.innerHTML = [
@@ -1081,7 +1140,10 @@ function settingsHtml() {
       <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>ارسال فاکتور به سامانه</label>
       <label class="check"><input type="checkbox" name="moadian_sandbox" ${checked("moadian_sandbox")}>ارسال آزمایشی</label>
     </details>`;
-  const parts = [modeCard];
+  const desk = showDesktopIcon()
+    ? `<section class="card"><h2 class="section-title">آیکون روی دسکتاپ</h2><p class="hint">همین نسخه وب مثل یک برنامه باز می‌شود. صفحه و فونت از حافظه مرورگر می‌آید و فروش معطل دانلود دوباره نمی‌ماند.</p><button type="button" class="btn primary" data-act="desktop-icon">ساخت آیکون</button></section>`
+    : "";
+  const parts = [desk, modeCard].filter(Boolean);
   if (mode === "online") parts.push(woo);
   else if (mode === "offline") parts.push(invoice, pos, extra);
   else if (mode === "hybrid") parts.push(invoice, woo, pos, extra);
@@ -1580,6 +1642,7 @@ async function onClick(event) {
   if (el.dataset.act === "stop") { event.stopPropagation(); return; }
   const act = el.dataset.act;
   if (act === "close-modal") { state.modal = null; render(); return; }
+  if (act === "desktop-icon") { createDesktopIcon(); return; }
   if (act === "show-forgot") { state.authView = "forgot"; state.authError = ""; render(); return; }
   if (act === "show-register") { state.authView = "register"; state.authError = ""; render(); return; }
   if (act === "show-login") { state.authView = "login"; state.authError = ""; render(); return; }
@@ -1893,12 +1956,19 @@ window.addEventListener("hashchange", () => {
   if (state.user && page && page !== state.page) guard(() => navigate(page));
 });
 
+window.addEventListener("appinstalled", () => {
+  state.installedApp = true;
+  if (state.user) paintChrome();
+  else render();
+});
 api("/api/auth/me").then(async (me) => {
+  state.desktopIcon = Boolean(me.desktop_icon);
   loadUpdate().then(() => {
     if (!state.user) render();
   });
   if (!me.user) {
     state.bootstrap = await api("/api/auth/bootstrap");
+    state.desktopIcon = Boolean(state.bootstrap.desktop_icon);
     render();
     return;
   }

@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import calendar
 import functools
+import gzip
 import hashlib
 import hmac
 import html
@@ -32,7 +33,7 @@ from io import BytesIO
 from pathlib import Path
 
 import jdatetime
-from flask import Flask, abort, jsonify, request, send_file, send_from_directory, session
+from flask import Flask, abort, jsonify, make_response, request, send_file, send_from_directory, session
 from openpyxl import Workbook, load_workbook
 from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
@@ -2688,16 +2689,63 @@ def handle_exception(exc: Exception):
     return "error", 500
 
 
-@app.after_request
-def no_store(resp):
-    if request.path.startswith("/api/") or request.path.startswith("/static/"):
-        resp.headers["Cache-Control"] = "no-store"
+def launched_as_desktop() -> bool:
+    return os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def desktop_icon_available() -> bool:
+    """Installed Windows/Mac/Linux copies already have a launcher. The web edition gets the icon button."""
+    return not launched_as_desktop()
+
+
+def _gzip_response(resp):
+    if request.method == "HEAD" or resp.status_code != 200:
+        return resp
+    if "gzip" not in request.headers.get("Accept-Encoding", "").lower():
+        return resp
+    if resp.headers.get("Content-Encoding"):
+        return resp
+    ctype = resp.headers.get("Content-Type", "")
+    if not any(part in ctype for part in ("javascript", "css", "html", "json", "manifest")):
+        return resp
+    iterable = getattr(resp, "response", None)
+    if resp.direct_passthrough:
+        resp.direct_passthrough = False
+    data = resp.get_data()
+    close_iter = getattr(iterable, "close", None)
+    if close_iter:
+        close_iter()
+    if len(data) < 800:
+        resp.set_data(data)
+        return resp
+    buf = BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=5) as packed:
+        packed.write(data)
+    resp.set_data(buf.getvalue())
+    resp.headers["Content-Encoding"] = "gzip"
+    vary = resp.headers.get("Vary")
+    resp.headers["Vary"] = "Accept-Encoding" if not vary else f"{vary}, Accept-Encoding"
     return resp
+
+
+@app.after_request
+def tune_response(resp):
+    path = request.path
+    if path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
+    elif path.startswith("/static/"):
+        if request.args.get("v"):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            resp.headers["Cache-Control"] = "public, max-age=86400"
+    return _gzip_response(resp)
 
 
 @app.get("/")
 def home():
-    resp = send_file(Path(__file__).resolve().parent / "templates" / "index.html")
+    page = (Path(__file__).resolve().parent / "templates" / "index.html").read_text(encoding="utf-8")
+    resp = make_response(page.replace("{{VERSION}}", APP_VERSION))
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -3053,7 +3101,12 @@ def bootstrap():
         settings = get_settings(conn)
         flag = settings.get("must_change_password") == "1"
         ready = smtp_ready(settings)
-    extra = {"smtp_ready": ready, "host_mail": host_mail_ready(), "version": APP_VERSION}
+    extra = {
+        "smtp_ready": ready,
+        "host_mail": host_mail_ready(),
+        "version": APP_VERSION,
+        "desktop_icon": desktop_icon_available(),
+    }
     if flag:
         return jsonify(initial=True, phone=INITIAL_PHONE, password=INITIAL_PASSWORD, **extra)
     return jsonify(initial=False, **extra)
@@ -3215,7 +3268,14 @@ def me():
         access = ensure_access(conn) if user else None
         shop = shop_profile(conn) if user else None
         setup = setup_state(conn) if user else None
-    return jsonify(user=public_user(user) if user else None, must_change_password=flag if user else False, access=access, shop=shop, setup=setup)
+    return jsonify(
+        user=public_user(user) if user else None,
+        must_change_password=flag if user else False,
+        access=access,
+        shop=shop,
+        setup=setup,
+        desktop_icon=desktop_icon_available(),
+    )
 
 
 @app.post("/api/auth/password")

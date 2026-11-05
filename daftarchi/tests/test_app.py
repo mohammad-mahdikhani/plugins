@@ -78,6 +78,44 @@ class DaftarchiTest(unittest.TestCase):
         bad = self.client.post("/api/auth/login", json={"ident": "09120000000", "password": "wrong"})
         self.assertEqual(bad.status_code, 401)
 
+    def test_web_edition_can_make_a_desktop_icon(self):
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn("/static/css/app.css?v=1.1.13", page)
+        self.assertIn("/static/js/app.js?v=1.1.13", page)
+        self.assertIn("beforeinstallprompt", page)
+        self.assertIn('defer', page)
+        css = self.client.get("/static/css/app.css?v=1.1.13")
+        self.assertIn("immutable", css.headers["Cache-Control"])
+        self.assertIn("max-age=31536000", css.headers["Cache-Control"])
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.13", css.get_data(as_text=True))
+        health = self.client.get("/api/health")
+        self.assertIn("no-store", health.headers["Cache-Control"])
+        me = self.client.get("/api/auth/me").get_json()
+        self.assertTrue(me["desktop_icon"])
+        boot = self.client.get("/api/auth/bootstrap").get_json()
+        self.assertTrue(boot["desktop_icon"])
+        script = Path(__file__).resolve().parents[1].joinpath("static/js/app.js").read_text(encoding="utf-8")
+        self.assertIn("آیکون روی دسکتاپ", script)
+        self.assertIn("desktop_icon", script)
+        self.assertIn("Daftarchi.url", script)
+        worker = self.client.get("/sw.js").get_data(as_text=True)
+        self.assertIn("daftarchi-1.1.13", worker)
+        self.assertIn('pathname.startsWith("/api/")', worker)
+        self.assertIn("/static/js/app.js?v=1.1.13", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.13", headers={"Accept-Encoding": "gzip"})
+        self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
+        self.assertLess(len(packed.data), 119483)
+        prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
+        os.environ["DAFTARCHI_OPEN_BROWSER"] = "1"
+        try:
+            hidden = self.client.get("/api/auth/me").get_json()
+            self.assertFalse(hidden["desktop_icon"])
+        finally:
+            if prev is None:
+                os.environ.pop("DAFTARCHI_OPEN_BROWSER", None)
+            else:
+                os.environ["DAFTARCHI_OPEN_BROWSER"] = prev
+
     def test_mac_restaurant_package(self):
         zpath = Path(__file__).resolve().parents[1] / "deploy" / "Daftarchi-rst-Mac.zip"
         self.assertTrue(zpath.is_file(), zpath)
