@@ -8,9 +8,7 @@
   var nonce = "";
 
   var mini = document.querySelector("[data-pm-mini-cart]");
-  if (!mini) return;
-
-  var bodyEl = mini.querySelector("[data-pm-mini-cart-body]");
+  var bodyEl = mini ? mini.querySelector("[data-pm-mini-cart-body]") : null;
   var subtotalEl = mini.querySelector("[data-pm-mini-cart-subtotal]");
   var openEls = document.querySelectorAll("[data-pm-cart-open], .pm-cart[data-pm-cart-open], a.pm-cart");
   var countEls = document.querySelectorAll("[data-pm-cart-count]");
@@ -76,6 +74,7 @@
   }
 
   function setOpen(open) {
+    if (!mini) return;
     mini.hidden = !open;
     mini.classList.toggle("is-open", open);
     document.documentElement.classList.toggle("pm-mini-cart-open", open);
@@ -230,14 +229,16 @@
     });
   });
 
-  mini.querySelectorAll("[data-pm-cart-close]").forEach(function (el) {
-    el.addEventListener("click", function () {
-      setOpen(false);
+  if (mini) {
+    mini.querySelectorAll("[data-pm-cart-close]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        setOpen(false);
+      });
     });
-  });
+  }
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && mini.classList.contains("is-open")) setOpen(false);
+    if (e.key === "Escape" && mini && mini.classList.contains("is-open")) setOpen(false);
   });
 
   if (bodyEl) {
@@ -279,6 +280,28 @@
   });
 
   document.body.addEventListener("click", function (e) {
+    var checkoutBtn = e.target.closest("[data-pm-buy-checkout]");
+    if (checkoutBtn) {
+      e.preventDefault();
+      var form = checkoutBtn.closest("form");
+      var qtyInput = form ? form.querySelector("input.qty") : null;
+      var qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
+      var pid = parseInt(checkoutBtn.getAttribute("data-product-id") || "0", 10);
+      if (!pid) {
+        window.location.href = checkoutUrl;
+        return;
+      }
+      checkoutBtn.disabled = true;
+      addProduct(pid, qty)
+        .then(function () {
+          window.location.href = checkoutUrl;
+        })
+        .catch(function () {
+          checkoutBtn.disabled = false;
+          window.location.href = checkoutUrl;
+        });
+      return;
+    }
     var btn = e.target.closest(".add_to_cart_button, .ajax_add_to_cart");
     if (!btn || btn.classList.contains("product_type_variable")) return;
     var productId = btn.getAttribute("data-product_id") || btn.value;

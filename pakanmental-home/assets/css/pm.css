@@ -2468,7 +2468,31 @@ img.pm-product-gallery__main {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.pm-qty-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.pm-buy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+.pm-buy-actions .pm-btn,
+.pm-add-to-cart .pm-btn {
+  min-height: 44px;
+}
+
+.pm-add-to-cart .single_add_to_cart_button {
+  flex: 1 1 160px;
 }
 
 .pm-qty {

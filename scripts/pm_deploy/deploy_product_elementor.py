@@ -239,10 +239,19 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
       <h1>{html.escape(name)}</h1>
       <p class="pm-product-summary__price">{price}</p>
       {lead}
-      <div class="pm-qty-row">
-        [add_to_cart id="{pid}" show_price="false" style=""]
-      </div>
-      <a class="pm-btn pm-btn--ghost" href="{URLS["cart"]}">مشاهده سبد خرید</a>
+      <form class="cart pm-add-to-cart" method="post" action="">
+        <div class="pm-qty-row">
+          <label class="pm-qty-label">تعداد
+            <input type="number" class="qty pm-qty" name="quantity" value="1" min="1" step="1" inputmode="numeric" aria-label="تعداد" />
+          </label>
+          <button type="submit" name="add-to-cart" value="{pid}" class="pm-btn pm-btn--primary single_add_to_cart_button">افزودن به سبد</button>
+        </div>
+        <input type="hidden" name="add-to-cart" value="{pid}" />
+        <div class="pm-buy-actions">
+          <button type="button" class="pm-btn pm-btn--primary" data-pm-buy-checkout data-product-id="{pid}">تسویه حساب</button>
+          <a class="pm-btn pm-btn--ghost" href="{URLS["cart"]}">مشاهده سبد</a>
+        </div>
+      </form>
     </div>
   </div>
 </section>
