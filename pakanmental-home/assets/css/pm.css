@@ -2508,12 +2508,13 @@ img.pm-product-gallery__main {
 }
 
 .pm-qty-row {
-  display: grid;
-  grid-template-columns: minmax(7rem, 8.5rem) 1fr;
-  align-items: stretch;
-  gap: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
   width: 100%;
-  margin: 0;
+  margin: 0.35rem 0 0;
 }
 
 .pm-qty-label {
@@ -2533,8 +2534,9 @@ img.pm-product-gallery__main {
 }
 
 .pm-add-to-cart .single_add_to_cart_button {
-  width: 100%;
-  min-height: 48px;
+  width: auto;
+  min-width: 12rem;
+  min-height: 42px;
 }
 
 .pm-buy-actions {
@@ -2542,8 +2544,8 @@ img.pm-product-gallery__main {
 }
 
 .pm-add-to-cart .pm-btn {
-  min-height: 48px;
-  width: 100%;
+  min-height: 42px;
+  width: auto;
   justify-content: center;
 }
 
@@ -2618,10 +2620,6 @@ img.pm-product-gallery__main {
 }
 
 @media (max-width: 640px) {
-  .pm-qty-row {
-    grid-template-columns: 1fr;
-  }
-
   .pm-product-promises {
     grid-template-columns: 1fr;
   }
@@ -3301,12 +3299,60 @@ body.pm-wc-shell .site-main {
   margin: 0 0 1rem;
 }
 
-.pm-wc-single-product .cart .quantity {
-  margin-left: 0.5rem;
+.pm-product-summary form.cart,
+.pm-wc-single-product form.cart,
+.pm-qty-row form.cart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  margin: 0;
+  text-align: center;
 }
 
-.pm-wc-single-product .single_add_to_cart_button {
+.pm-product-summary form.cart .quantity,
+.pm-wc-single-product form.cart .quantity,
+.pm-qty-row form.cart .quantity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  float: none;
+  width: auto;
+}
+
+.pm-product-summary form.cart .quantity .qty,
+.pm-wc-single-product form.cart .quantity .qty,
+.pm-qty-row form.cart .quantity .qty {
+  width: 4.75rem;
+  min-height: 40px;
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.pm-product-summary .single_add_to_cart_button,
+.pm-wc-single-product .single_add_to_cart_button,
+.pm-qty-row .single_add_to_cart_button,
+.pm-add-to-cart .single_add_to_cart_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 12.5rem;
+  max-width: 100%;
+  min-height: 42px;
+  margin: 0 auto;
+  padding: 0.55rem 1.5rem;
+  border-radius: 999px;
   font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: none;
+  float: none;
 }
 
 .pm-related ul.products {
