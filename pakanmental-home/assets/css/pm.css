@@ -2279,6 +2279,15 @@ body.error404 .pm-header__nav .pm-seg__link.is-active {
   border-radius: var(--pm-radius);
   background: linear-gradient(145deg, var(--pm-mint-50), var(--pm-sand-200));
   border: none; box-shadow: var(--pm-shadow-sm);
+  overflow: hidden;
+}
+
+.pm-product-gallery__main img,
+img.pm-product-gallery__main {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .pm-product-gallery__thumbs {
