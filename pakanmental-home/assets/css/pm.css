@@ -2538,28 +2538,91 @@ img.pm-product-gallery__main {
 }
 
 .pm-buy-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-  margin: 0;
+  display: none !important;
 }
 
-.pm-buy-actions .pm-btn,
 .pm-add-to-cart .pm-btn {
   min-height: 48px;
   width: 100%;
   justify-content: center;
 }
 
+.pm-product-summary .ppc-button-wrapper,
+.pm-product-summary [class*="paypal"],
+.pm-product-summary .wp-block-woocommerce-product-button {
+  display: none !important;
+}
+
+.pm-product-promises {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  list-style: none;
+  margin: 1.15rem 0 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--pm-teal-900) 10%, transparent);
+}
+
+.pm-product-promise {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.pm-product-promise__icon {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--pm-brand-green, #4aa88e);
+  border-radius: 50%;
+  color: var(--pm-brand-green, #4aa88e);
+}
+
+.pm-product-promise__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.pm-product-promise__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.pm-product-promise__copy small,
+.pm-product-promise__copy span {
+  font-size: 0.72rem;
+  color: var(--pm-text-muted);
+  line-height: 1.35;
+}
+
+.pm-product-promise__copy strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--pm-teal-900);
+  line-height: 1.35;
+}
+
 @media (max-width: 900px) {
   .pm-game-specs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .pm-product-promises {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
-  .pm-qty-row,
-  .pm-buy-actions {
+  .pm-qty-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pm-product-promises {
     grid-template-columns: 1fr;
   }
 }

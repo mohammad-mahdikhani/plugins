@@ -137,3 +137,17 @@ function pm_get_product_for_shortcode( int $product_id = 0 ) {
 	}
 	return null;
 }
+
+function pm_product_promises_html(): string {
+	return '<ul class="pm-product-promises">'
+		. '<li class="pm-product-promise"><span class="pm-product-promise__icon" aria-hidden="true">'
+		. '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/></svg>'
+		. '</span><span class="pm-product-promise__copy"><small>' . esc_html__( 'ارسال سریع', 'pakanmental-home' ) . '</small><strong>' . esc_html__( 'ارسال کالا در نیشابور', 'pakanmental-home' ) . '</strong><span>' . esc_html__( 'در کمترین زمان', 'pakanmental-home' ) . '</span></span></li>'
+		. '<li class="pm-product-promise"><span class="pm-product-promise__icon" aria-hidden="true">'
+		. '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 4H5v7l8 8z"/><circle cx="8.5" cy="8.5" r="1"/></svg>'
+		. '</span><span class="pm-product-promise__copy"><small>' . esc_html__( 'خرید مطمئن', 'pakanmental-home' ) . '</small><strong>' . esc_html__( 'تضمین قیمت', 'pakanmental-home' ) . '</strong><span>' . esc_html__( 'بهترین نرخ فروشگاه', 'pakanmental-home' ) . '</span></span></li>'
+		. '<li class="pm-product-promise"><span class="pm-product-promise__icon" aria-hidden="true">'
+		. '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 0-6.4 6.4L4 17l3 3 4.3-4.3a4.5 4.5 0 0 0 6.4-6.4L15 12z"/></svg>'
+		. '</span><span class="pm-product-promise__copy"><small>' . esc_html__( 'پس از خرید', 'pakanmental-home' ) . '</small><strong>' . esc_html__( 'پشتیبانی کامل قطعات', 'pakanmental-home' ) . '</strong><span>' . esc_html__( 'همراه شما می‌مانیم', 'pakanmental-home' ) . '</span></span></li>'
+		. '</ul>';
+}

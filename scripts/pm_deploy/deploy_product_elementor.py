@@ -115,6 +115,53 @@ def _lead_block(short_description: str) -> str:
     return ""
 
 
+def _product_promises_html() -> str:
+    truck = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/>'
+        '<circle cx="7" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/></svg>'
+    )
+    tag = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M20 12 12 4H5v7l8 8z"/><circle cx="8.5" cy="8.5" r="1"/></svg>'
+    )
+    wrench = (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M14.7 6.3a4.5 4.5 0 0 0-6.4 6.4L4 17l3 3 4.3-4.3a4.5 4.5 0 0 0 6.4-6.4L15 12z"/></svg>'
+    )
+    return f"""
+<ul class="pm-product-promises">
+  <li class="pm-product-promise">
+    <span class="pm-product-promise__icon">{truck}</span>
+    <span class="pm-product-promise__copy">
+      <small>ارسال سریع</small>
+      <strong>ارسال کالا در نیشابور</strong>
+      <span>در کمترین زمان</span>
+    </span>
+  </li>
+  <li class="pm-product-promise">
+    <span class="pm-product-promise__icon">{tag}</span>
+    <span class="pm-product-promise__copy">
+      <small>خرید مطمئن</small>
+      <strong>تضمین قیمت</strong>
+      <span>بهترین نرخ فروشگاه</span>
+    </span>
+  </li>
+  <li class="pm-product-promise">
+    <span class="pm-product-promise__icon">{wrench}</span>
+    <span class="pm-product-promise__copy">
+      <small>پس از خرید</small>
+      <strong>پشتیبانی کامل قطعات</strong>
+      <span>همراه شما می‌مانیم</span>
+    </span>
+  </li>
+</ul>
+"""
+
+
 def _meta_value(product_v3: dict, key: str) -> str:
     for meta in product_v3.get("meta_data") or []:
         if meta.get("key") == key and meta.get("value"):
@@ -275,14 +322,11 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
           <label class="pm-qty-label">تعداد
             <input type="number" class="qty pm-qty" name="quantity" value="1" min="1" step="1" inputmode="numeric" aria-label="تعداد" />
           </label>
-          <button type="submit" name="add-to-cart" value="{pid}" class="pm-btn pm-btn--primary single_add_to_cart_button">افزودن به سبد</button>
+          <button type="submit" name="add-to-cart" value="{pid}" class="pm-btn pm-btn--primary single_add_to_cart_button">افزودن به سبد خرید</button>
         </div>
         <input type="hidden" name="add-to-cart" value="{pid}" />
-        <div class="pm-buy-actions">
-          <button type="button" class="pm-btn pm-btn--primary" data-pm-buy-checkout data-product-id="{pid}">تسویه حساب</button>
-          <a class="pm-btn pm-btn--ghost" href="{URLS["cart"]}">مشاهده سبد</a>
-        </div>
       </form>
+      {_product_promises_html()}
     </div>
   </div>
 </section>

@@ -38,7 +38,7 @@ if ( post_password_required() ) {
 				<div class="pm-qty-row">
 					<?php woocommerce_template_single_add_to_cart(); ?>
 				</div>
-				<?php woocommerce_template_single_meta(); ?>
+				<?php echo pm_product_promises_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			</div>
 		</div>
 	</section>
