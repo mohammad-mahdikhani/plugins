@@ -66,36 +66,12 @@ def product_card_grid(count: int = 12, link: str | None = None) -> str:
 
 
 def home_main() -> str:
-    rows = [
-        ("پرفروش‌ها و ترند", "trend", True),
-        ("پازل", "puzzle", False),
-        ("بردگیم", "board", False),
-        ("اکشن فیگور", "figure", False),
-    ]
-    carousels = ""
-    for title, rid, alt in rows:
-        cards = ""
-        for i in range(1, 7):
-            badge = '<span class="pm-card__badge">ترند</span>' if alt and i <= 2 else ""
-            cards += f"""
-<article class="pm-card pm-card--empty">
-  <a href="{URLS["product_demo"]}"><div class="pm-card__ph"></div>
-  <h3 class="pm-card__title">{title} {i}</h3>
-  <p class="pm-card__price">— <small>تومان</small></p></a>{badge}
-</article>"""
-        section_alt = " pm-section--alt" if alt else ""
-        carousels += f"""
-<section class="pm-section{section_alt}">
-  <div class="pm-container">
-    <header class="pm-section__head">
-      <div><h2>{title}</h2><p>پس از افزودن محصول در ووکامرس، این ردیف خودکار پر می‌شود.</p></div>
-      <a class="pm-more" href="{URLS["shop"]}">مشاهده همه</a>
-    </header>
-    <div class="pm-carousel">
-      <div class="pm-track" id="track-{rid}">{cards}</div>
-    </div>
-  </div>
-</section>"""
+    rows = """
+[pm_product_row id="pm-trend" title="پرفروش‌ها و ترند" subtitle="محبوب‌ترین انتخاب‌ها" orderby="popularity" badge="1" alt="1"]
+[pm_product_row id="pm-puzzle" title="پازل" subtitle="چالش تصویری برای همه سن‌ها" slug="پازل"]
+[pm_product_row id="pm-board" title="بردگیم" subtitle="شب دورهم با بازی رومیزی" slug="بازی-فکری" alt="1"]
+[pm_product_row id="pm-figure" title="اکشن فیگور" subtitle="کلکسیون و هدیه" slug="اکشن-فیگور"]
+"""
 
     return f"""
 <section class="pm-rev" aria-label="اسلایدر اصلی">
@@ -148,17 +124,10 @@ def home_main() -> str:
 <section class="pm-section">
   <div class="pm-container">
     <header class="pm-section__head"><div><h2>دسته‌بندی فروشگاه</h2><p>مسیر سریع به هر نوع سرگرمی</p></div></header>
-    <div class="pm-cats">
-      {category_tile("بردگیم", "board")}
-      {category_tile("پازل", "puzzle")}
-      {category_tile("اکشن فیگور", "figure")}
-      {category_tile("کارتی", "card")}
-      {category_tile("بازی منتالی", "mental")}
-      {category_tile("لوازم جانبی", "accessory")}
-    </div>
+    [pm_home_categories]
   </div>
 </section>
-{carousels}
+{rows}
 <section class="pm-section pm-section--alt">
   <div class="pm-container">
     <header class="pm-section__head">
@@ -411,12 +380,8 @@ def shop_main() -> str:
           </select>
         </label>
       </div>
-      <div class="pm-product-grid">{product_card_grid(12)}</div>
-      <nav class="pm-pagination" aria-label="صفحه‌بندی">
-        <span class="pm-pagination__item is-active">۱</span>
-        <span class="pm-pagination__item">۲</span>
-        <span class="pm-pagination__item">۳</span>
-      </nav>
+      [pm_shop_loop per_page="12"]
+      <nav class="pm-pagination pm-pagination--placeholder" aria-hidden="true"></nav>
     </div>
   </div>
 </section>

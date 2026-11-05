@@ -16,6 +16,20 @@ final class PM_WooCommerce {
 		add_filter( 'woocommerce_show_page_title', array( __CLASS__, 'hide_page_title' ) );
 		add_filter( 'woocommerce_add_to_cart_fragments', array( __CLASS__, 'cart_fragments' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_cart' ), 20 );
+		add_filter( 'woocommerce_locate_template', array( __CLASS__, 'locate_template' ), 12, 3 );
+	}
+
+	/**
+	 * @param string $template      Path to template.
+	 * @param string $template_name Template name.
+	 * @param string $template_path Template path.
+	 */
+	public static function locate_template( string $template, string $template_name, string $template_path ): string {
+		if ( 'content-single-product.php' !== $template_name ) {
+			return $template;
+		}
+		$custom = PM_HOME_PATH . 'woocommerce/content-single-product.php';
+		return file_exists( $custom ) ? $custom : $template;
 	}
 
 	public static function enqueue_cart(): void {
@@ -68,6 +82,12 @@ final class PM_WooCommerce {
 		}
 		if ( function_exists( 'is_account_page' ) && is_account_page() ) {
 			$classes[] = 'pm-wc-account-page';
+		}
+		if ( is_singular( 'product' ) ) {
+			$classes[] = 'pm-wc-single';
+		}
+		if ( is_product_taxonomy() ) {
+			$classes[] = 'pm-wc-archive';
 		}
 		return $classes;
 	}

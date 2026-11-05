@@ -17,6 +17,7 @@ GLOBS = (
     "pakanmental-home.php",
     "includes/*.php",
     "templates/*.php",
+    "woocommerce/*.php",
     "assets/css/*.css",
     "assets/js/*.js",
 )

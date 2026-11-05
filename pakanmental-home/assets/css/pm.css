@@ -2926,3 +2926,117 @@ body.woocommerce-account .woocommerce-MyAccount-content {
   float: none !important;
   width: auto !important;
 }
+
+/* Full PM shell on single product / category archives */
+body.pm-wc-shell .site-header,
+body.pm-wc-shell .site-footer,
+body.pm-wc-shell header.site-header,
+body.pm-wc-shell footer.site-footer {
+  display: none !important;
+}
+
+body.pm-wc-shell #content.site-main,
+body.pm-wc-shell .site-main {
+  padding: 0;
+  max-width: none;
+}
+
+.pm-product__thumb {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--pm-radius);
+  aspect-ratio: 1;
+  background: var(--pm-cream-deep);
+}
+
+.pm-product__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pm-wc-single-product .woocommerce-product-gallery {
+  margin: 0;
+}
+
+.pm-wc-single-product .woocommerce-breadcrumb {
+  margin-bottom: 0.5rem;
+}
+
+.pm-wc-single-product .product_title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.pm-wc-single-product .price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 1rem;
+}
+
+.pm-wc-single-product .woocommerce-product-details__short-description {
+  color: var(--pm-text-muted);
+  margin: 0 0 1rem;
+}
+
+.pm-wc-single-product .cart .quantity {
+  margin-left: 0.5rem;
+}
+
+.pm-wc-single-product .single_add_to_cart_button {
+  font-family: inherit;
+}
+
+.pm-related ul.products {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.pm-related ul.products li.product {
+  margin: 0;
+  width: auto !important;
+  float: none !important;
+}
+
+.pm-pagination .page-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  justify-content: center;
+}
+
+.pm-pagination .page-numbers li {
+  margin: 0;
+}
+
+.pm-pagination .page-numbers a,
+.pm-pagination .page-numbers span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 10px;
+  background: var(--pm-surface);
+  box-shadow: var(--pm-shadow-sm);
+  text-decoration: none;
+  color: inherit;
+}
+
+.pm-pagination .page-numbers .current {
+  font-weight: 700;
+  background: var(--pm-mint-100);
+}
+
+@media (max-width: 900px) {
+  .pm-related ul.products {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

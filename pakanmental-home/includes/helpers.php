@@ -98,8 +98,18 @@ function pm_get_row_products( array $args ): array {
 
 	if ( ! empty( $args['slug'] ) ) {
 		$term = get_term_by( 'slug', $args['slug'], 'product_cat' );
+		if ( ! $term ) {
+			$term = get_term_by( 'slug', sanitize_title( $args['slug'] ), 'product_cat' );
+		}
 		if ( $term ) {
-			$query['category'] = array( $term->slug );
+			$query['tax_query'] = array(
+				array(
+					'taxonomy'         => 'product_cat',
+					'field'            => 'term_id',
+					'terms'            => (int) $term->term_id,
+					'include_children' => true,
+				),
+			);
 		}
 	}
 

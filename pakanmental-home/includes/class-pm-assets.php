@@ -17,6 +17,11 @@ final class PM_Assets {
 	}
 
 	public static function should_load_pm_shell(): bool {
+		if ( class_exists( 'WooCommerce' ) ) {
+			if ( is_singular( 'product' ) || is_product_taxonomy() ) {
+				return true;
+			}
+		}
 		if ( ! is_page() ) {
 			return false;
 		}
@@ -25,6 +30,28 @@ final class PM_Assets {
 			return true;
 		}
 		return 'yes' === get_post_meta( $id, '_elementor_edit_mode', true );
+	}
+
+	private static function enqueue_shell_scripts(): void {
+		$scripts = array(
+			'pm-header'     => 'assets/js/pm-header.js',
+			'pm-mega-menu'  => 'assets/js/pm-mega-menu.js',
+			'pm-mobile'     => 'assets/js/pm-mobile.js',
+			'pm-search'     => 'assets/js/pm-search.js',
+			'pm-trust-badges' => 'assets/js/pm-trust-badges.js',
+		);
+		foreach ( $scripts as $handle => $rel ) {
+			wp_enqueue_script(
+				$handle,
+				PM_HOME_URL . $rel,
+				array(),
+				PM_HOME_VERSION,
+				array(
+					'in_footer' => true,
+					'strategy'  => 'defer',
+				)
+			);
+		}
 	}
 
 	public static function font_preconnect(): void {
@@ -60,7 +87,7 @@ final class PM_Assets {
 			PM_HOME_VERSION
 		);
 
-		if ( self::should_load_pm_shell() && class_exists( 'WooCommerce' ) ) {
+		if ( self::should_load_pm_shell() ) {
 			wp_enqueue_style(
 				'pm-fonts',
 				'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap',
@@ -73,21 +100,27 @@ final class PM_Assets {
 				array( 'pm-fonts', 'pm-brand-overrides' ),
 				PM_HOME_VERSION
 			);
-			wp_enqueue_script(
-				'pm-cart',
-				PM_HOME_URL . 'assets/js/pm-cart.js',
-				array(),
-				PM_HOME_VERSION,
-				array(
-					'in_footer' => true,
-					'strategy'  => 'defer',
-				)
-			);
-			wp_add_inline_script(
-				'pm-cart',
-				self::pm_cart_config_js(),
-				'before'
-			);
+			self::enqueue_shell_scripts();
+			if ( class_exists( 'WooCommerce' ) ) {
+				wp_enqueue_script(
+					'pm-cart',
+					PM_HOME_URL . 'assets/js/pm-cart.js',
+					array(),
+					PM_HOME_VERSION,
+					array(
+						'in_footer' => true,
+						'strategy'  => 'defer',
+					)
+				);
+				wp_add_inline_script(
+					'pm-cart',
+					self::pm_cart_config_js(),
+					'before'
+				);
+				if ( is_singular( 'product' ) ) {
+					wp_enqueue_script( 'wc-add-to-cart' );
+				}
+			}
 		}
 
 		if ( ! self::is_pm_home_page() ) {
