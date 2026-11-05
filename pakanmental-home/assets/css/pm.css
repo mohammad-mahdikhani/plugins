@@ -2331,6 +2331,127 @@ img.pm-product-gallery__main {
   margin: 0 0 1rem;
 }
 
+.pm-product-summary__lead {
+  color: var(--pm-teal-900);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  margin: 0 0 1rem;
+}
+
+.pm-product-summary__lead p {
+  margin: 0 0 0.45rem;
+}
+
+.pm-product-content-section {
+  padding: 2rem 0;
+}
+
+.pm-product-content {
+  background: var(--pm-surface);
+  border-radius: var(--pm-radius-lg);
+  box-shadow: var(--pm-shadow-sm);
+  padding: clamp(1rem, 3vw, 1.75rem);
+  color: var(--pm-teal-900);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.pm-product-content > :first-child {
+  margin-top: 0;
+}
+
+.pm-product-content > :last-child {
+  margin-bottom: 0;
+}
+
+.pm-product-content h2,
+.pm-product-content h3,
+.pm-product-content h4 {
+  font-weight: 800;
+  margin: 1.25rem 0 0.65rem;
+  line-height: 1.35;
+}
+
+.pm-product-content h2 {
+  font-size: 1.15rem;
+}
+
+.pm-product-content h3 {
+  font-size: 1.02rem;
+}
+
+.pm-product-content p {
+  margin: 0 0 0.85rem;
+  color: var(--pm-teal-900);
+}
+
+.pm-product-content ul,
+.pm-product-content ol {
+  margin: 0 0 1rem;
+  padding: 0 1.25rem 0 0;
+}
+
+.pm-product-content li {
+  margin-bottom: 0.4rem;
+}
+
+.pm-product-content ul li {
+  list-style: disc;
+}
+
+.pm-product-content a {
+  color: var(--pm-mint-600);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pm-product-content img,
+.pm-product-content figure {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--pm-radius);
+  margin: 0.75rem 0;
+}
+
+.pm-product-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.88rem;
+}
+
+.pm-product-content th,
+.pm-product-content td {
+  border: 1px solid color-mix(in srgb, var(--pm-teal-900) 12%, transparent);
+  padding: 0.5rem 0.65rem;
+  text-align: right;
+}
+
+.pm-product-magazine .pm-blog--product {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .pm-product-magazine .pm-blog--product {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .pm-product-magazine .pm-blog--product {
+    grid-template-columns: 1fr;
+  }
+
+  .pm-product-content {
+    padding: 1rem;
+  }
+}
+
 .pm-product-meta {
   margin: 0 0 1.25rem;
   padding: 0;

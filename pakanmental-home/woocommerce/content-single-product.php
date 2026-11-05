@@ -34,7 +34,7 @@ if ( post_password_required() ) {
 				<div class="pm-product-summary__price">
 					<?php woocommerce_template_single_price(); ?>
 				</div>
-				<div class="pm-product-summary__desc">
+				<div class="pm-product-summary__lead">
 					<?php woocommerce_template_single_excerpt(); ?>
 				</div>
 				<div class="pm-qty-row">
@@ -45,7 +45,9 @@ if ( post_password_required() ) {
 		</div>
 	</section>
 
-	<?php woocommerce_output_product_data_tabs(); ?>
+	<?php echo do_shortcode( '[pm_product_content]' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+
+	<?php echo do_shortcode( '[pm_product_magazine limit="3"]' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
 	<section class="pm-section pm-section--alt pm-related">
 		<div class="pm-container">

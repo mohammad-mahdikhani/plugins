@@ -115,3 +115,25 @@ function pm_get_row_products( array $args ): array {
 
 	return wc_get_products( $query );
 }
+
+/**
+ * Product for shortcodes (current single product or explicit ID).
+ */
+function pm_get_product_for_shortcode( int $product_id = 0 ) {
+	if ( ! function_exists( 'wc_get_product' ) ) {
+		return null;
+	}
+	if ( $product_id > 0 ) {
+		$product = wc_get_product( $product_id );
+		return $product ? $product : null;
+	}
+	if ( is_singular( 'product' ) ) {
+		$product = wc_get_product( get_queried_object_id() );
+		return $product ? $product : null;
+	}
+	global $product;
+	if ( isset( $product ) && is_object( $product ) && method_exists( $product, 'get_id' ) ) {
+		return $product;
+	}
+	return null;
+}
