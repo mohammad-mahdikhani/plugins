@@ -262,6 +262,20 @@
     });
   }
 
+  document.body.addEventListener("click", function (e) {
+    var stepBtn = e.target.closest("[data-pm-qty-step]");
+    if (!stepBtn) return;
+    e.preventDefault();
+    var wrap = stepBtn.closest(".pm-qty-stepper") || stepBtn.closest("form");
+    var input = wrap ? wrap.querySelector("input.qty") : null;
+    if (!input) return;
+    var min = parseInt(input.min || "1", 10) || 1;
+    var next = (parseInt(input.value, 10) || 1) + (parseInt(stepBtn.getAttribute("data-pm-qty-step"), 10) || 0);
+    if (next < min) next = min;
+    input.value = String(next);
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
   document.body.addEventListener("submit", function (e) {
     var form = e.target;
     if (!form || form.tagName !== "FORM") return;
