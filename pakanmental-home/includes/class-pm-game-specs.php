@@ -27,7 +27,84 @@ final class PM_Game_Specs {
 	public static function init(): void {
 		add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'fields' ) );
 		add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save' ) );
+		add_action( 'admin_init', array( __CLASS__, 'ensure_attribute_terms' ), 30 );
 		add_shortcode( 'pm_game_specs', array( __CLASS__, 'shortcode' ) );
+	}
+
+	/**
+	 * Default selectable values for each global attribute.
+	 *
+	 * @return array<string, array{name:string,slug:string,terms:array<int, string>}>
+	 */
+	public static function attribute_catalog(): array {
+		return array(
+			'pm-game-age'     => array(
+				'name'  => __( 'سن', 'pakanmental-home' ),
+				'slug'  => 'pm-game-age',
+				'terms' => array( '۳+', '۴+', '۵+', '۶+', '۷+', '۸+', '۱۰+', '۱۲+', '۱۴+', '۱۶+', '۱۸+' ),
+			),
+			'pm-game-players' => array(
+				'name'  => __( 'تعداد بازیکن', 'pakanmental-home' ),
+				'slug'  => 'pm-game-players',
+				'terms' => array( '۱', '۱–۲', '۲', '۲–۴', '۲–۵', '۲–۶', '۳–۵', '۳–۶', '۴–۸', '۱+' ),
+			),
+			'pm-game-time'    => array(
+				'name'  => __( 'زمان ست', 'pakanmental-home' ),
+				'slug'  => 'pm-game-time',
+				'terms' => array( '۱۵ دقیقه', '۲۰ دقیقه', '۳۰ دقیقه', '۴۵ دقیقه', '۶۰ دقیقه', '۶۰–۹۰ دقیقه', '۹۰ دقیقه', '۱۲۰ دقیقه' ),
+			),
+			'pm-game-type'    => array(
+				'name'  => __( 'نوع بازی', 'pakanmental-home' ),
+				'slug'  => 'pm-game-type',
+				'terms' => array( 'استراتژیک', 'رقابتی', 'معمایی', 'فکری', 'خانوادگی', 'کارتی', 'مهمانی' ),
+			),
+			'pm-game-size'    => array(
+				'name'  => __( 'ابعاد جعبه', 'pakanmental-home' ),
+				'slug'  => 'pm-game-size',
+				'terms' => array(),
+			),
+		);
+	}
+
+	public static function ensure_attribute_terms(): void {
+		if ( ! class_exists( 'WooCommerce' ) || ! current_user_can( 'manage_product_terms' ) ) {
+			return;
+		}
+		if ( get_transient( 'pm_game_attr_seeded_v2' ) ) {
+			return;
+		}
+		foreach ( self::attribute_catalog() as $item ) {
+			$attr_id = self::ensure_attribute( $item['name'], $item['slug'] );
+			if ( $attr_id < 1 ) {
+				continue;
+			}
+			$tax = wc_attribute_taxonomy_name( $item['slug'] );
+			foreach ( $item['terms'] as $term_name ) {
+				if ( ! term_exists( $term_name, $tax ) ) {
+					wp_insert_term( $term_name, $tax );
+				}
+			}
+		}
+		set_transient( 'pm_game_attr_seeded_v2', 1, DAY_IN_SECONDS );
+	}
+
+	private static function ensure_attribute( string $name, string $slug ): int {
+		$slug = wc_sanitize_taxonomy_name( $slug );
+		foreach ( wc_get_attribute_taxonomies() as $tax ) {
+			if ( $tax->attribute_name === $slug ) {
+				return (int) $tax->attribute_id;
+			}
+		}
+		$id = wc_create_attribute(
+			array(
+				'name'         => $name,
+				'slug'         => $slug,
+				'type'         => 'select',
+				'order_by'     => 'menu_order',
+				'has_archives' => false,
+			)
+		);
+		return is_wp_error( $id ) ? 0 : (int) $id;
 	}
 
 	public static function fields(): void {
