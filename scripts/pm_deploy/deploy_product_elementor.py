@@ -317,6 +317,13 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
       <h1>{html.escape(name)}</h1>
       <p class="pm-product-summary__price">{price}</p>
       {specs}
+      <style id="pm-atc-minimal">
+.pm-product-summary form.cart.pm-add-to-cart{{display:flex!important;flex-direction:column!important;align-items:center!important}}
+.pm-product-summary .pm-qty-row{{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;grid-template-columns:none!important;gap:.75rem;width:100%}}
+.pm-product-summary .pm-qty-label{{align-items:center;text-align:center}}
+.pm-product-summary .pm-qty{{width:4.75rem!important;max-width:4.75rem;min-height:40px;text-align:center}}
+.pm-product-summary .single_add_to_cart_button{{width:auto!important;min-width:12.5rem;min-height:42px;margin:0 auto;align-self:center}}
+      </style>
       <form class="cart pm-add-to-cart" method="post" action="">
         <div class="pm-qty-row">
           <label class="pm-qty-label">تعداد
