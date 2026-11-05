@@ -116,6 +116,25 @@ body.blog .pm-blog-archive-fallback { margin: 0; }
 .elementor-widget-html .pm-header__nav,
 .elementor-widget-html .pm-seg,
 .elementor-widget-html .pm-mega { overflow: visible !important; }
+body.single-product.elementor-page header.site-header,
+body.single-product.elementor-page footer.site-footer,
+body.single-product.elementor-page .site-header,
+body.single-product.elementor-page .site-footer:not(.pm-footer),
+body.single-product.elementor-page .woocommerce-breadcrumb,
+body.single-product.elementor-page .woocommerce-product-gallery,
+body.single-product.elementor-page .summary.entry-summary,
+body.single-product.elementor-page .woocommerce-tabs ul.tabs,
+body.single-product.elementor-page .related.products,
+body.single-product.elementor-page .upsells.products { display: none !important; }
+body.single-product.elementor-page #primary.content-area,
+body.single-product.elementor-page .site-main,
+body.single-product.elementor-page .woocommerce-tabs,
+body.single-product.elementor-page .woocommerce-Tabs-panel,
+body.single-product.elementor-page div.product {
+  float: none !important; width: 100% !important; max-width: none !important;
+  margin: 0 !important; padding: 0 !important; border: none !important; background: transparent !important;
+}
+body.single-product.elementor-page .woocommerce-Tabs-panel { display: block !important; }
 """
     return css
 

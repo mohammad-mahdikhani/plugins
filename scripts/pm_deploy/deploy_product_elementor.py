@@ -18,15 +18,15 @@ def _push_elementor_product(post_id: int, tree: list) -> None:
     data_json = json.dumps(tree, ensure_ascii=False)
     _clear_elementor_element_cache(post_id)
     req(
-        "POST",
-        f"{BASE}/product/{post_id}",
+        "PUT",
+        f"https://www.pakanmental.com/wp-json/wc/v3/products/{post_id}",
         {
-            "meta": {
-                "_wp_page_template": "elementor_canvas",
-                "_elementor_edit_mode": "builder",
-                "_elementor_template_type": "wp-post",
-                "_elementor_data": data_json,
-            },
+            "meta_data": [
+                {"key": "_wp_page_template", "value": "elementor_canvas"},
+                {"key": "_elementor_edit_mode", "value": "builder"},
+                {"key": "_elementor_template_type", "value": "wp-post"},
+                {"key": "_elementor_data", "value": data_json},
+            ],
         },
     )
 
@@ -208,6 +208,27 @@ def product_elementor_main(product: dict, product_v3: dict, posts: list) -> str:
         magazine = _magazine_section(posts)
 
     return f"""
+<style id="pm-hide-wc-duplicate">
+body.single-product.elementor-page header.site-header,
+body.single-product.elementor-page footer.site-footer,
+body.single-product.elementor-page .site-header,
+body.single-product.elementor-page .site-footer:not(.pm-footer),
+body.single-product.elementor-page .woocommerce-breadcrumb,
+body.single-product.elementor-page .woocommerce-product-gallery,
+body.single-product.elementor-page .summary.entry-summary,
+body.single-product.elementor-page .woocommerce-tabs ul.tabs,
+body.single-product.elementor-page .related.products,
+body.single-product.elementor-page .upsells.products {{ display: none !important; }}
+body.single-product.elementor-page #primary.content-area,
+body.single-product.elementor-page .site-main,
+body.single-product.elementor-page .woocommerce-tabs,
+body.single-product.elementor-page .woocommerce-Tabs-panel,
+body.single-product.elementor-page div.product {{
+  float: none !important; width: 100% !important; max-width: none !important;
+  margin: 0 !important; padding: 0 !important; border: none !important; background: transparent !important;
+}}
+body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !important; }}
+</style>
 <section class="pm-product-single">
   <div class="pm-container pm-product-single__grid">
     <div class="pm-product-gallery">
@@ -243,6 +264,9 @@ def deploy_product(post_id: int) -> None:
 
     main = product_elementor_main(product, product_v3, posts)
     wh, wm, wf = wrap_page_elementor_widgets("shop", main, include_hero_js=False, include_shop_js=False)
+    hide = '<style id="pm-hide-wc-duplicate">body.single-product.elementor-page header.site-header,body.single-product.elementor-page .site-header,body.single-product.elementor-page .woocommerce-product-gallery,body.single-product.elementor-page .summary.entry-summary,body.single-product.elementor-page .woocommerce-tabs ul.tabs,body.single-product.elementor-page .related.products{display:none!important}body.single-product.elementor-page .woocommerce-Tabs-panel{display:block!important;padding:0!important;border:0!important}</style>'
+    wh = hide + wh
+    wm = hide + wm
     tree = html_widget_tree_split(wh, wm, wf)
     _push_elementor_product(post_id, tree)
     client = ElementorMcp()
