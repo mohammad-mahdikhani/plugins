@@ -17,7 +17,13 @@ def _get(path: str, params: dict[str, Any] | None = None) -> Any:
     if params:
         qs = "?" + urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
     url = f"{_STORE}{path}{qs}"
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "PakanMentalDeploy/1.0 (+https://www.pakanmental.com)",
+        },
+    )
     with urllib.request.urlopen(req, timeout=45) as res:
         return json.loads(res.read().decode())
 
