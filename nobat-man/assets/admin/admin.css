@@ -1,0 +1,88 @@
+@import url("https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css");
+
+.nm-wrap {
+	font-family: Vazirmatn, Tahoma, sans-serif;
+	max-width: 1100px;
+}
+
+.nm-ver {
+	font-size: 13px;
+	color: #64748b;
+	font-weight: 500;
+}
+
+.nm-brand a {
+	color: #0f766e;
+}
+
+.nm-cards {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin: 16px 0 24px;
+}
+
+.nm-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 16px;
+	padding: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.nm-card strong {
+	font-size: 28px;
+	color: #0f766e;
+}
+
+.nm-form label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+.nm-form input[type="text"],
+.nm-form input[type="number"],
+.nm-form input[type="time"],
+.nm-form textarea,
+.nm-form select {
+	width: 100%;
+	max-width: 480px;
+}
+
+.nm-checks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.nm-split {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	align-items: start;
+}
+
+.nm-panel {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 16px;
+	padding: 18px;
+}
+
+.nm-repeat {
+	border: 1px dashed #cbd5e1;
+	padding: 12px;
+	border-radius: 12px;
+	margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+	.nm-cards,
+	.nm-split {
+		grid-template-columns: 1fr;
+	}
+}
