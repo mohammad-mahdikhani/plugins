@@ -1,0 +1,39 @@
+/**
+ * پاکن منتال — Design tokens (from logo palette)
+ * Use these in Elementor Global Colors / Custom CSS
+ */
+:root {
+  /* Primary — dice mint */
+  --pm-mint-50: #e8f6f1;
+  --pm-mint-100: #c9ebe0;
+  --pm-mint-400: #5fb89f;
+  --pm-mint-500: #4aa88e;
+  --pm-mint-600: #3d8f78;
+
+  /* Deep teal — pips & contrast */
+  --pm-teal-700: #2a5f52;
+  --pm-teal-900: #1e4339;
+
+  /* Warm neutrals — typography fill & sunburst */
+  --pm-cream-50: #faf7f2;
+  --pm-cream-100: #f3ede3;
+  --pm-sand-200: #e5d4bc;
+  --pm-sand-400: #c9a882;
+  --pm-brown-600: #8b5e3c;
+  --pm-brown-800: #5c3d28;
+
+  /* UI */
+  --pm-bg: var(--pm-cream-50);
+  --pm-surface: #ffffff;
+  --pm-text: var(--pm-teal-900);
+  --pm-text-muted: #5a6b66;
+  --pm-border: rgba(44, 95, 82, 0.12);
+  --pm-radius-sm: 10px;
+  --pm-radius-md: 16px;
+  --pm-radius-lg: 24px;
+  --pm-radius-pill: 999px;
+  --pm-shadow-soft: 0 8px 32px rgba(30, 67, 57, 0.08);
+  --pm-font: "Vazirmatn", system-ui, sans-serif;
+  --pm-container: min(1200px, 92vw);
+  --pm-header-h: 72px;
+}
