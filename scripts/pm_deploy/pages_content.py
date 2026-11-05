@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .builder import URLS, req, BASE, SITE
+from . import wc_store as wc
 
 _CAT_SVGS = {
     "board": (
@@ -37,13 +38,92 @@ _CAT_SVGS = {
 }
 
 
-def category_tile(label: str, icon_key: str) -> str:
+def category_tile(label: str, icon_key: str, href: str | None = None) -> str:
     svg = _CAT_SVGS[icon_key]
+    link = href or URLS["shop"]
     return (
-        f'<a class="pm-cat" href="{URLS["shop"]}">'
+        f'<a class="pm-cat" href="{link}">'
         f'<span class="pm-cat__icon" aria-hidden="true">{svg}</span>'
         f'<span class="pm-cat__label">{label}</span></a>'
     )
+
+
+def home_categories_html() -> str:
+    categories = wc.fetch_categories()
+    tiles = [
+        ("بردگیم", "board", "بازی-فکری", "بازی فکری"),
+        ("پازل", "puzzle", "پازل"),
+        ("اکشن فیگور", "figure", "اکشن-فیگور", "اکشن فیگور"),
+        ("کارتی", "card", "بازی-فکری-کارتی"),
+        ("بازی منتالی", "mental", "بازی-فکری"),
+        ("لوازم جانبی", "accessory", "لوازم-جانبی"),
+    ]
+    parts = ['<div class="pm-cats">']
+    for label, icon, *hints in tiles:
+        href = wc.category_permalink(categories, *hints)
+        parts.append(category_tile(label, icon, href))
+    parts.append("</div>")
+    return "\n".join(parts)
+
+
+def home_product_rows_html() -> str:
+    categories = wc.fetch_categories()
+    trend = wc.fetch_products(per_page=8, orderby="popularity")
+    if not trend:
+        trend = wc.fetch_products(per_page=8, orderby="date")
+
+    puzzle_id = wc.category_id(categories, "پازل")
+    board_id = wc.category_id(categories, "بازی-فکری", "بازی فکری")
+    figure_id = wc.category_id(categories, "اکشن-فیگور", "اکشن فیگور")
+
+    puzzle = wc.fetch_products(per_page=8, category_id=puzzle_id) if puzzle_id else []
+    board = wc.fetch_products(per_page=8, category_id=board_id) if board_id else []
+    figure = wc.fetch_products(per_page=8, category_id=figure_id) if figure_id else []
+
+    return (
+        wc.carousel_row(
+            title="پرفروش‌ها و ترند",
+            subtitle="محبوب‌ترین انتخاب‌ها",
+            row_id="trend",
+            products=trend,
+            more_url=URLS["shop"],
+            alt=True,
+            badge=True,
+            placeholder_prefix="محصول",
+        )
+        + wc.carousel_row(
+            title="پازل",
+            subtitle="چالش تصویری برای همه سن‌ها",
+            row_id="puzzle",
+            products=puzzle,
+            more_url=wc.category_permalink(categories, "پازل"),
+            placeholder_prefix="پازل",
+        )
+        + wc.carousel_row(
+            title="بردگیم",
+            subtitle="شب دورهم با بازی رومیزی",
+            row_id="board",
+            products=board,
+            more_url=wc.category_permalink(categories, "بازی-فکری", "بازی فکری"),
+            alt=True,
+            placeholder_prefix="بردگیم",
+        )
+        + wc.carousel_row(
+            title="اکشن فیگور",
+            subtitle="کلکسیون و هدیه",
+            row_id="figure",
+            products=figure,
+            more_url=wc.category_permalink(categories, "اکشن-فیگور", "اکشن فیگور"),
+            placeholder_prefix="فیگور",
+        )
+    )
+
+
+def shop_products_html(per_page: int = 12) -> str:
+    products = wc.fetch_products(per_page=per_page, orderby="date")
+    if not products:
+        return product_card_grid(per_page)
+    return "\n".join(wc.pm_shop_product(p) for p in products)
 
 
 def product_card_grid(count: int = 12, link: str | None = None) -> str:
@@ -66,12 +146,8 @@ def product_card_grid(count: int = 12, link: str | None = None) -> str:
 
 
 def home_main() -> str:
-    rows = """
-[pm_product_row id="pm-trend" title="پرفروش‌ها و ترند" subtitle="محبوب‌ترین انتخاب‌ها" orderby="popularity" badge="1" alt="1"]
-[pm_product_row id="pm-puzzle" title="پازل" subtitle="چالش تصویری برای همه سن‌ها" slug="پازل"]
-[pm_product_row id="pm-board" title="بردگیم" subtitle="شب دورهم با بازی رومیزی" slug="بازی-فکری" alt="1"]
-[pm_product_row id="pm-figure" title="اکشن فیگور" subtitle="کلکسیون و هدیه" slug="اکشن-فیگور"]
-"""
+    categories_block = home_categories_html()
+    rows = home_product_rows_html()
 
     return f"""
 <section class="pm-rev" aria-label="اسلایدر اصلی">
@@ -124,7 +200,7 @@ def home_main() -> str:
 <section class="pm-section">
   <div class="pm-container">
     <header class="pm-section__head"><div><h2>دسته‌بندی فروشگاه</h2><p>مسیر سریع به هر نوع سرگرمی</p></div></header>
-    [pm_home_categories]
+    {categories_block}
   </div>
 </section>
 {rows}
@@ -380,8 +456,7 @@ def shop_main() -> str:
           </select>
         </label>
       </div>
-      [pm_shop_loop per_page="12"]
-      <nav class="pm-pagination pm-pagination--placeholder" aria-hidden="true"></nav>
+      <div class="pm-product-grid">{shop_products_html(12)}</div>
     </div>
   </div>
 </section>
