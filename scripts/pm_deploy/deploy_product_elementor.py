@@ -112,9 +112,41 @@ def fetch_magazine_posts(limit: int = 3, product_v3: dict | None = None) -> list
 
 
 def _lead_block(short_description: str) -> str:
-    if not short_description or not short_description.strip():
+    return ""
+
+
+def _meta_value(product_v3: dict, key: str) -> str:
+    for meta in product_v3.get("meta_data") or []:
+        if meta.get("key") == key and meta.get("value"):
+            return str(meta.get("value")).strip()
+    return ""
+
+
+def _game_specs_html(product_v3: dict) -> str:
+    type_map = {
+        "strategic": "استراتژیک",
+        "competitive": "رقابتی",
+        "puzzle": "معمایی",
+        "mental": "فکری",
+    }
+    items = [
+        ("age", "سن", _meta_value(product_v3, "_pm_game_age")),
+        ("players", "بازیکن", _meta_value(product_v3, "_pm_game_players")),
+        ("time", "زمان ست", _meta_value(product_v3, "_pm_game_time")),
+        ("type", "نوع بازی", type_map.get(_meta_value(product_v3, "_pm_game_type"), _meta_value(product_v3, "_pm_game_type"))),
+    ]
+    tiles = [i for i in items if i[2]]
+    if not tiles:
         return ""
-    return f'<div class="pm-product-summary__lead">{short_description.strip()}</div>'
+    html_parts = ['<ul class="pm-game-specs" aria-label="ویژگی بازی">']
+    for key, label, value in tiles:
+        html_parts.append(
+            f'<li class="pm-game-spec pm-game-spec--{html.escape(key)}">'
+            f'<span class="pm-game-spec__label">{html.escape(label)}</span>'
+            f'<span class="pm-game-spec__value">{html.escape(value)}</span></li>'
+        )
+    html_parts.append("</ul>")
+    return "\n".join(html_parts)
 
 
 def _content_section(description: str) -> str:
@@ -195,15 +227,14 @@ def product_elementor_main(product: dict, product_v3: dict, posts: list) -> str:
         else '<div class="pm-product-gallery__main" aria-hidden="true"></div>'
     )
 
-    short_desc = product_v3.get("short_description") or ""
     long_desc = product_v3.get("description") or ""
+    specs = _game_specs_html(product_v3)
 
     if USE_PRODUCT_SHORTCODES:
-        lead = "[pm_product_excerpt]"
+        specs = "[pm_game_specs]"
         content = '[pm_product_content title="توضیحات محصول" subtitle="جزئیات، مشخصات و نکات نگهداری"]'
         magazine = '[pm_product_magazine limit="3"]'
     else:
-        lead = _lead_block(short_desc)
         content = _content_section(long_desc)
         magazine = _magazine_section(posts)
 
@@ -238,7 +269,7 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
       <p class="pm-breadcrumb">{crumb}</p>
       <h1>{html.escape(name)}</h1>
       <p class="pm-product-summary__price">{price}</p>
-      {lead}
+      {specs}
       <form class="cart pm-add-to-cart" method="post" action="">
         <div class="pm-qty-row">
           <label class="pm-qty-label">تعداد

@@ -2326,16 +2326,60 @@ img.pm-product-gallery__main {
   margin: 0 0 1rem;
 }
 
+.pm-product-summary__price .woocommerce-Price-amount {
+  letter-spacing: 0.02em;
+}
+
+.pm-game-specs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0 0 1.15rem;
+  padding: 0;
+}
+
+.pm-game-spec {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 4.5rem;
+  padding: 0.65rem 0.4rem;
+  text-align: center;
+  background: linear-gradient(165deg, var(--pm-surface) 0%, color-mix(in srgb, var(--pm-mint-50) 55%, var(--pm-bg)) 100%);
+  border-radius: 14px;
+  box-shadow: var(--pm-shadow-sm);
+}
+
+.pm-game-spec__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--pm-text-muted);
+}
+
+.pm-game-spec__value {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--pm-teal-900);
+  line-height: 1.3;
+}
+
+.pm-add-to-cart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+}
+
 .pm-product-summary__desc {
   color: var(--pm-text-muted);
   margin: 0 0 1rem;
 }
 
 .pm-product-summary__lead {
-  color: var(--pm-teal-900);
-  font-size: 0.92rem;
-  line-height: 1.65;
-  margin: 0 0 1rem;
+  display: none;
 }
 
 .pm-product-summary__lead p {
@@ -2464,43 +2508,70 @@ img.pm-product-gallery__main {
 }
 
 .pm-qty-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(7rem, 8.5rem) 1fr;
+  align-items: stretch;
   gap: 0.65rem;
-  margin-bottom: 0.75rem;
+  width: 100%;
+  margin: 0;
 }
 
 .pm-qty-label {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.88rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  font-size: 0.78rem;
   font-weight: 600;
+  color: var(--pm-text-muted);
+}
+
+.pm-qty {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.pm-add-to-cart .single_add_to_cart_button {
+  width: 100%;
+  min-height: 48px;
 }
 
 .pm-buy-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.65rem;
-  margin-top: 0.25rem;
+  margin: 0;
 }
 
 .pm-buy-actions .pm-btn,
 .pm-add-to-cart .pm-btn {
-  min-height: 44px;
+  min-height: 48px;
+  width: 100%;
+  justify-content: center;
 }
 
-.pm-add-to-cart .single_add_to_cart_button {
-  flex: 1 1 160px;
+@media (max-width: 900px) {
+  .pm-game-specs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pm-qty-row,
+  .pm-buy-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pm-qty {
-  width: 72px;
+  width: 100%;
+  min-height: 48px;
   padding: 0.5rem;
   border-radius: 10px;
   border: none; box-shadow: var(--pm-shadow-sm);
   font-family: inherit;
+  text-align: center;
 }
 
 .pm-trust {
