@@ -124,6 +124,7 @@ UPDATE_ZIP_HOSTS = {
     "raw.githubusercontent.com",
     "objects.githubusercontent.com",
     "codeload.github.com",
+    "webakery.ir",
 }
 PANEL_FILES = {"app.py", "moadian.py", "version.json"}
 PANEL_DIRS = {"static", "templates"}
@@ -2882,15 +2883,28 @@ def update_channel() -> str:
     return clean_channel(row["value"]) if row else ""
 
 
+def release_manifest_urls() -> list[str]:
+    github = studio_manifest_url()
+    channel = update_channel()
+    if channel not in {"customer", "rst"}:
+        return [github]
+    site = f"https://webakery.ir/wp-json/daftarchi/v1/version?channel={channel}"
+    return [site, github]
+
+
 def read_studio_manifest() -> dict:
-    url = studio_manifest_url()
-    try:
-        status, body = http_request("GET", url, timeout=8)
-    except AppError as exc:
-        return {"ok": False, "error": str(exc), "manifest": url}
-    if status >= 400 or not isinstance(body, dict):
-        return {"ok": False, "error": "فهرست نسخه خوانده نشد", "manifest": url}
-    return {"ok": True, "manifest": url, "body": body}
+    last = {"ok": False, "error": "فهرست نسخه خوانده نشد", "manifest": studio_manifest_url()}
+    for url in release_manifest_urls():
+        try:
+            status, body = http_request("GET", url, timeout=8)
+        except AppError as exc:
+            last = {"ok": False, "error": str(exc), "manifest": url}
+            continue
+        if status >= 400 or not isinstance(body, dict) or not str(body.get("version") or "").strip():
+            last = {"ok": False, "error": "فهرست نسخه خوانده نشد", "manifest": url}
+            continue
+        return {"ok": True, "manifest": url, "body": body}
+    return last
 
 
 def panel_update_status() -> dict:

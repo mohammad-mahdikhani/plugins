@@ -477,6 +477,44 @@ class DaftarchiTest(unittest.TestCase):
             else:
                 os.environ["DAFTARCHI_CHANNEL"] = prev
         self.assertEqual(appmod.clean_channel("RST"), "rst")
+
+    def test_customer_update_prefers_the_webakery_release(self):
+        self.assertIn("webakery.ir", appmod.UPDATE_ZIP_HOSTS)
+        with self.assertRaises(appmod.AppError):
+            appmod.download_update_zip("http://webakery.ir/daftarchi/app.zip")
+        with self.assertRaises(appmod.AppError):
+            appmod.download_update_zip("https://evil.example/app.zip")
+        prev = os.environ.get("DAFTARCHI_CHANNEL")
+        os.environ["DAFTARCHI_CHANNEL"] = "customer"
+        original = appmod.http_request
+        seen = []
+
+        def fake(method, url, payload=None, headers=None, form=None, timeout=12):
+            seen.append(url)
+            if "wp-json/daftarchi/v1/version" in url and "channel=customer" in url:
+                return 200, {
+                    "version": "1.2.0",
+                    "notes": "پیام برای فروشگاه",
+                    "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.2.0-app.zip",
+                    "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.2.0-windows.zip",
+                }
+            raise AssertionError(url)
+
+        appmod.http_request = fake
+        try:
+            urls = appmod.release_manifest_urls()
+            self.assertTrue(urls[0].startswith("https://webakery.ir/wp-json/daftarchi/v1/version"))
+            self.assertIn("/channels/customer/version.json", urls[1])
+            body = self.client.get("/api/panel/update").get_json()
+        finally:
+            appmod.http_request = original
+            if prev is None:
+                os.environ.pop("DAFTARCHI_CHANNEL", None)
+            else:
+                os.environ["DAFTARCHI_CHANNEL"] = prev
+        self.assertEqual(body["latest"], "1.2.0")
+        self.assertEqual(body["notes"], "پیام برای فروشگاه")
+        self.assertEqual(seen, ["https://webakery.ir/wp-json/daftarchi/v1/version?channel=customer"])
         self.assertEqual(appmod.clean_channel("../x"), "")
 
     def test_studio_unlock_skips_trial_limit(self):
