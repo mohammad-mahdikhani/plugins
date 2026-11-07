@@ -9,8 +9,21 @@ final class PM_Shell_Chrome {
 
 	public static function init(): void {
 		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 100000 );
+		add_filter( 'elementor/utils/is_post_type_support', array( __CLASS__, 'disable_elementor_for_products' ), 10, 2 );
+		add_filter( 'elementor/utils/is_post_type_supported', array( __CLASS__, 'disable_elementor_for_products' ), 10, 2 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ), 40 );
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
+	}
+
+	/**
+	 * @param bool   $supported Whether Elementor supports the post type.
+	 * @param string $post_type Post type.
+	 */
+	public static function disable_elementor_for_products( $supported, $post_type ) {
+		if ( 'product' === $post_type ) {
+			return false;
+		}
+		return $supported;
 	}
 
 	public static function uses_shell(): bool {
@@ -26,17 +39,7 @@ final class PM_Shell_Chrome {
 		if ( is_product_taxonomy() ) {
 			return true;
 		}
-		if ( ! is_singular( 'product' ) ) {
-			return false;
-		}
-		$id = get_queried_object_id();
-		if ( $id && 'builder' === get_post_meta( $id, '_elementor_edit_mode', true ) ) {
-			$data = (string) get_post_meta( $id, '_elementor_data', true );
-			if ( '' !== $data && '[]' !== $data ) {
-				return false;
-			}
-		}
-		return true;
+		return is_singular( 'product' );
 	}
 
 	/**
@@ -79,6 +82,10 @@ final class PM_Shell_Chrome {
 		wp_add_inline_style(
 			'pm-site',
 			'html body.pm-wc-shell .site-header,html body.pm-wc-shell header#site-header,html body.pm-wc-shell .dynamic-header,html body.pm-wc-shell .site-footer,html body.pm-wc-shell footer#site-footer{display:none!important}'
+			. '.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)!important;gap:1.5rem!important;align-items:start!important;width:min(1200px,92vw)!important;margin:0 auto!important}'
+			. '.pm-game-specs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.55rem!important;list-style:none!important;margin:0 0 1.15rem!important;padding:0!important;width:100%!important}'
+			. '.pm-game-spec{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;aspect-ratio:1/1!important;width:100%!important;padding:.45rem .3rem!important;text-align:center!important;box-sizing:border-box!important;background:linear-gradient(180deg,#fff 0%,#e8f6f1 100%)!important;border:1.5px solid #4aa88e!important;border-radius:18px!important}'
+			. '@media(max-width:768px){.pm-product-single .pm-product-single__grid{grid-template-columns:1fr!important}}'
 		);
 		foreach ( array( 'pm-header', 'pm-mega-menu', 'pm-mobile', 'pm-search', 'pm-trust-badges' ) as $handle ) {
 			wp_enqueue_script( $handle, $home . 'assets/js/' . $handle . '.js', array(), $ver, array( 'in_footer' => true, 'strategy' => 'defer' ) );
@@ -118,9 +125,6 @@ final class PM_Shell_Chrome {
 		}
 		$rows = array();
 		foreach ( $product->get_attributes() as $attribute ) {
-			if ( is_object( $attribute ) && method_exists( $attribute, 'get_visible' ) && ! $attribute->get_visible() ) {
-				continue;
-			}
 			$taxonomy = is_object( $attribute ) ? $attribute->get_name() : '';
 			$label    = wc_attribute_label( $taxonomy, $product );
 			$value    = '';

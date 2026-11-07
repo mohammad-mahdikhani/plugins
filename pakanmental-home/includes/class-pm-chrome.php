@@ -50,10 +50,7 @@ final class PM_Chrome {
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			return false;
 		}
-		if ( is_singular( 'product' ) ) {
-			return true;
-		}
-		if ( is_product_taxonomy() ) {
+		if ( is_singular( 'product' ) || is_product_taxonomy() ) {
 			return true;
 		}
 		return false;

@@ -394,6 +394,7 @@ def wrap_page_elementor_widgets(
 </div>"""
     widget_main = f"""<!-- PM Elementor: محتوای اصلی صفحه — این ویجت را دستی ویرایش کنید -->
 <div class="{site_class} pm-elementor-main" dir="rtl">
+{assets}
 <main id="pm-main">
 {main_html}
 </main>

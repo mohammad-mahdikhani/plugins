@@ -209,8 +209,6 @@ def _game_specs_html(product_v3: dict) -> str:
     ]
     seen = {label for _, label, value in items if value}
     for attr in product_v3.get("attributes") or []:
-        if attr.get("visible") is False:
-            continue
         label = (attr.get("name") or "").strip()
         options = attr.get("options") or []
         value = "، ".join(str(o).strip() for o in options if str(o).strip())
@@ -352,6 +350,61 @@ body.single-product.elementor-page div.product {{
   margin: 0 !important; padding: 0 !important; border: none !important; background: transparent !important;
 }}
 body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !important; }}
+.pm-product-single {{ padding: 1.25rem 0 2rem; color: #1e4339; font-family: Vazirmatn, Tahoma, sans-serif; }}
+.pm-product-single .pm-product-single__grid {{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) !important;
+  gap: 1.5rem !important;
+  align-items: start !important;
+  width: min(1200px, 92vw) !important;
+  margin: 0 auto !important;
+  float: none !important;
+}}
+.pm-product-single .pm-product-gallery,
+.pm-product-single .pm-product-summary {{
+  float: none !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}}
+.pm-product-single .pm-product-summary {{ color: #1e4339 !important; }}
+.pm-product-single .pm-product-summary h1 {{
+  display: block !important;
+  margin: 0 0 0.7rem !important;
+  font-size: clamp(1.2rem, 2.4vw, 1.7rem) !important;
+  font-weight: 800 !important;
+  color: #1e4339 !important;
+}}
+.pm-product-single .pm-product-summary__price {{ font-size: 1.3rem !important; font-weight: 800 !important; color: #1e4339 !important; margin: 0 0 1rem !important; }}
+.pm-product-single .pm-game-specs {{
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+  list-style: none !important;
+  margin: 0 0 1.15rem !important;
+  padding: 0 !important;
+  width: 100% !important;
+}}
+.pm-product-single .pm-game-spec {{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  aspect-ratio: 1 / 1 !important;
+  width: 100% !important;
+  padding: 0.45rem 0.3rem !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(180deg, #fff 0%, #e8f6f1 100%) !important;
+  border: 1.5px solid #4aa88e !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 22px rgba(30,67,57,.07) !important;
+}}
+.pm-product-single .pm-game-spec__label {{ font-size: .68rem !important; font-weight: 600 !important; color: #2a5f52 !important; }}
+.pm-product-single .pm-game-spec__value {{ font-size: .86rem !important; font-weight: 800 !important; color: #1e4339 !important; overflow-wrap: anywhere !important; }}
+@media (max-width: 768px) {{
+  .pm-product-single .pm-product-single__grid {{ grid-template-columns: 1fr !important; }}
+}}
 </style>
 <section class="pm-product-single">
   <div class="pm-container pm-product-single__grid">
@@ -401,8 +454,9 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
 
 
 def deploy_product(post_id: int) -> None:
-    product = fetch_product_store(post_id)
     product_v3 = fetch_product_wc_v3(post_id)
+    status = product_v3.get("status") or "publish"
+    product = fetch_product_store(post_id)
     posts = fetch_magazine_posts(3, product_v3)
 
     main = product_elementor_main(product, product_v3, posts)
@@ -412,14 +466,21 @@ def deploy_product(post_id: int) -> None:
     wm = hide + wm
     tree = html_widget_tree_split(wh, wm, wf)
     _push_elementor_product(post_id, tree)
-    client = ElementorMcp()
-    _apply_product_elementor_settings(client, post_id)
-    try:
-        client.call("elementor-publish-document", {"post_id": post_id})
-    except RuntimeError:
-        pass
+    if status == "publish":
+        client = ElementorMcp()
+        _apply_product_elementor_settings(client, post_id)
+        try:
+            client.call("elementor-publish-document", {"post_id": post_id})
+        except RuntimeError:
+            pass
+    else:
+        req(
+            "PUT",
+            f"https://www.pakanmental.com/wp-json/wc/v3/products/{post_id}",
+            {"status": status},
+        )
     _clear_elementor_element_cache(post_id)
-    print("product elementor canvas", post_id, "ok")
+    print("product elementor canvas", post_id, status, "ok")
 
 
 def main() -> None:

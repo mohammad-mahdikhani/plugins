@@ -228,9 +228,6 @@ final class PM_Game_Specs {
 
 		$out = array();
 		foreach ( $product->get_attributes() as $attribute ) {
-			if ( is_object( $attribute ) && method_exists( $attribute, 'get_visible' ) && ! $attribute->get_visible() ) {
-				continue;
-			}
 			$taxonomy = is_object( $attribute ) ? $attribute->get_name() : '';
 			$label    = wc_attribute_label( $taxonomy, $product );
 			$value    = '';
