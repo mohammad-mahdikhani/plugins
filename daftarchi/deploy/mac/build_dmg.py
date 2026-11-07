@@ -59,7 +59,7 @@ def build(zip_path: Path, setup_script: Path, out_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("rst", "customer", "jazayeri"))
+    parser.add_argument("kind", choices=("rst", "customer", "jazayeri", "pakan"))
     args = parser.parse_args()
     if args.kind == "rst":
         build(
@@ -73,11 +73,17 @@ def main() -> None:
             MAC / "setup-customer.command",
             DEPLOY / "Daftarchi-Customer-setup.dmg",
         )
-    else:
+    elif args.kind == "jazayeri":
         build(
             DEPLOY / "Daftarchi-Jazayeri-Mac.zip",
             MAC / "setup-jazayeri.command",
             DEPLOY / "Daftarchi-Jazayeri-setup.dmg",
+        )
+    else:
+        build(
+            DEPLOY / "Daftarchi-Pakan-Mac.zip",
+            MAC / "setup-pakan.command",
+            DEPLOY / "Daftarchi-Pakan-setup.dmg",
         )
 
 

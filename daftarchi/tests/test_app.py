@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import sqlite3
 import tempfile
 import unittest
 import zipfile
@@ -240,6 +241,39 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(dmg[-512:-508], b"koly")
         setup = (deploy / "mac" / "setup-jazayeri.command").read_text(encoding="utf-8")
         self.assertIn("Daftarchi-Jazayeri", setup)
+        self.assertNotIn("DAFTARCHI_UNLOCK", setup)
+
+    def test_pakan_package_matches_barcode_stock_and_price(self):
+        deploy = Path(__file__).resolve().parents[1] / "deploy"
+        expected = {
+            "Daftarchi-Pakan.zip": "Daftarchi-Pakan/Start-Daftarchi.bat",
+            "Daftarchi-Pakan-Mac.zip": "Daftarchi-Pakan/Start-Daftarchi.command",
+            "Daftarchi-Pakan-Linux.zip": "Daftarchi-Pakan/Start-Daftarchi.sh",
+        }
+        for filename, starter in expected.items():
+            zpath = deploy / filename
+            self.assertTrue(zpath.is_file(), zpath)
+            with zipfile.ZipFile(zpath) as archive:
+                names = archive.namelist()
+                script = archive.read(starter).decode()
+                preset = archive.read("Daftarchi-Pakan/preset.json").decode()
+                app_text = archive.read("Daftarchi-Pakan/app/app.py").decode()
+                client = archive.read("Daftarchi-Pakan/app/static/js/app.js").decode()
+            self.assertIn("DAFTARCHI_CHANNEL=customer", script)
+            self.assertIn("DAFTARCHI_PRESET", script)
+            self.assertNotIn("DAFTARCHI_UNLOCK", script)
+            self.assertIn('"unlimited": true', preset)
+            self.assertIn("فروشگاه پاکان", preset)
+            self.assertIn('"shop_mode": "offline"', preset)
+            self.assertNotIn("studio_unlock", preset)
+            self.assertIn("/api/products/scan", app_text)
+            self.assertIn("همین بارکد", client)
+            self.assertFalse(any("studio-unlock" in name for name in names))
+        dmg = (deploy / "Daftarchi-Pakan-setup.dmg").read_bytes()
+        self.assertGreater(len(dmg), 20_000_000)
+        self.assertEqual(dmg[-512:-508], b"koly")
+        setup = (deploy / "mac" / "setup-pakan.command").read_text(encoding="utf-8")
+        self.assertIn("Daftarchi-Pakan", setup)
         self.assertNotIn("DAFTARCHI_UNLOCK", setup)
 
     def test_source_zip_is_the_program(self):
@@ -682,6 +716,48 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
         self.assertEqual(kept.status_code, 200, kept.get_json())
         self.assertFalse(kept.get_json()["host_saved"])
+
+    def test_scan_matches_the_product_price_and_stock(self):
+        self.add_product(name="شیر پاکان", price=12000, stock=4, barcode="6260001111111")
+        other = self.add_product(name="ماست پاکان", price=8000, stock=2, barcode="1234")
+        persian = self.client.get("/api/products/scan", query_string={"code": "۶۲۶۰۰۰۱۱۱۱۱۱۱"})
+        self.assertEqual(persian.status_code, 200, persian.get_json())
+        self.assertEqual(persian.get_json()["product"]["name"], "شیر پاکان")
+        self.assertEqual(persian.get_json()["price"], 12000)
+        self.assertEqual(persian.get_json()["stock"], 4)
+        padded = self.client.get("/api/products/scan", query_string={"code": "0006260001111111"})
+        self.assertEqual(padded.status_code, 200, padded.get_json())
+        self.assertEqual(padded.get_json()["product"]["name"], "شیر پاکان")
+        self.assertEqual(padded.get_json()["price"], 12000)
+        short = self.client.get("/api/products/scan", query_string={"code": "1234"})
+        self.assertEqual(short.get_json()["product"]["name"], "ماست پاکان")
+        self.assertEqual(short.get_json()["stock"], 2)
+        missing = self.client.get("/api/products/scan", query_string={"code": "999"})
+        self.assertEqual(missing.status_code, 404)
+        parent = self.add_product(name="تیشرت پاکان", price=1000, stock=1, barcode="7000000000001")
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE products SET product_type='variable' WHERE id=?", (parent["id"],))
+        db.execute(
+            """INSERT INTO product_variations
+               (product_id, sku, barcode, price, stock, in_stock, label, attributes, active)
+               VALUES (?,?,?,?,?,?,?,?,1)""",
+            (parent["id"], "RED", "7000000000002", 25000, 3, 1, "قرمز", "[]"),
+        )
+        db.execute(
+            """INSERT INTO product_variations
+               (product_id, sku, barcode, price, stock, in_stock, label, attributes, active)
+               VALUES (?,?,?,?,?,?,?,?,1)""",
+            (other["id"], "DUP", "1234", 9000, 1, 1, "تکراری", "[]"),
+        )
+        db.commit()
+        db.close()
+        color = self.client.get("/api/products/scan", query_string={"code": "7000000000002"})
+        self.assertEqual(color.status_code, 200, color.get_json())
+        self.assertEqual(color.get_json()["price"], 25000)
+        self.assertEqual(color.get_json()["stock"], 3)
+        self.assertEqual(color.get_json()["product"]["name"], "تیشرت پاکان")
+        clash = self.client.get("/api/products/scan", query_string={"code": "1234"})
+        self.assertEqual(clash.status_code, 409)
 
     def test_archived_barcode_can_be_used_again(self):
         product = self.add_product()

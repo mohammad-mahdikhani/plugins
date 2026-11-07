@@ -765,6 +765,60 @@ def make_invoice_code(conn) -> str:
     return secrets.token_hex(6).upper()
 
 
+def scan_keys(code: str) -> list[str]:
+    text = str(code or "").translate(DIGITS)
+    text = re.sub(r"[\s\u200c\u200d]+", "", text).strip("*")
+    if not text:
+        return []
+    keys = [text]
+    digits = re.sub(r"\D", "", text)
+    if digits and digits not in keys:
+        keys.append(digits)
+    trimmed = digits.lstrip("0")
+    if trimmed and len(digits) >= 8 and trimmed not in keys:
+        keys.append(trimmed)
+    return keys
+
+
+def locate_scan(conn, code: str):
+    keys = scan_keys(code)
+    if not keys:
+        return None
+    marks = ",".join("?" for _ in keys)
+    rows = conn.execute(
+        f"""SELECT p.id AS product_id, NULL AS variation_id, p.barcode AS barcode, p.sku AS sku
+            FROM products p
+            WHERE p.active=1 AND (p.barcode IN ({marks}) OR p.sku IN ({marks}))
+            UNION ALL
+            SELECT v.product_id, v.id, v.barcode, v.sku
+            FROM product_variations v
+            JOIN products p ON p.id=v.product_id
+            WHERE p.active=1 AND v.active=1 AND (v.barcode IN ({marks}) OR v.sku IN ({marks}))""",
+        (*keys, *keys, *keys, *keys),
+    ).fetchall()
+    exact = keys[0]
+    best: dict[tuple[int, int], int] = {}
+    for row in rows:
+        variation_id = int(row["variation_id"] or 0)
+        score = 1
+        if row["barcode"] == exact:
+            score = 4
+        elif row["barcode"] in keys:
+            score = 3
+        elif row["sku"] == exact:
+            score = 2
+        current = best.get((int(row["product_id"]), variation_id), 0)
+        if score > current:
+            best[(int(row["product_id"]), variation_id)] = score
+    if not best:
+        return None
+    top = max(best.values())
+    winners = [key for key, score in best.items() if score == top]
+    if len(winners) > 1:
+        return "conflict"
+    return winners[0]
+
+
 def match_product(conn, barcode: str | None, sku: str | None):
     by_barcode = conn.execute("SELECT * FROM products WHERE barcode=?", (barcode,)).fetchone() if barcode else None
     by_sku = conn.execute("SELECT * FROM products WHERE sku=?", (sku,)).fetchone() if sku else None
@@ -3434,6 +3488,30 @@ def list_products():
             rows = conn.execute("SELECT * FROM products WHERE active=1 ORDER BY name").fetchall()
         products = present_products(conn, rows, threshold)
     return jsonify(products=products)
+
+
+@app.get("/api/products/scan")
+def scan_product():
+    require_user()
+    with connect() as conn:
+        found = locate_scan(conn, request.args.get("code") or "")
+        if found is None:
+            raise AppError("کالایی با این بارکد نیست", 404)
+        if found == "conflict":
+            raise AppError("این بارکد به بیش از یک کالا می‌خورد. بارکد را در کالاها یکتا کنید.", 409)
+        product_id, variation_id = found
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
+        if not row:
+            raise AppError("کالایی با این بارکد نیست", 404)
+        threshold = setting_int(get_settings(conn), "low_stock")
+        product = present_product(conn, row, threshold)
+    variation = next((item for item in product["variations"] if item["id"] == variation_id), None) if variation_id else None
+    return jsonify(
+        product=product,
+        variation_id=variation_id or None,
+        price=variation["price"] if variation else product["price"],
+        stock=variation["stock"] if variation else product["stock"],
+    )
 
 
 @app.post("/api/products")

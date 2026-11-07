@@ -90,6 +90,7 @@ const state = {
   supportTab: "chat",
   supportLog: [],
   lastError: "",
+  scanHit: null,
   desktopIcon: false,
   installedApp: window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true,
 };
@@ -338,20 +339,20 @@ function syncCartStock() {
   }).filter(Boolean);
 }
 function addProduct(product, variation) {
-  if (!product) return;
+  if (!product) return false;
   if (product.type === "variable" && !variation) {
-    if (!product.variations?.length) return toast("این کالای متغیر هنوز نوعی ندارد. دوباره از ووکامرس دریافت کنید.");
+    if (!product.variations?.length) { toast("این کالای متغیر هنوز نوعی ندارد. دوباره از ووکامرس دریافت کنید."); return false; }
     state.modal = { type: "variations", product };
     render();
-    return;
+    return false;
   }
   const limits = sellableStock(product, variation);
-  if (limits.tracked && limits.stock <= 0) return toast("این کالا موجودی ندارد");
-  if (!limits.tracked && !limits.inStock) return toast("این متغیر ناموجود است");
+  if (limits.tracked && limits.stock <= 0) { toast("این کالا موجودی ندارد"); return false; }
+  if (!limits.tracked && !limits.inStock) { toast("این متغیر ناموجود است"); return false; }
   const variationId = variation ? variation.id : 0;
   const line = state.cart.find((item) => item.id === product.id && (item.variationId || 0) === variationId);
   const cap = limits.tracked ? limits.stock : 1000000;
-  if ((line?.qty || 0) + 1 > cap) return toast("موجودی کافی نیست");
+  if ((line?.qty || 0) + 1 > cap) { toast("موجودی کافی نیست"); return false; }
   if (line) line.qty += 1;
   else state.cart.push({
     id: product.id,
@@ -366,6 +367,7 @@ function addProduct(product, variation) {
   state.modal = null;
   state.focusBarcode = true;
   render();
+  return true;
 }
 function matchCode(product, code) {
   if (product.barcode === code || product.sku === code) return { product, variation: null, parent: true };
@@ -375,18 +377,20 @@ function matchCode(product, code) {
 async function addByBarcode(code) {
   const trimmed = code.trim();
   if (!trimmed) return;
-  let hit = state.products.map((product) => matchCode(product, trimmed)).find(Boolean);
-  if (!hit) {
-    const data = await api(`/api/products?q=${encodeURIComponent(trimmed)}`);
-    hit = data.products.map((product) => matchCode(product, trimmed)).find(Boolean);
-  }
-  if (!hit) {
-    toast("کالایی با این بارکد نیست");
-    return;
-  }
-  if (hit.parent && hit.product.type === "variable") return addProduct(hit.product);
-  addProduct(hit.product, hit.variation);
-  toast(`${hit.variation ? hit.variation.label : hit.product.name} به سبد اضافه شد`);
+  const data = await api(`/api/products/scan?code=${encodeURIComponent(trimmed)}`);
+  const product = data.product;
+  if (!state.products.some((item) => item.id === product.id)) state.products.push(product);
+  else state.products = state.products.map((item) => item.id === product.id ? product : item);
+  const variation = data.variation_id
+    ? (product.variations || []).find((item) => item.id === data.variation_id) || null
+    : null;
+  state.scanHit = {
+    name: variation ? `${product.name} — ${variation.label}` : product.name,
+    price: data.price,
+    stock: data.stock,
+  };
+  const added = addProduct(product, variation);
+  if (!added) render();
   const input = document.getElementById("barcode");
   if (input) input.value = "";
 }
@@ -891,7 +895,7 @@ function posHtml() {
   const discount = cartDiscount();
   const payable = subtotal - discount;
   const closed = state.registerInfo && !state.registerInfo.open;
-  const lines = state.cart.length ? state.cart.map((line) => `<div class="line"><div><strong>${esc(line.name)}</strong><div class="muted num">${money(line.price)}</div></div>
+  const lines = state.cart.length ? state.cart.map((line) => `<div class="line"><div><strong>${esc(line.name)}</strong><div class="muted num">${money(line.price)} · موجودی ${num(line.stock)}</div></div>
     <div><div class="qty"><button type="button" data-act="dec" data-id="${line.id}" data-variation="${line.variationId || 0}">−</button><span class="num">${num(line.qty)}</span><button type="button" data-act="inc" data-id="${line.id}" data-variation="${line.variationId || 0}">+</button></div>
     <button type="button" class="btn danger" data-act="remove-line" data-id="${line.id}" data-variation="${line.variationId || 0}">حذف</button></div></div>`).join("") : `<p class="empty">سبد خالی است. بارکد را بخوانید یا کالا را انتخاب کنید.</p>`;
   const pending = state.pending.length ? `<div><h3 class="section-title">پرداخت‌های باز</h3>${state.pending.map((sale) => `<div class="line"><span>فاکتور ${num(sale.id)} · ${money(sale.payable)}</span><button type="button" class="btn" data-act="open-gateway" data-id="${sale.id}">ادامه</button></div>`).join("")}</div>` : "";
@@ -899,6 +903,7 @@ function posHtml() {
     <section class="card cart">
       ${closed ? `<div class="banner">صندوق بسته است. <button type="button" class="btn" data-act="nav" data-page="register">باز کردن صندوق</button></div>` : ""}
       <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد را اینجا بگیرید"></div>
+      ${state.scanHit ? `<div class="banner">همین بارکد: <strong>${esc(state.scanHit.name)}</strong> · قیمت ${money(state.scanHit.price)} · موجودی ${num(state.scanHit.stock)}</div>` : ""}
       ${lines}
       <div class="grid-2">
         <div class="field"><label>تخفیف</label><input id="discount" value="${esc(state.discountValue)}" inputmode="numeric"></div>
