@@ -109,6 +109,7 @@ DEFAULT_SETTINGS = {
 }
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
+WOO_SYNC_URGENT = 0.12
 POS_PROVIDERS = {"manual", "saman", "behpardakht", "parsian", "irankish", "sepehr", "asanpardakht"}
 GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
@@ -2129,13 +2130,18 @@ def require_access(conn) -> dict:
     return access
 
 
+def woo_stock_status(stock) -> str:
+    return "instock" if int(stock or 0) > 0 else "outofstock"
+
+
 def woo_item(row) -> dict:
     item = {
         "name": row["name"],
         "type": "simple",
         "regular_price": str(row["price"]),
         "manage_stock": True,
-        "stock_quantity": row["stock"],
+        "stock_quantity": int(row["stock"] or 0),
+        "stock_status": woo_stock_status(row["stock"]),
         "status": "publish",
     }
     if row["sku"]:
@@ -2167,8 +2173,23 @@ def variation_woo_payload(var) -> dict:
     if var["stock"] is not None:
         payload["manage_stock"] = True
         payload["stock_quantity"] = int(var["stock"])
-        payload["stock_status"] = "instock" if int(var["stock"]) else "outofstock"
+        payload["stock_status"] = woo_stock_status(var["stock"])
     return payload
+
+
+def parent_site_status(conn, product_id: int) -> str | None:
+    rows = conn.execute(
+        "SELECT stock, in_stock FROM product_variations WHERE product_id=? AND active=1",
+        (product_id,),
+    ).fetchall()
+    managed = [row for row in rows if row["stock"] is not None]
+    if not managed:
+        return None
+    if any(row["stock"] is None and int(row["in_stock"] or 0) for row in rows):
+        return "instock"
+    if any(int(row["stock"]) > 0 for row in managed):
+        return "instock"
+    return "outofstock"
 
 
 def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id: int | None = None) -> None:
@@ -2185,6 +2206,9 @@ def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id:
         parent = int(row["woo_id"])
         vid = int(var["woo_id"])
         woo_request(settings, "PUT", f"products/{parent}/variations/{vid}", payload=variation_woo_payload(var))
+        status = parent_site_status(conn, product_id)
+        if status:
+            woo_request(settings, "PUT", f"products/{parent}", payload={"stock_status": status})
         return
     if product_kind(row) == "variable":
         if not row["woo_id"]:
@@ -2251,21 +2275,35 @@ def _run_woo_sync_timer() -> None:
         _flush_woo_sync_batch(batch)
 
 
-def queue_woo_sync(product_id: int, variation_id: int | None = None) -> None:
+def stock_hit_zero(conn, product_id: int, variation_id: int | None) -> bool:
+    if variation_id:
+        var = conn.execute("SELECT stock FROM product_variations WHERE id=?", (variation_id,)).fetchone()
+        if var and var["stock"] is not None and int(var["stock"]) <= 0:
+            return True
+    row = conn.execute("SELECT stock, product_type FROM products WHERE id=?", (product_id,)).fetchone()
+    if not row or product_kind(row) == "variable":
+        return False
+    return int(row["stock"] or 0) <= 0
+
+
+def queue_woo_sync(product_id: int, variation_id: int | None = None, urgent: bool = False) -> None:
     global _woo_sync_timer
     key = (int(product_id), int(variation_id) if variation_id else None)
     with _woo_sync_lock:
         _woo_sync_pending.add(key)
-        if _woo_sync_timer:
+        delay = WOO_SYNC_URGENT if urgent else WOO_SYNC_DELAY
+        if _woo_sync_timer is not None:
+            if not urgent or _woo_sync_timer.interval <= delay:
+                return
             _woo_sync_timer.cancel()
-        _woo_sync_timer = threading.Timer(WOO_SYNC_DELAY, _run_woo_sync_timer)
+        _woo_sync_timer = threading.Timer(delay, _run_woo_sync_timer)
         _woo_sync_timer.daemon = True
         _woo_sync_timer.start()
 
 
 def maybe_queue_woo_sync(conn, product_id: int, variation_id: int | None = None) -> None:
     if woo_auto_ready(get_settings(conn)):
-        queue_woo_sync(product_id, variation_id)
+        queue_woo_sync(product_id, variation_id, urgent=stock_hit_zero(conn, product_id, variation_id))
 
 
 def save_settings(conn, payload: dict):

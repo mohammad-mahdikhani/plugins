@@ -350,6 +350,88 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(customers[0]["phone"], "09121111111")
         self.assertEqual(customers[0]["balance"], 0)
 
+    def test_zero_stock_is_sent_to_the_site_immediately(self):
+        self.open_register(0)
+        staying = self.add_product(name="ماست", price=8000, stock=2, barcode="stay", cost=0)
+        gone = self.add_product(name="شیر پاکان", price=10000, stock=1, barcode="gone", cost=0)
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE products SET woo_id=? WHERE id=?", (71, staying["id"]))
+        db.execute("UPDATE products SET woo_id=? WHERE id=?", (70, gone["id"]))
+        db.commit()
+        db.close()
+        seen = []
+
+        def fake_http(method, url, payload=None, headers=None, form=None, timeout=12):
+            if method == "PUT":
+                seen.append((url, payload))
+            return 200, {"id": 70}
+
+        original = appmod.http_request
+        old_delay = appmod.WOO_SYNC_DELAY
+        old_urgent = appmod.WOO_SYNC_URGENT
+        appmod.http_request = fake_http
+        appmod.WOO_SYNC_DELAY = 5
+        appmod.WOO_SYNC_URGENT = 0.01
+        try:
+            self.client.put("/api/settings", json={
+                "wp_url": "https://shop.example",
+                "woo_key": "ck",
+                "woo_secret": "cs",
+            })
+            self.client.post("/api/sales", json={
+                "items": [{"product_id": staying["id"], "qty": 1}],
+                "payment_method": "cash",
+            })
+            sold = self.client.post("/api/sales", json={
+                "items": [{"product_id": gone["id"], "qty": 1}],
+                "payment_method": "cash",
+            })
+            self.assertEqual(sold.status_code, 200, sold.get_json())
+            timer = appmod._woo_sync_timer
+            if timer:
+                timer.join(2)
+        finally:
+            appmod.http_request = original
+            appmod.WOO_SYNC_DELAY = old_delay
+            appmod.WOO_SYNC_URGENT = old_urgent
+        zero = [payload for _url, payload in seen if payload.get("stock_quantity") == 0]
+        self.assertEqual(len(zero), 1, seen)
+        self.assertEqual(zero[0]["stock_status"], "outofstock")
+        parent = self.add_product(name="تیشرت", price=1000, stock=1, barcode="shirt", cost=0)
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE products SET product_type='variable', woo_id=80, stock=1 WHERE id=?", (parent["id"],))
+        cur = db.execute(
+            """INSERT INTO product_variations
+               (product_id, woo_id, sku, barcode, price, stock, in_stock, label, attributes, active)
+               VALUES (?,?,?,?,?,?,?,?,?,1)""",
+            (parent["id"], 81, "RED", "shirt-red", 25000, 1, 1, "قرمز", "[]"),
+        )
+        variation_id = cur.lastrowid
+        db.commit()
+        db.close()
+        seen.clear()
+        appmod.http_request = fake_http
+        appmod.WOO_SYNC_DELAY = 5
+        appmod.WOO_SYNC_URGENT = 0.01
+        try:
+            sold = self.client.post("/api/sales", json={
+                "items": [{"product_id": parent["id"], "variation_id": variation_id, "qty": 1}],
+                "payment_method": "cash",
+            })
+            self.assertEqual(sold.status_code, 200, sold.get_json())
+            timer = appmod._woo_sync_timer
+            if timer:
+                timer.join(2)
+        finally:
+            appmod.http_request = original
+            appmod.WOO_SYNC_DELAY = old_delay
+            appmod.WOO_SYNC_URGENT = old_urgent
+        variation = [payload for url, payload in seen if "/variations/" in url]
+        parent_status = [payload for url, payload in seen if "/products/80" in url and "/variations/" not in url]
+        self.assertEqual(variation[0]["stock_quantity"], 0, seen)
+        self.assertEqual(variation[0]["stock_status"], "outofstock")
+        self.assertEqual(parent_status[0]["stock_status"], "outofstock")
+
     def test_walk_in_buyer_is_optional_and_kept_for_the_club(self):
         self.open_register(0)
         product = self.add_product(barcode="walk-1")
