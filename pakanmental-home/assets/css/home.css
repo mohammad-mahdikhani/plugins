@@ -276,11 +276,33 @@ body.pm-home {
   white-space: nowrap;
 }
 
-/* Categories — 6 tiles, flat markup */
+/* Categories — 2-row carousel, at least 4 tiles visible */
+.pm-cats-carousel {
+  --pm-cat-visible: 4;
+}
+
+.pm-cats-track {
+  display: block;
+  direction: ltr;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.pm-cats-track::-webkit-scrollbar {
+  display: none;
+}
+
 .pm-cats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  direction: rtl;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: row;
+  grid-template-columns: repeat(var(--pm-cat-cols, 4), minmax(0, 1fr));
   gap: 0.65rem;
+  width: calc(100% * var(--pm-cat-cols, 4) / var(--pm-cat-visible, 4));
+  min-width: 100%;
 }
 
 .pm-cat {
@@ -316,6 +338,10 @@ body.pm-home {
 
 .pm-track::-webkit-scrollbar {
   display: none;
+}
+
+.pm-track.pm-cats-track {
+  display: block;
 }
 
 .pm-carousel__btn {
@@ -524,8 +550,8 @@ body.pm-home {
     justify-content: center;
   }
 
-  .pm-cats {
-    grid-template-columns: repeat(3, 1fr);
+  .pm-cats-carousel {
+    --pm-cat-visible: 2;
   }
 
   .pm-blog {
@@ -542,7 +568,7 @@ body.pm-home {
 }
 
 @media (max-width: 480px) {
-  .pm-cats {
-    grid-template-columns: repeat(2, 1fr);
+  .pm-cats-carousel {
+    --pm-cat-visible: 2;
   }
 }

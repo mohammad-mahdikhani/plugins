@@ -153,12 +153,12 @@ function pm_product_promises_html(): string {
 }
 
 /**
- * Parent WooCommerce product categories for the homepage grid.
+ * Parent WooCommerce product categories for the homepage 2-row carousel.
  */
 function pm_home_parent_categories_html(): string {
 	$shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' );
 	if ( ! taxonomy_exists( 'product_cat' ) ) {
-		return '<div class="pm-cats"></div>';
+		return '<div class="pm-carousel pm-cats-carousel"><div class="pm-track pm-cats-track"><div class="pm-cats"></div></div></div>';
 	}
 
 	$terms = get_terms(
@@ -171,11 +171,12 @@ function pm_home_parent_categories_html(): string {
 		)
 	);
 	if ( is_wp_error( $terms ) || empty( $terms ) ) {
-		return '<div class="pm-cats"></div>';
+		return '<div class="pm-carousel pm-cats-carousel"><div class="pm-track pm-cats-track"><div class="pm-cats"></div></div></div>';
 	}
 
 	$default_id = (int) get_option( 'default_product_cat' );
-	$html       = '<div class="pm-cats" data-pm-home-cats>';
+	$tiles      = '';
+	$count      = 0;
 	foreach ( $terms as $term ) {
 		if ( ! $term instanceof WP_Term ) {
 			continue;
@@ -190,12 +191,20 @@ function pm_home_parent_categories_html(): string {
 		if ( is_wp_error( $link ) ) {
 			$link = $shop_url;
 		}
-		$html .= sprintf(
+		$tiles .= sprintf(
 			'<a class="pm-cat" href="%s"><span class="pm-cat__label">%s</span></a>',
 			esc_url( $link ),
 			esc_html( $term->name )
 		);
+		++$count;
 	}
-	$html .= '</div>';
-	return $html;
+	$cols = max( 4, (int) ceil( $count / 2 ) );
+	return '<div class="pm-carousel pm-cats-carousel">'
+		. '<button type="button" class="pm-carousel__btn pm-carousel__btn--prev" data-pm-scroll="pm-track-cats" data-pm-dir="prev" aria-label="' . esc_attr__( 'قبلی', 'pakanmental-home' ) . '">‹</button>'
+		. '<div class="pm-cats-track" id="pm-track-cats" tabindex="0">'
+		. '<div class="pm-cats" data-pm-home-cats style="--pm-cat-cols:' . esc_attr( (string) $cols ) . '">'
+		. $tiles
+		. '</div></div>'
+		. '<button type="button" class="pm-carousel__btn pm-carousel__btn--next" data-pm-scroll="pm-track-cats" data-pm-dir="next" aria-label="' . esc_attr__( 'بعدی', 'pakanmental-home' ) . '">›</button>'
+		. '</div>';
 }

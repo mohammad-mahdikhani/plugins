@@ -117,16 +117,27 @@ def home_categories_html() -> str:
     ]
     parents.sort(key=lambda cat: ((cat.get("menu_order") or 0), cat.get("name") or ""))
 
-    parts = ['<div class="pm-cats" data-pm-home-cats>']
+    tiles = []
     for cat in parents:
         name = cat.get("name") or ""
         slug = unquote(cat.get("slug") or "")
         href = cat.get("permalink") or ""
         if not href or href.rstrip("/") == URLS["shop"].rstrip("/"):
             href = f"{SITE}/product-category/{quote(slug)}/" if slug else URLS["shop"]
-        parts.append(category_tile(name, _category_icon_key(name, slug), href))
-    parts.append("</div>")
-    return "\n".join(parts)
+        tiles.append(category_tile(name, _category_icon_key(name, slug), href))
+    cols = max(4, (len(tiles) + 1) // 2)
+    return "\n".join(
+        [
+            '<div class="pm-carousel pm-cats-carousel">',
+            '<button type="button" class="pm-carousel__btn pm-carousel__btn--prev" data-pm-scroll="pm-track-cats" data-pm-dir="prev" aria-label="قبلی">‹</button>',
+            '<div class="pm-cats-track" id="pm-track-cats" tabindex="0">',
+            f'<div class="pm-cats" data-pm-home-cats style="--pm-cat-cols:{cols}">',
+            *tiles,
+            "</div></div>",
+            '<button type="button" class="pm-carousel__btn pm-carousel__btn--next" data-pm-scroll="pm-track-cats" data-pm-dir="next" aria-label="بعدی">›</button>',
+            "</div>",
+        ]
+    )
 
 
 def home_product_rows_html() -> str:
