@@ -47,7 +47,7 @@ final class PM_Deploy {
 			return new WP_REST_Response( array( 'error' => 'invalid_base64' ), 400 );
 		}
 
-		if ( ! preg_match( '#^(includes|templates|assets)/#', $rel ) && ! in_array( $rel, array( 'pakanmental-home.php', 'README.md' ), true ) ) {
+		if ( ! preg_match( '#^(includes|templates|assets|woocommerce)/#', $rel ) && ! in_array( $rel, array( 'pakanmental-home.php', 'README.md' ), true ) ) {
 			return new WP_REST_Response( array( 'error' => 'path_not_allowed' ), 403 );
 		}
 

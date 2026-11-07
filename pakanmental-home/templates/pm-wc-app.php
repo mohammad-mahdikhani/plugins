@@ -1,6 +1,6 @@
 <?php
 /**
- * Full-page PM shell for single product and product category archives.
+ * Fixed document for every WooCommerce product and category archive.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -25,19 +25,27 @@ defined( 'ABSPATH' ) || exit;
 			wc_get_template_part( 'content', 'single-product' );
 		}
 	} else {
+		$term = get_queried_object();
 		?>
 		<section class="pm-page-head">
 			<div class="pm-container">
-				<?php if ( is_product_category() ) : ?>
-					<h1><?php single_term_title(); ?></h1>
-					<?php if ( term_description() ) : ?>
-						<div class="pm-shop-category__body"><?php echo term_description(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
-					<?php endif; ?>
+				<?php if ( is_product_category() && $term instanceof WP_Term ) : ?>
+					<h1><?php echo esc_html( $term->name ); ?></h1>
 				<?php else : ?>
-					<h1><?php esc_html_e( 'فروشگاه', 'pakanmental-home' ); ?></h1>
+					<h1><?php single_term_title(); ?></h1>
 				<?php endif; ?>
 			</div>
 		</section>
+		<?php if ( is_product_category() && $term instanceof WP_Term && term_description() ) : ?>
+		<section class="pm-shop-category" aria-label="<?php esc_attr_e( 'توضیحات دسته‌بندی', 'pakanmental-home' ); ?>">
+			<div class="pm-container">
+				<div class="pm-shop-category__content">
+					<h2 class="pm-shop-category__title"><?php echo esc_html( $term->name ); ?></h2>
+					<div class="pm-shop-category__body"><?php echo term_description(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+				</div>
+			</div>
+		</section>
+		<?php endif; ?>
 		<section class="pm-shop">
 			<div class="pm-container">
 				<?php echo do_shortcode( '[pm_shop_loop per_page="12"]' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>

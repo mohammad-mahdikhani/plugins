@@ -126,11 +126,11 @@
         formatMoney(price, cart) +
         "</span>" +
         '<div class="pm-mini-cart__qty">' +
-        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="-1" aria-label="کم کردن">−</button>' +
+        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="1" aria-label="زیاد کردن">+</button>' +
         '<span class="pm-mini-cart__qty-val">' +
         faNum(item.quantity) +
         "</span>" +
-        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="1" aria-label="زیاد کردن">+</button>' +
+        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="-1" aria-label="کم کردن">−</button>' +
         '<button type="button" class="pm-mini-cart__remove" data-pm-remove aria-label="حذف">×</button>' +
         "</div></div></li>";
     });
@@ -265,6 +265,8 @@
   document.body.addEventListener("click", function (e) {
     var stepBtn = e.target.closest("[data-pm-qty-step]");
     if (!stepBtn) return;
+    if (e._pmQtyHandled) return;
+    e._pmQtyHandled = true;
     e.preventDefault();
     var wrap = stepBtn.closest(".pm-qty-stepper") || stepBtn.closest("form");
     var input = wrap ? wrap.querySelector("input.qty") : null;
@@ -288,8 +290,12 @@
     e.preventDefault();
     var qtyInput = form.querySelector("input.qty");
     var qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
-    addProduct(parseInt(productId, 10), qty).catch(function () {
-      form.submit();
+    var pid = parseInt(productId, 10);
+    addProduct(pid, qty).catch(function () {
+      var url = new URL(form.getAttribute("action") || window.location.href, window.location.origin);
+      url.searchParams.set("add-to-cart", String(pid));
+      url.searchParams.set("quantity", String(qty));
+      window.location.href = url.toString();
     });
   });
 
