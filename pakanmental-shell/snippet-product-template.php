@@ -89,7 +89,7 @@ function pm_tpl_document( string $which ): void {
 		body.pm-wc-shell #pm-main a,body.pm-wc-shell .woocommerce-loop-product__title,body.pm-wc-shell .product_title{color:#1e4339!important}
 		body.pm-wc-shell #pm-main a.button,body.pm-wc-shell #pm-main button.button,body.pm-wc-shell .single_add_to_cart_button{background:#4aa88e!important;border:none!important;border-radius:999px!important;color:#faf7f2!important;box-shadow:none!important}
 		body.pm-wc-shell .price,body.pm-wc-shell .price *{color:#2a5f52!important}
-		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)!important;gap:1.5rem!important;align-items:start!important;margin:0 auto!important}
+		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.25rem!important;align-items:start!important;margin:0 auto!important}
 		body.pm-wc-shell .pm-product-gallery,body.pm-wc-shell .woocommerce-product-gallery,body.pm-wc-shell .woocommerce div.product div.images{width:100%!important;max-width:none!important;float:none!important;margin:0!important;opacity:1!important}
 		body.pm-wc-shell .woocommerce-product-gallery__wrapper,body.pm-wc-shell .flex-viewport,body.pm-wc-shell .woocommerce-product-gallery__image,body.pm-wc-shell .woocommerce-product-gallery__image a{width:100%!important;height:auto!important;max-height:none!important;display:block!important}
 		body.pm-wc-shell .woocommerce-product-gallery__image img,body.pm-wc-shell .pm-product-gallery img{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1/1!important;object-fit:contain!important;background:#f6f3ee!important;border-radius:18px!important}

@@ -77,7 +77,7 @@ final class PM_Shell_Chrome {
 			'html body.pm-wc-shell .site-header,html body.pm-wc-shell header#site-header,html body.pm-wc-shell .dynamic-header,html body.pm-wc-shell .site-footer,html body.pm-wc-shell footer#site-footer{display:none!important}'
 			. 'body.pm-wc-shell{--pm-shell-width:min(1200px,92vw)}'
 			. 'body.pm-wc-shell #pm-main,body.pm-wc-shell .pm-header__bar{width:var(--pm-shell-width)!important;max-width:var(--pm-shell-width)!important;margin-inline:auto!important}'
-			. '.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)!important;gap:1.5rem!important;align-items:start!important;width:100%!important;margin:0 auto!important}'
+			. '.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.25rem!important;align-items:start!important;width:100%!important;margin:0 auto!important}'
 			. 'body.pm-wc-shell .pm-game-specs{display:flex!important;flex-wrap:wrap!important;gap:.4rem!important;width:auto!important;max-width:100%!important}'
 			. 'body.pm-wc-shell .pm-game-spec{aspect-ratio:auto!important;width:auto!important;max-width:6.4rem!important;height:auto!important;padding:.32rem .4rem!important;border-radius:10px!important;box-shadow:none!important}'
 			. '@media(max-width:768px){.pm-product-single .pm-product-single__grid{grid-template-columns:1fr!important}}'
