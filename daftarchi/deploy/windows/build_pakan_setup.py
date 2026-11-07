@@ -30,6 +30,10 @@ def main() -> None:
         raise SystemExit("windows launcher is missing from the Pakan zip")
     readme = ROOT / "deploy" / "customers" / "pakan" / "README-FA.txt"
     shutil.copy(readme, source / "README-FA.txt")
+    icon = ROOT / "deploy" / "windows" / "daftarchi.ico"
+    if not icon.is_file():
+        raise SystemExit(f"missing {icon}")
+    shutil.copy(icon, source / "daftarchi.ico")
     script = STAGE / "pakan.nsi"
     script.write_text(
         f"""Unicode true
@@ -52,7 +56,7 @@ VIAddVersionKey "ProductVersion" "1.1.13"
 !define MUI_WELCOMEPAGE_TITLE "نصب دفترچی"
 !define MUI_WELCOMEPAGE_TEXT "دفترچی فروشگاه پاکان روی این ویندوز نصب می‌شود.$\\r$\\nمیانبر روی دسکتاپ ساخته می‌شود و برنامه باز می‌شود.$\\r$\\n$\\r$\\nورود اولیه: 09120000000 / daftarchi"
 !define MUI_FINISHPAGE_TITLE "دفترچی آماده است"
-!define MUI_FINISHPAGE_TEXT "نصب تمام شد. دفعه بعد میانبر دفترچی پاکان را از دسکتاپ باز کنید."
+!define MUI_FINISHPAGE_TEXT "نصب تمام شد. آیکون دفترچی روی دسکتاپ است. دفعه بعد همان را باز کنید."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "الان دفترچی را باز کن"
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchPakan
@@ -67,20 +71,27 @@ Function LaunchPakan
 FunctionEnd
 
 Section "دفترچی"
+  SetShellVarContext current
   SetOutPath "$INSTDIR"
   File /r "{nsis_path(source)}\\*.*"
   SetOutPath "$INSTDIR"
-  CreateShortcut "$DESKTOP\\دفترچی پاکان.lnk" "$INSTDIR\\Start-Daftarchi.bat" "" "$INSTDIR\\python\\python.exe" 0
-  CreateDirectory "$SMPROGRAMS\\دفترچی پاکان"
-  CreateShortcut "$SMPROGRAMS\\دفترچی پاکان\\دفترچی پاکان.lnk" "$INSTDIR\\Start-Daftarchi.bat" "" "$INSTDIR\\python\\python.exe" 0
-  CreateShortcut "$SMPROGRAMS\\دفترچی پاکان\\حذف دفترچی.lnk" "$INSTDIR\\Uninstall.exe"
+  Delete "$DESKTOP\\دفترچی پاکان.lnk"
+  CreateShortcut "$DESKTOP\\دفترچی.lnk" "$INSTDIR\\Start-Daftarchi.bat" "" "$INSTDIR\\daftarchi.ico" 0 SW_SHOWNORMAL "" "دفترچی"
+  CreateDirectory "$SMPROGRAMS\\دفترچی"
+  CreateShortcut "$SMPROGRAMS\\دفترچی\\دفترچی.lnk" "$INSTDIR\\Start-Daftarchi.bat" "" "$INSTDIR\\daftarchi.ico" 0 SW_SHOWNORMAL "" "دفترچی"
+  CreateShortcut "$SMPROGRAMS\\دفترچی\\حذف دفترچی.lnk" "$INSTDIR\\Uninstall.exe"
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
 SectionEnd
 
 Section "Uninstall"
+  SetShellVarContext current
+  Delete "$DESKTOP\\دفترچی.lnk"
   Delete "$DESKTOP\\دفترچی پاکان.lnk"
+  Delete "$SMPROGRAMS\\دفترچی\\دفترچی.lnk"
   Delete "$SMPROGRAMS\\دفترچی پاکان\\دفترچی پاکان.lnk"
+  Delete "$SMPROGRAMS\\دفترچی\\حذف دفترچی.lnk"
   Delete "$SMPROGRAMS\\دفترچی پاکان\\حذف دفترچی.lnk"
+  RMDir "$SMPROGRAMS\\دفترچی"
   RMDir "$SMPROGRAMS\\دفترچی پاکان"
   RMDir /r "$INSTDIR\\app"
   RMDir /r "$INSTDIR\\python"
@@ -89,6 +100,7 @@ Section "Uninstall"
   Delete "$INSTDIR\\README-FA.txt"
   Delete "$INSTDIR\\channel.txt"
   Delete "$INSTDIR\\version.json"
+  Delete "$INSTDIR\\daftarchi.ico"
   Delete "$INSTDIR\\Uninstall.exe"
   RMDir "$INSTDIR"
 SectionEnd
