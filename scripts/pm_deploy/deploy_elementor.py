@@ -9,7 +9,7 @@ from urllib.parse import quote
 from .builder import req, BASE, wrap_page_elementor_widgets, header, footer
 from .elementor_client import ElementorMcp
 from .elementor_document import set_elementor_html_split, set_library_html
-from .elementor_globals import PAGE_CHROME_CSS, sync_all
+from .elementor_globals import PAGE_CHROME_CSS, PAGE_CHROME_JS, sync_all
 from .elementor_layout import PAGE_IDS, NOT_FOUND_PAGE_SLUG, NOT_FOUND_PAGE_TITLE
 from .pages_content import (
     home_main,
@@ -82,7 +82,7 @@ def _apply_page_settings(client: ElementorMcp, post_id: int) -> None:
                 "hide_title": "yes",
                 "page_layout": "elementor_canvas",
                 "custom_css": PAGE_CHROME_CSS,
-                "custom_javascript": "",
+                "custom_javascript": PAGE_CHROME_JS,
             },
         },
     )
@@ -107,6 +107,7 @@ def main() -> None:
     pages = [
         (PAGE_IDS["home"], "home", home_main(), True, False),
         (PAGE_IDS["shop"], "shop", shop_main(), False, True),
+        (PAGE_IDS.get("wc_shop", 67), "shop", shop_main(), False, True),
         (PAGE_IDS["cart"], "cart", cart_main(), False, False),
         (PAGE_IDS["wc_cart"], "cart", cart_main(), False, False),
         (PAGE_IDS["checkout"], "cart", checkout_main(), False, False),
@@ -132,7 +133,7 @@ def main() -> None:
             "elementor-update-page-settings",
             {
                 "post_id": 6,
-                "settings": {"custom_css": PAGE_CHROME_CSS, "custom_javascript": ""},
+                "settings": {"custom_css": PAGE_CHROME_CSS, "custom_javascript": PAGE_CHROME_JS},
             },
         )
     except Exception as exc:

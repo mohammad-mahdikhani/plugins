@@ -1,6 +1,6 @@
 <?php
 /**
- * Elementor header/footer sections + full-page shell for WooCommerce routes.
+ * Fixed PM shell for every product and every product category (not per-item Elementor).
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -11,7 +11,20 @@ final class PM_Chrome {
 	public const OPTION_FOOTER_ID = 'pm_elementor_footer_id';
 
 	public static function init(): void {
-		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 99 );
+		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 100000 );
+		add_filter( 'elementor/utils/is_post_type_support', array( __CLASS__, 'disable_elementor_for_products' ), 10, 2 );
+		add_filter( 'elementor/utils/is_post_type_supported', array( __CLASS__, 'disable_elementor_for_products' ), 10, 2 );
+	}
+
+	/**
+	 * @param bool   $supported Whether Elementor supports the post type.
+	 * @param string $post_type Post type.
+	 */
+	public static function disable_elementor_for_products( $supported, $post_type ) {
+		if ( 'product' === $post_type ) {
+			return false;
+		}
+		return $supported;
 	}
 
 	public static function header_section_id(): int {
@@ -23,31 +36,21 @@ final class PM_Chrome {
 	}
 
 	public static function render_header(): void {
-		self::render_section( self::header_section_id() );
+		include PM_HOME_PATH . 'templates/partials/pm-header.php';
 	}
 
 	public static function render_footer(): void {
-		self::render_section( self::footer_section_id() );
-	}
-
-	public static function render_section( int $post_id ): void {
-		if ( $post_id < 1 || ! class_exists( '\Elementor\Plugin' ) ) {
-			return;
-		}
-		$content = \Elementor\Plugin::$instance->frontend->get_builder_content_for_display( $post_id, true );
-		if ( is_string( $content ) && '' !== $content ) {
-			echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Elementor HTML.
-		}
+		include PM_HOME_PATH . 'templates/partials/pm-footer.php';
 	}
 
 	public static function uses_wc_shell_template(): bool {
+		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
+			return false;
+		}
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			return false;
 		}
-		if ( is_singular( 'product' ) ) {
-			return true;
-		}
-		if ( is_product_taxonomy() ) {
+		if ( is_singular( 'product' ) || is_product_taxonomy() ) {
 			return true;
 		}
 		return false;

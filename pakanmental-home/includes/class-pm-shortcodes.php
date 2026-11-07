@@ -71,39 +71,7 @@ final class PM_Shortcodes {
 	 * @param array<string, string>|string $atts Shortcode attributes.
 	 */
 	public static function home_categories( $atts ): string {
-		$shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' );
-
-		$items = array(
-			array( 'بردگیم', 'بازی-فکری', 'board' ),
-			array( 'پازل', 'پازل', 'puzzle' ),
-			array( 'اکشن فیگور', 'اکشن-فیگور', 'figure' ),
-			array( 'کارتی', 'بازی-فکری-کارتی', 'card' ),
-			array( 'بازی منتالی', 'بازی-فکری', 'mental' ),
-			array( 'لوازم جانبی', 'لوازم-جانبی', 'accessory' ),
-		);
-
-		$html = '<div class="pm-cats">';
-		foreach ( $items as $item ) {
-			list( $label, $slug, $icon ) = $item;
-			$link = $shop_url;
-			if ( function_exists( 'get_term_by' ) ) {
-				$term = get_term_by( 'slug', $slug, 'product_cat' );
-				if ( ! $term ) {
-					$term = get_term_by( 'slug', sanitize_title( $label ), 'product_cat' );
-				}
-				if ( $term && ! is_wp_error( get_term_link( $term ) ) ) {
-					$link = get_term_link( $term );
-				}
-			}
-			$html .= sprintf(
-				'<a class="pm-cat pm-cat--%s" href="%s"><span class="pm-cat__label">%s</span></a>',
-				esc_attr( $icon ),
-				esc_url( $link ),
-				esc_html( $label )
-			);
-		}
-		$html .= '</div>';
-		return $html;
+		return pm_home_parent_categories_html();
 	}
 
 	/**

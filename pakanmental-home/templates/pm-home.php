@@ -93,32 +93,7 @@ $blog_url = get_post_type_archive_link( 'post' ) ?: home_url( '/blog/' );
 					<p><?php esc_html_e( 'مسیر سریع به هر نوع سرگرمی رومیزی', 'pakanmental-home' ); ?></p>
 				</div>
 			</header>
-			<div class="pm-cats">
-				<?php
-				$cats = array(
-					array( 'بردگیم', 'board-games' ),
-					array( 'پازل', 'puzzles' ),
-					array( 'اکشن فیگور', 'action-figures' ),
-					array( 'کارتی', 'card-games' ),
-					array( 'بازی منتالی', 'mental-games' ),
-					array( 'لوازم جانبی', 'accessories' ),
-				);
-				foreach ( $cats as $cat ) {
-					$link = $shop_url;
-					if ( function_exists( 'get_term_link' ) ) {
-						$term = get_term_by( 'slug', $cat[1], 'product_cat' );
-						if ( $term ) {
-							$link = get_term_link( $term );
-						}
-					}
-					printf(
-						'<a class="pm-cat" href="%s"><span class="pm-cat__label">%s</span></a>',
-						esc_url( $link ),
-						esc_html( $cat[0] )
-					);
-				}
-				?>
-			</div>
+			<?php echo pm_home_parent_categories_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
 	</section>
 
@@ -135,37 +110,27 @@ $blog_url = get_post_type_archive_link( 'post' ) ?: home_url( '/blog/' );
 			'alt'                => true,
 		)
 	);
-	PM_Template::render_product_row(
-		array(
-			'id'                 => 'pm-puzzle',
-			'title'              => __( 'پازل', 'pakanmental-home' ),
-			'subtitle'           => __( 'چالش تصویری برای همه سن‌ها', 'pakanmental-home' ),
-			'more'               => $shop_url,
-			'slug'               => 'puzzles',
-			'placeholder_prefix' => __( 'پازل', 'pakanmental-home' ),
-		)
-	);
-	PM_Template::render_product_row(
-		array(
-			'id'                 => 'pm-board',
-			'title'              => __( 'بردگیم', 'pakanmental-home' ),
-			'subtitle'           => __( 'شب دورهم با بازی رومیزی', 'pakanmental-home' ),
-			'more'               => $shop_url,
-			'slug'               => 'board-games',
-			'placeholder_prefix' => __( 'بردگیم', 'pakanmental-home' ),
-			'alt'                => true,
-		)
-	);
-	PM_Template::render_product_row(
-		array(
-			'id'                 => 'pm-figure',
-			'title'              => __( 'اکشن فیگور', 'pakanmental-home' ),
-			'subtitle'           => __( 'کلکسیون و هدیه', 'pakanmental-home' ),
-			'more'               => $shop_url,
-			'slug'               => 'action-figures',
-			'placeholder_prefix' => __( 'فیگور', 'pakanmental-home' ),
-		)
-	);
+	$pm_cat_i = 0;
+	foreach ( pm_home_parent_category_terms() as $pm_cat ) {
+		$pm_cat_link = get_term_link( $pm_cat );
+		if ( is_wp_error( $pm_cat_link ) ) {
+			$pm_cat_link = $shop_url;
+		}
+		PM_Template::render_product_row(
+			array(
+				'id'                 => 'pm-cat-' . (int) $pm_cat->term_id,
+				'title'              => $pm_cat->name,
+				'subtitle'           => __( 'جدیدترین محصولات این دسته', 'pakanmental-home' ),
+				'more'               => $pm_cat_link,
+				'term_id'            => (int) $pm_cat->term_id,
+				'orderby'            => 'date',
+				'placeholder_prefix' => $pm_cat->name,
+				'alt'                => 0 === ( $pm_cat_i % 2 ),
+				'allow_empty'        => true,
+			)
+		);
+		++$pm_cat_i;
+	}
 	?>
 
 	<section class="pm-section pm-section--alt" aria-labelledby="pm-blog-title">

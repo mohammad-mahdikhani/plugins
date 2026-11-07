@@ -34,6 +34,11 @@ if ( post_password_required() ) {
 				<div class="pm-product-summary__price">
 					<?php woocommerce_template_single_price(); ?>
 				</div>
+				<?php if ( $product->get_short_description() ) : ?>
+					<div class="pm-product-summary__excerpt">
+						<?php woocommerce_template_single_excerpt(); ?>
+					</div>
+				<?php endif; ?>
 				<?php echo PM_Game_Specs::render( (int) $product->get_id() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				<div class="pm-qty-row">
 					<?php woocommerce_template_single_add_to_cart(); ?>

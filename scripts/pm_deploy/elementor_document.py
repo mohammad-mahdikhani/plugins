@@ -23,6 +23,7 @@ def _container_settings() -> dict:
             "isLinked": True,
         },
         "flex_gap": {"unit": "px", "size": 0, "column": "0", "row": "0"},
+        "css_classes": "e-no-lazyload",
     }
 
 

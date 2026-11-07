@@ -72,6 +72,7 @@ def _apply_product_elementor_settings(client: ElementorMcp, post_id: int) -> Non
 
 
 def fetch_product_store(product_id: int) -> dict:
+    import urllib.error
     import urllib.request
 
     url = f"https://www.pakanmental.com/wp-json/wc/store/v1/products/{product_id}"
@@ -82,8 +83,27 @@ def fetch_product_store(product_id: int) -> dict:
             "User-Agent": "PakanMentalDeploy/1.0",
         },
     )
-    with urllib.request.urlopen(req_obj, timeout=45) as res:
-        return json.loads(res.read().decode())
+    try:
+        with urllib.request.urlopen(req_obj, timeout=45) as res:
+            return json.loads(res.read().decode())
+    except urllib.error.HTTPError:
+        v3 = fetch_product_wc_v3(product_id)
+        images = []
+        if v3.get("images"):
+            images = v3["images"]
+        return {
+            "id": v3.get("id"),
+            "name": v3.get("name") or "",
+            "permalink": v3.get("permalink") or "",
+            "images": images,
+            "prices": {
+                "price": str(v3.get("price") or "0"),
+                "regular_price": str(v3.get("regular_price") or "0"),
+                "sale_price": str(v3.get("sale_price") or "0"),
+                "currency_minor_unit": 0,
+            },
+            "categories": v3.get("categories") or [],
+        }
 
 
 def fetch_product_wc_v3(product_id: int) -> dict:
@@ -169,6 +189,11 @@ def _meta_value(product_v3: dict, key: str) -> str:
     return ""
 
 
+def _slugify_attr(name: str) -> str:
+    slug = re.sub(r"[^0-9A-Za-z\u0600-\u06FF]+", "-", (name or "").strip()).strip("-")
+    return slug or "attr"
+
+
 def _game_specs_html(product_v3: dict) -> str:
     type_map = {
         "strategic": "استراتژیک",
@@ -182,10 +207,19 @@ def _game_specs_html(product_v3: dict) -> str:
         ("time", "زمان ست", _meta_value(product_v3, "_pm_game_time")),
         ("type", "نوع بازی", type_map.get(_meta_value(product_v3, "_pm_game_type"), _meta_value(product_v3, "_pm_game_type"))),
     ]
+    seen = {label for _, label, value in items if value}
+    for attr in product_v3.get("attributes") or []:
+        label = (attr.get("name") or "").strip()
+        options = attr.get("options") or []
+        value = "، ".join(str(o).strip() for o in options if str(o).strip())
+        if not label or not value or label in seen:
+            continue
+        seen.add(label)
+        items.append((_slugify_attr(label), label, value))
     tiles = [i for i in items if i[2]]
     if not tiles:
         return ""
-    html_parts = ['<ul class="pm-game-specs" aria-label="ویژگی بازی">']
+    html_parts = ['<ul class="pm-game-specs" aria-label="ویژگی‌های محصول">']
     for key, label, value in tiles:
         html_parts.append(
             f'<li class="pm-game-spec pm-game-spec--{html.escape(key)}">'
@@ -194,6 +228,15 @@ def _game_specs_html(product_v3: dict) -> str:
         )
     html_parts.append("</ul>")
     return "\n".join(html_parts)
+
+
+def _short_summary_html(product_v3: dict) -> str:
+    raw = product_v3.get("short_description") or ""
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+    return f'<p class="pm-product-summary__excerpt">{html.escape(text)}</p>'
 
 
 def _content_section(description: str) -> str:
@@ -276,6 +319,7 @@ def product_elementor_main(product: dict, product_v3: dict, posts: list) -> str:
 
     long_desc = product_v3.get("description") or ""
     specs = _game_specs_html(product_v3)
+    excerpt = _short_summary_html(product_v3)
 
     if USE_PRODUCT_SHORTCODES:
         specs = "[pm_game_specs]"
@@ -306,6 +350,61 @@ body.single-product.elementor-page div.product {{
   margin: 0 !important; padding: 0 !important; border: none !important; background: transparent !important;
 }}
 body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !important; }}
+.pm-product-single {{ padding: 1.25rem 0 2rem; color: #1e4339; font-family: Vazirmatn, Tahoma, sans-serif; }}
+.pm-product-single .pm-product-single__grid {{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) !important;
+  gap: 1.5rem !important;
+  align-items: start !important;
+  width: min(1200px, 92vw) !important;
+  margin: 0 auto !important;
+  float: none !important;
+}}
+.pm-product-single .pm-product-gallery,
+.pm-product-single .pm-product-summary {{
+  float: none !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}}
+.pm-product-single .pm-product-summary {{ color: #1e4339 !important; }}
+.pm-product-single .pm-product-summary h1 {{
+  display: block !important;
+  margin: 0 0 0.7rem !important;
+  font-size: clamp(1.2rem, 2.4vw, 1.7rem) !important;
+  font-weight: 800 !important;
+  color: #1e4339 !important;
+}}
+.pm-product-single .pm-product-summary__price {{ font-size: 1.3rem !important; font-weight: 800 !important; color: #1e4339 !important; margin: 0 0 1rem !important; }}
+.pm-product-single .pm-game-specs {{
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+  list-style: none !important;
+  margin: 0 0 1.15rem !important;
+  padding: 0 !important;
+  width: 100% !important;
+}}
+.pm-product-single .pm-game-spec {{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  aspect-ratio: 1 / 1 !important;
+  width: 100% !important;
+  padding: 0.45rem 0.3rem !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(180deg, #fff 0%, #e8f6f1 100%) !important;
+  border: 1.5px solid #4aa88e !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 22px rgba(30,67,57,.07) !important;
+}}
+.pm-product-single .pm-game-spec__label {{ font-size: .68rem !important; font-weight: 600 !important; color: #2a5f52 !important; }}
+.pm-product-single .pm-game-spec__value {{ font-size: .86rem !important; font-weight: 800 !important; color: #1e4339 !important; overflow-wrap: anywhere !important; }}
+@media (max-width: 768px) {{
+  .pm-product-single .pm-product-single__grid {{ grid-template-columns: 1fr !important; }}
+}}
 </style>
 <section class="pm-product-single">
   <div class="pm-container pm-product-single__grid">
@@ -316,6 +415,7 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
       <p class="pm-breadcrumb">{crumb}</p>
       <h1>{html.escape(name)}</h1>
       <p class="pm-product-summary__price">{price}</p>
+      {excerpt}
       {specs}
       <style id="pm-atc-minimal">
 .pm-product-summary form.cart.pm-add-to-cart{{display:flex!important;flex-direction:row!important;flex-wrap:wrap;align-items:center!important;justify-content:center!important;gap:.7rem}}
@@ -327,7 +427,7 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
 .pm-product-summary .pm-qty-stepper .pm-qty::-webkit-outer-spin-button,.pm-product-summary .pm-qty-stepper .pm-qty::-webkit-inner-spin-button{{-webkit-appearance:none;margin:0}}
 .pm-product-summary .single_add_to_cart_button{{width:auto!important;min-width:11.5rem;height:48px;margin:0;padding:0 1.5rem;border-radius:999px;box-shadow:none}}
       </style>
-      <form class="cart pm-add-to-cart" method="post" action="">
+      <form class="cart pm-add-to-cart" method="post" action="{html.escape(product.get("permalink") or "")}">
         <div class="pm-qty-row">
           <div class="pm-qty-stepper" role="group" aria-label="تعداد">
             <button type="button" class="pm-qty-stepper__btn" data-pm-qty-step="1" aria-label="افزایش تعداد">+</button>
@@ -338,22 +438,6 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
         </div>
         <input type="hidden" name="add-to-cart" value="{pid}" />
       </form>
-      <script>
-      (function(){{
-        document.addEventListener("click", function(e){{
-          var btn = e.target.closest("[data-pm-qty-step]");
-          if (!btn) return;
-          e.preventDefault();
-          var wrap = btn.closest(".pm-qty-stepper");
-          var input = wrap && wrap.querySelector("input.qty");
-          if (!input) return;
-          var min = parseInt(input.min || "1", 10) || 1;
-          var next = (parseInt(input.value, 10) || 1) + (parseInt(btn.getAttribute("data-pm-qty-step"), 10) || 0);
-          if (next < min) next = min;
-          input.value = String(next);
-        }});
-      }})();
-      </script>
       {_product_promises_html()}
     </div>
   </div>
@@ -370,8 +454,9 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
 
 
 def deploy_product(post_id: int) -> None:
-    product = fetch_product_store(post_id)
     product_v3 = fetch_product_wc_v3(post_id)
+    status = product_v3.get("status") or "publish"
+    product = fetch_product_store(post_id)
     posts = fetch_magazine_posts(3, product_v3)
 
     main = product_elementor_main(product, product_v3, posts)
@@ -381,18 +466,32 @@ def deploy_product(post_id: int) -> None:
     wm = hide + wm
     tree = html_widget_tree_split(wh, wm, wf)
     _push_elementor_product(post_id, tree)
-    client = ElementorMcp()
-    _apply_product_elementor_settings(client, post_id)
-    try:
-        client.call("elementor-publish-document", {"post_id": post_id})
-    except RuntimeError:
-        pass
+    if status == "publish":
+        client = ElementorMcp()
+        _apply_product_elementor_settings(client, post_id)
+        try:
+            client.call("elementor-publish-document", {"post_id": post_id})
+        except RuntimeError:
+            pass
+    else:
+        req(
+            "PUT",
+            f"https://www.pakanmental.com/wp-json/wc/v3/products/{post_id}",
+            {"status": status},
+        )
     _clear_elementor_element_cache(post_id)
-    print("product elementor canvas", post_id, "ok")
+    print("product elementor canvas", post_id, status, "ok")
 
 
 def main() -> None:
-    deploy_product(347)
+    ids = [347]
+    try:
+        listing = req("GET", "https://www.pakanmental.com/wp-json/wc/v3/products?per_page=50&status=publish")
+        ids = [int(item["id"]) for item in listing if item.get("id")]
+    except Exception:
+        pass
+    for pid in ids:
+        deploy_product(pid)
 
 
 if __name__ == "__main__":
