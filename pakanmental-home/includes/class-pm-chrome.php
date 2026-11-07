@@ -50,6 +50,9 @@ final class PM_Chrome {
 		if ( is_product_taxonomy() ) {
 			return true;
 		}
+		if ( function_exists( 'is_shop' ) && is_shop() ) {
+			return true;
+		}
 		return false;
 	}
 

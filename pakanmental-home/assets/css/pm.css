@@ -2166,8 +2166,11 @@ body.error404 .pm-header__nav .pm-seg__link.is-active {
 
 .pm-product__thumb {
   aspect-ratio: 1;
+  width: 100%;
   border-radius: 12px;
   margin-bottom: 0.5rem;
+  object-fit: cover;
+  display: block;
   background: repeating-linear-gradient(
     -45deg,
     var(--pm-cream-deep),

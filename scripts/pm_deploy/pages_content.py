@@ -68,9 +68,9 @@ def home_categories_html() -> str:
 
 def home_product_rows_html() -> str:
     categories = wc.fetch_categories()
-    trend = wc.fetch_products(per_page=8, orderby="popularity")
+    trend = wc.fetch_products(per_page=8, orderby="date")
     if not trend:
-        trend = wc.fetch_products(per_page=8, orderby="date")
+        trend = wc.fetch_products(per_page=8, orderby="popularity")
 
     puzzle_id = wc.category_id(categories, "پازل")
     board_id = wc.category_id(categories, "بازی-فکری", "بازی فکری")
@@ -80,26 +80,29 @@ def home_product_rows_html() -> str:
     board = wc.fetch_products(per_page=8, category_id=board_id) if board_id else []
     figure = wc.fetch_products(per_page=8, category_id=figure_id) if figure_id else []
 
-    return (
-        wc.carousel_row(
-            title="پرفروش‌ها و ترند",
-            subtitle="محبوب‌ترین انتخاب‌ها",
-            row_id="trend",
-            products=trend,
-            more_url=URLS["shop"],
-            alt=True,
-            badge=True,
-            placeholder_prefix="محصول",
-        )
-        + wc.carousel_row(
+    html = wc.carousel_row(
+        title="جدیدترین محصولات",
+        subtitle="همین حالا در فروشگاه پاکان منتال",
+        row_id="trend",
+        products=trend,
+        more_url=URLS["shop"],
+        alt=True,
+        badge=True,
+        placeholder_prefix="محصول",
+        orderby="date",
+    )
+    if puzzle or puzzle_id:
+        html += wc.carousel_row(
             title="پازل",
             subtitle="چالش تصویری برای همه سن‌ها",
             row_id="puzzle",
             products=puzzle,
             more_url=wc.category_permalink(categories, "پازل"),
             placeholder_prefix="پازل",
+            category_id=puzzle_id,
         )
-        + wc.carousel_row(
+    if board or board_id:
+        html += wc.carousel_row(
             title="بردگیم",
             subtitle="شب دورهم با بازی رومیزی",
             row_id="board",
@@ -107,16 +110,19 @@ def home_product_rows_html() -> str:
             more_url=wc.category_permalink(categories, "بازی-فکری", "بازی فکری"),
             alt=True,
             placeholder_prefix="بردگیم",
+            category_id=board_id,
         )
-        + wc.carousel_row(
+    if figure or figure_id:
+        html += wc.carousel_row(
             title="اکشن فیگور",
             subtitle="کلکسیون و هدیه",
             row_id="figure",
             products=figure,
             more_url=wc.category_permalink(categories, "اکشن-فیگور", "اکشن فیگور"),
             placeholder_prefix="فیگور",
+            category_id=figure_id,
         )
-    )
+    return html
 
 
 def shop_products_html(per_page: int = 12) -> str:
@@ -420,6 +426,15 @@ def account_main() -> str:
 
 def shop_main() -> str:
     return f"""
+<style id="pm-hide-wc-shop">
+body.woocommerce-shop .site-header,
+body.woocommerce-shop .site-footer,
+body.woocommerce-shop .woocommerce-products-header,
+body.woocommerce-shop .woocommerce-result-count,
+body.woocommerce-shop .woocommerce-ordering,
+body.woocommerce-shop ul.products {{ display: none !important; }}
+body.woocommerce-shop .pm-product-grid {{ display: grid !important; }}
+</style>
 <section class="pm-page-head">
   <div class="pm-container">
     <h1>فروشگاه</h1>
@@ -456,7 +471,7 @@ def shop_main() -> str:
           </select>
         </label>
       </div>
-      <div class="pm-product-grid">{shop_products_html(12)}</div>
+      <div class="pm-product-grid" data-pm-product-grid data-per-page="12" data-orderby="date">{shop_products_html(12)}</div>
     </div>
   </div>
 </section>

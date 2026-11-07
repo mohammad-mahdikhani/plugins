@@ -39,6 +39,7 @@ final class PM_Assets {
 			'pm-mobile'     => 'assets/js/pm-mobile.js',
 			'pm-search'     => 'assets/js/pm-search.js',
 			'pm-trust-badges' => 'assets/js/pm-trust-badges.js',
+			'pm-catalog'      => 'assets/js/pm-catalog.js',
 		);
 		foreach ( $scripts as $handle => $rel ) {
 			wp_enqueue_script(

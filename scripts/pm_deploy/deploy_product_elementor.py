@@ -392,7 +392,14 @@ def deploy_product(post_id: int) -> None:
 
 
 def main() -> None:
-    deploy_product(347)
+    ids = [347]
+    try:
+        listing = req("GET", "https://www.pakanmental.com/wp-json/wc/v3/products?per_page=50&status=publish")
+        ids = [int(item["id"]) for item in listing if item.get("id")]
+    except Exception:
+        pass
+    for pid in ids:
+        deploy_product(pid)
 
 
 if __name__ == "__main__":

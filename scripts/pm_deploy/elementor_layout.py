@@ -8,6 +8,7 @@ LOGO_ID = 9
 PAGE_IDS = {
     "home": 13,
     "shop": 15,
+    "wc_shop": 67,
     "cart": 19,
     "wc_cart": 68,
     "checkout": 69,
