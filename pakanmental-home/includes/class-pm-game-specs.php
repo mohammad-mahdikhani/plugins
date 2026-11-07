@@ -196,6 +196,67 @@ final class PM_Game_Specs {
 				'value' => $item[2],
 			);
 		}
+
+		foreach ( self::woocommerce_attributes( $product_id ) as $attr ) {
+			$dup = false;
+			foreach ( $out as $existing ) {
+				if ( $existing['label'] === $attr['label'] ) {
+					$dup = true;
+					break;
+				}
+			}
+			if ( ! $dup ) {
+				$out[] = $attr;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Visible WooCommerce product attributes (global taxonomies and custom attrs).
+	 *
+	 * @return array<int, array{key:string,label:string,value:string}>
+	 */
+	public static function woocommerce_attributes( int $product_id ): array {
+		if ( ! function_exists( 'wc_get_product' ) ) {
+			return array();
+		}
+		$product = wc_get_product( $product_id );
+		if ( ! $product instanceof WC_Product ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $product->get_attributes() as $attribute ) {
+			if ( is_object( $attribute ) && method_exists( $attribute, 'get_visible' ) && ! $attribute->get_visible() ) {
+				continue;
+			}
+			$taxonomy = is_object( $attribute ) ? $attribute->get_name() : '';
+			$label    = wc_attribute_label( $taxonomy, $product );
+			$value    = '';
+			if ( is_object( $attribute ) && $attribute->is_taxonomy() ) {
+				$terms = wc_get_product_terms( $product_id, $taxonomy, array( 'fields' => 'names' ) );
+				if ( is_array( $terms ) ) {
+					$value = implode( '، ', array_map( 'strval', $terms ) );
+				}
+			} elseif ( is_object( $attribute ) ) {
+				$opts = $attribute->get_options();
+				if ( is_array( $opts ) ) {
+					$value = implode( '، ', array_map( 'strval', $opts ) );
+				}
+			}
+			$value = trim( $value );
+			if ( '' === $value || '' === $label ) {
+				continue;
+			}
+			$key   = sanitize_title( $taxonomy ? $taxonomy : $label );
+			$key   = $key ? $key : 'attr';
+			$out[] = array(
+				'key'   => $key,
+				'label' => $label,
+				'value' => $value,
+			);
+		}
 		return $out;
 	}
 

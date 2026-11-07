@@ -2404,9 +2404,20 @@ img.pm-product-gallery__main {
   letter-spacing: 0.02em;
 }
 
+.pm-product-summary__excerpt {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--pm-text-muted);
+}
+
+.pm-product-summary__excerpt p {
+  margin: 0;
+}
+
 .pm-game-specs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
   gap: 0.55rem;
   list-style: none;
   margin: 0 0 1.15rem;

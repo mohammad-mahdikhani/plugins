@@ -169,6 +169,11 @@ def _meta_value(product_v3: dict, key: str) -> str:
     return ""
 
 
+def _slugify_attr(name: str) -> str:
+    slug = re.sub(r"[^0-9A-Za-z\u0600-\u06FF]+", "-", (name or "").strip()).strip("-")
+    return slug or "attr"
+
+
 def _game_specs_html(product_v3: dict) -> str:
     type_map = {
         "strategic": "استراتژیک",
@@ -182,10 +187,21 @@ def _game_specs_html(product_v3: dict) -> str:
         ("time", "زمان ست", _meta_value(product_v3, "_pm_game_time")),
         ("type", "نوع بازی", type_map.get(_meta_value(product_v3, "_pm_game_type"), _meta_value(product_v3, "_pm_game_type"))),
     ]
+    seen = {label for _, label, value in items if value}
+    for attr in product_v3.get("attributes") or []:
+        if attr.get("visible") is False:
+            continue
+        label = (attr.get("name") or "").strip()
+        options = attr.get("options") or []
+        value = "، ".join(str(o).strip() for o in options if str(o).strip())
+        if not label or not value or label in seen:
+            continue
+        seen.add(label)
+        items.append((_slugify_attr(label), label, value))
     tiles = [i for i in items if i[2]]
     if not tiles:
         return ""
-    html_parts = ['<ul class="pm-game-specs" aria-label="ویژگی بازی">']
+    html_parts = ['<ul class="pm-game-specs" aria-label="ویژگی‌های محصول">']
     for key, label, value in tiles:
         html_parts.append(
             f'<li class="pm-game-spec pm-game-spec--{html.escape(key)}">'
@@ -194,6 +210,15 @@ def _game_specs_html(product_v3: dict) -> str:
         )
     html_parts.append("</ul>")
     return "\n".join(html_parts)
+
+
+def _short_summary_html(product_v3: dict) -> str:
+    raw = product_v3.get("short_description") or ""
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+    return f'<p class="pm-product-summary__excerpt">{html.escape(text)}</p>'
 
 
 def _content_section(description: str) -> str:
@@ -276,6 +301,7 @@ def product_elementor_main(product: dict, product_v3: dict, posts: list) -> str:
 
     long_desc = product_v3.get("description") or ""
     specs = _game_specs_html(product_v3)
+    excerpt = _short_summary_html(product_v3)
 
     if USE_PRODUCT_SHORTCODES:
         specs = "[pm_game_specs]"
@@ -316,6 +342,7 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
       <p class="pm-breadcrumb">{crumb}</p>
       <h1>{html.escape(name)}</h1>
       <p class="pm-product-summary__price">{price}</p>
+      {excerpt}
       {specs}
       <style id="pm-atc-minimal">
 .pm-product-summary form.cart.pm-add-to-cart{{display:flex!important;flex-direction:row!important;flex-wrap:wrap;align-items:center!important;justify-content:center!important;gap:.7rem}}
