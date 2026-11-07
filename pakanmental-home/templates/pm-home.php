@@ -93,32 +93,7 @@ $blog_url = get_post_type_archive_link( 'post' ) ?: home_url( '/blog/' );
 					<p><?php esc_html_e( 'مسیر سریع به هر نوع سرگرمی رومیزی', 'pakanmental-home' ); ?></p>
 				</div>
 			</header>
-			<div class="pm-cats">
-				<?php
-				$cats = array(
-					array( 'بردگیم', 'board-games' ),
-					array( 'پازل', 'puzzles' ),
-					array( 'اکشن فیگور', 'action-figures' ),
-					array( 'کارتی', 'card-games' ),
-					array( 'بازی منتالی', 'mental-games' ),
-					array( 'لوازم جانبی', 'accessories' ),
-				);
-				foreach ( $cats as $cat ) {
-					$link = $shop_url;
-					if ( function_exists( 'get_term_link' ) ) {
-						$term = get_term_by( 'slug', $cat[1], 'product_cat' );
-						if ( $term ) {
-							$link = get_term_link( $term );
-						}
-					}
-					printf(
-						'<a class="pm-cat" href="%s"><span class="pm-cat__label">%s</span></a>',
-						esc_url( $link ),
-						esc_html( $cat[0] )
-					);
-				}
-				?>
-			</div>
+			<?php echo pm_home_parent_categories_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
 	</section>
 

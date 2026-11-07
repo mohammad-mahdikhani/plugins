@@ -151,3 +151,51 @@ function pm_product_promises_html(): string {
 		. '</span><span class="pm-product-promise__copy"><small>' . esc_html__( 'پس از خرید', 'pakanmental-home' ) . '</small><strong>' . esc_html__( 'پشتیبانی کامل قطعات', 'pakanmental-home' ) . '</strong><span>' . esc_html__( 'همراه شما می‌مانیم', 'pakanmental-home' ) . '</span></span></li>'
 		. '</ul>';
 }
+
+/**
+ * Parent WooCommerce product categories for the homepage grid.
+ */
+function pm_home_parent_categories_html(): string {
+	$shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' );
+	if ( ! taxonomy_exists( 'product_cat' ) ) {
+		return '<div class="pm-cats"></div>';
+	}
+
+	$terms = get_terms(
+		array(
+			'taxonomy'   => 'product_cat',
+			'parent'     => 0,
+			'hide_empty' => false,
+			'orderby'    => 'menu_order',
+			'order'      => 'ASC',
+		)
+	);
+	if ( is_wp_error( $terms ) || empty( $terms ) ) {
+		return '<div class="pm-cats"></div>';
+	}
+
+	$default_id = (int) get_option( 'default_product_cat' );
+	$html       = '<div class="pm-cats" data-pm-home-cats>';
+	foreach ( $terms as $term ) {
+		if ( ! $term instanceof WP_Term ) {
+			continue;
+		}
+		if ( $default_id && (int) $term->term_id === $default_id ) {
+			continue;
+		}
+		if ( 'uncategorized' === $term->slug || false !== strpos( $term->slug, 'دسته-بندی' ) ) {
+			continue;
+		}
+		$link = get_term_link( $term );
+		if ( is_wp_error( $link ) ) {
+			$link = $shop_url;
+		}
+		$html .= sprintf(
+			'<a class="pm-cat" href="%s"><span class="pm-cat__label">%s</span></a>',
+			esc_url( $link ),
+			esc_html( $term->name )
+		);
+	}
+	$html .= '</div>';
+	return $html;
+}

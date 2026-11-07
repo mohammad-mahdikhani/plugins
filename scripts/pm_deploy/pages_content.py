@@ -1,6 +1,8 @@
 """Page main content fragments."""
 from __future__ import annotations
 
+from urllib.parse import quote, unquote
+
 from .builder import URLS, req, BASE, SITE
 from . import wc_store as wc
 
@@ -35,6 +37,27 @@ _CAT_SVGS = {
         'stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'
         '<path d="M3.3 7.2L12 12l8.7-4.8M12 22V12"/></svg>'
     ),
+    "dice": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/>'
+        '<circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="16" r="1.2" fill="currentColor"/>'
+        '<circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>'
+    ),
+    "chess": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h8M9 16h6l-1-4h-4z"/>'
+        '<path d="M12 4v4M9 8h6"/><circle cx="12" cy="4" r="1.5"/></svg>'
+    ),
+    "cube": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/>'
+        '<path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>'
+    ),
+    "doll": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
+        'stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3"/>'
+        '<path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>'
+    ),
 }
 
 
@@ -48,20 +71,60 @@ def category_tile(label: str, icon_key: str, href: str | None = None) -> str:
     )
 
 
+def _category_icon_key(name: str, slug: str) -> str:
+    text = f"{name} {slug}"
+    pairs = (
+        ("پازل", "puzzle"),
+        ("فیگور", "figure"),
+        ("شطرنج", "chess"),
+        ("نرد", "board"),
+        ("تاس", "dice"),
+        ("روبیک", "cube"),
+        ("لگو", "cube"),
+        ("عروسک", "doll"),
+        ("جاکلید", "accessory"),
+        ("فکری", "mental"),
+        ("کارت", "card"),
+    )
+    for needle, key in pairs:
+        if needle in text:
+            return key
+    return "accessory"
+
+
+def _is_uncategorized(cat: dict) -> bool:
+    slug = (cat.get("slug") or "").lower()
+    name = cat.get("name") or ""
+    if slug in {"uncategorized", "دسته-بندی-نشده"}:
+        return True
+    if "دسته‌بندی نشده" in name or "دسته بندی نشده" in name or "دسته-بندی-نشده" in name:
+        return True
+    return False
+
+
 def home_categories_html() -> str:
-    categories = wc.fetch_categories()
-    tiles = [
-        ("بردگیم", "board", "بازی-فکری", "بازی فکری"),
-        ("پازل", "puzzle", "پازل"),
-        ("اکشن فیگور", "figure", "اکشن-فیگور", "اکشن فیگور"),
-        ("کارتی", "card", "بازی-فکری-کارتی"),
-        ("بازی منتالی", "mental", "بازی-فکری"),
-        ("لوازم جانبی", "accessory", "لوازم-جانبی"),
+    try:
+        categories = req("GET", f"{SITE}/wp-json/wc/v3/products/categories?per_page=100&hide_empty=false")
+        if not isinstance(categories, list):
+            categories = []
+    except Exception:
+        categories = wc.fetch_categories()
+
+    parents = [
+        cat
+        for cat in categories
+        if int(cat.get("parent") or 0) == 0 and not _is_uncategorized(cat)
     ]
-    parts = ['<div class="pm-cats">']
-    for label, icon, *hints in tiles:
-        href = wc.category_permalink(categories, *hints)
-        parts.append(category_tile(label, icon, href))
+    parents.sort(key=lambda cat: ((cat.get("menu_order") or 0), cat.get("name") or ""))
+
+    parts = ['<div class="pm-cats" data-pm-home-cats>']
+    for cat in parents:
+        name = cat.get("name") or ""
+        slug = unquote(cat.get("slug") or "")
+        href = cat.get("permalink") or ""
+        if not href or href.rstrip("/") == URLS["shop"].rstrip("/"):
+            href = f"{SITE}/product-category/{quote(slug)}/" if slug else URLS["shop"]
+        parts.append(category_tile(name, _category_icon_key(name, slug), href))
     parts.append("</div>")
     return "\n".join(parts)
 
