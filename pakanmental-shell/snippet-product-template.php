@@ -27,11 +27,22 @@ add_action(
 		}
 		$single  = is_singular( 'product' );
 		$archive = function_exists( 'is_product_taxonomy' ) && is_product_taxonomy();
-		if ( ! $single && ! $archive ) {
+		$shop    = function_exists( 'is_shop' ) && is_shop();
+		$post    = is_singular( 'post' );
+		if ( ! $single && ! $archive && ! $shop && ! $post ) {
 			return;
 		}
+		if ( $single ) {
+			$which = 'single';
+		} elseif ( $archive ) {
+			$which = 'archive';
+		} elseif ( $shop ) {
+			$which = 'shop';
+		} else {
+			$which = 'post';
+		}
 		try {
-			pm_tpl_document( $single ? 'single' : 'archive' );
+			pm_tpl_document( $which );
 		} catch ( Throwable $e ) {
 			return;
 		}
@@ -43,7 +54,15 @@ add_action(
 function pm_tpl_document( string $which ): void {
 	// Build the page body before Elementor header/footer. Elementor caches the
 	// shared template and would otherwise repeat the last product or category.
-	$main = ( 'single' === $which ) ? pm_tpl_single_product() : pm_tpl_product_archive();
+	if ( 'single' === $which ) {
+		$main = pm_tpl_single_product();
+	} elseif ( 'archive' === $which ) {
+		$main = pm_tpl_product_archive();
+	} elseif ( 'shop' === $which ) {
+		$main = pm_tpl_shop();
+	} else {
+		$main = pm_tpl_single_post();
+	}
 	status_header( 200 );
 	$home = trailingslashit( plugins_url( 'pakanmental-home' ) );
 	$ver  = '1.2.1';
@@ -91,7 +110,9 @@ function pm_tpl_document( string $which ): void {
 		body.pm-wc-shell .price,body.pm-wc-shell .price *{color:#2a5f52!important}
 		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.25rem!important;align-items:start!important;margin:0 auto!important}
 		body.pm-wc-shell .pm-product-gallery,body.pm-wc-shell .woocommerce-product-gallery,body.pm-wc-shell .woocommerce div.product div.images{width:100%!important;max-width:none!important;float:none!important;margin:0!important;opacity:1!important}
-		body.pm-wc-shell .woocommerce-product-gallery__wrapper,body.pm-wc-shell .flex-viewport,body.pm-wc-shell .woocommerce-product-gallery__image,body.pm-wc-shell .woocommerce-product-gallery__image a{width:100%!important;height:auto!important;max-height:none!important;display:block!important}
+		body.pm-wc-shell .woocommerce-product-gallery__wrapper,body.pm-wc-shell .flex-viewport,body.pm-wc-shell .woocommerce-product-gallery__image,body.pm-wc-shell .woocommerce-product-gallery__image a{width:100%!important;height:auto!important;max-height:none!important;display:block!important;transform:none!important;margin:0!important}
+		body.pm-wc-shell .flex-viewport{overflow:visible!important}
+		body.pm-wc-shell .woocommerce-product-gallery__image:not(:first-child){display:none!important}
 		body.pm-wc-shell .woocommerce-product-gallery__image img,body.pm-wc-shell .pm-product-gallery img{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1/1!important;object-fit:contain!important;background:#f6f3ee!important;border-radius:18px!important}
 		body.pm-wc-shell .pm-game-specs{display:flex!important;flex-wrap:wrap!important;gap:.4rem!important;list-style:none!important;margin:0 0 .9rem!important;padding:0!important;width:auto!important;max-width:100%!important}
 		body.pm-wc-shell .pm-game-spec{display:flex!important;flex:0 0 auto!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;aspect-ratio:auto!important;width:auto!important;min-width:4.6rem!important;max-width:6.4rem!important;height:auto!important;padding:.32rem .4rem!important;text-align:center!important;box-sizing:border-box!important;background:linear-gradient(180deg,#fff 0%,#e8f6f1 100%)!important;border:1px solid #b7ddd1!important;border-radius:10px!important;box-shadow:none!important;gap:.08rem!important}
@@ -266,6 +287,115 @@ function pm_tpl_single_product(): string {
 	<?php
 	do_action( 'woocommerce_after_single_product' );
 	return (string) ob_get_clean();
+}
+
+function pm_tpl_shop(): string {
+	$products = function_exists( 'wc_get_products' ) ? wc_get_products(
+		array(
+			'status'  => 'publish',
+			'limit'   => 24,
+			'orderby' => 'date',
+			'order'   => 'DESC',
+		)
+	) : array();
+	if ( ! is_array( $products ) ) {
+		$products = array();
+	}
+	ob_start();
+	?>
+	<section class="pm-page-head">
+		<div class="pm-container">
+			<h1><?php echo esc_html__( 'فروشگاه', 'pakanmental' ); ?></h1>
+			<p><?php echo esc_html__( 'بازی فکری، پازل، اکشن فیگور و سرگرمی رومیزی.', 'pakanmental' ); ?></p>
+		</div>
+	</section>
+	<section class="pm-section">
+		<div class="pm-container">
+			<?php if ( ! $products ) : ?>
+				<p class="pm-empty"><?php echo esc_html__( 'در این فروشگاه هنوز محصولی نیست.', 'pakanmental' ); ?></p>
+			<?php else : ?>
+				<div class="pm-product-grid">
+					<?php foreach ( $products as $shop_product ) : ?>
+						<?php
+						if ( ! $shop_product instanceof WC_Product ) {
+							continue;
+						}
+						$image = $shop_product->get_image( 'woocommerce_thumbnail', array( 'class' => 'pm-product__thumb' ) );
+						?>
+						<article class="pm-product">
+							<a class="pm-product__link" href="<?php echo esc_url( $shop_product->get_permalink() ); ?>">
+								<?php
+								if ( $image ) {
+									echo $image; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+								} else {
+									echo '<div class="pm-product__thumb"></div>';
+								}
+								?>
+								<h3 class="pm-product__title"><?php echo esc_html( $shop_product->get_name() ); ?></h3>
+								<p class="pm-product__price"><?php echo wp_kses_post( $shop_product->get_price_html() ); ?></p>
+							</a>
+						</article>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+	</section>
+	<?php
+	return (string) ob_get_clean();
+}
+
+function pm_tpl_single_post(): string {
+	$post_id = (int) get_queried_object_id();
+	$post    = get_post( $post_id );
+	if ( ! $post instanceof WP_Post ) {
+		return '';
+	}
+	$magazine = get_permalink( 20 );
+	if ( ! $magazine ) {
+		$magazine = home_url( '/' );
+	}
+	ob_start();
+	?>
+	<section class="pm-page-head">
+		<div class="pm-container">
+			<p class="pm-breadcrumb"><a href="<?php echo esc_url( $magazine ); ?>"><?php echo esc_html__( 'مجله', 'pakanmental' ); ?></a></p>
+			<h1><?php echo esc_html( get_the_title( $post ) ); ?></h1>
+		</div>
+	</section>
+	<section class="pm-section">
+		<div class="pm-container">
+			<article class="pm-article"><?php echo pm_tpl_article_html( $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></article>
+		</div>
+	</section>
+	<?php
+	return (string) ob_get_clean();
+}
+
+function pm_tpl_article_html( string $html ): string {
+	$html = preg_replace( '#<style[\s\S]*?</style>#', '', $html ) ?? $html;
+	$html = preg_replace( '#<script[\s\S]*?</script>#', '', $html ) ?? $html;
+	$html = preg_replace( '#<header[\s\S]*?</header>#', '', $html ) ?? $html;
+	$html = preg_replace( '#<footer[\s\S]*?</footer>#', '', $html ) ?? $html;
+	$html = preg_replace( '#<nav[\s\S]*?</nav>#', '', $html ) ?? $html;
+	preg_match_all( '#<p\b[^>]*>(.*?)</p>#s', $html, $matches );
+	$seen  = array();
+	$parts = array();
+	foreach ( $matches[1] as $inner ) {
+		$text = trim( wp_strip_all_tags( $inner ) );
+		if ( '' === $text || isset( $seen[ $text ] ) ) {
+			continue;
+		}
+		if ( false !== strpos( $text, '©' ) || false !== strpos( $text, 'بازگشت به مجله' ) || false !== strpos( $text, 'محصولی پیدا نشد' ) ) {
+			continue;
+		}
+		$seen[ $text ] = true;
+		$parts[]       = '<p>' . esc_html( $text ) . '</p>';
+	}
+	if ( ! $parts ) {
+		$text = trim( wp_strip_all_tags( $html ) );
+		return '' === $text ? '' : '<p>' . esc_html( $text ) . '</p>';
+	}
+	return implode( '', $parts );
 }
 
 function pm_tpl_product_archive(): string {
