@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.13"
+APP_VERSION = "1.1.14"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -3175,7 +3175,7 @@ def panel_update_apply():
         blob = download_update_zip(status["app_url"])
     written = apply_panel_package(blob)
     schedule_restart()
-    return jsonify(ok=True, files=len(written), message="نصب شد. چند ثانیه دیگر صفحه را تازه کنید. داده‌های فروشگاه ماند.")
+    return jsonify(ok=True, files=len(written), message="آپدیت شد. دفترچی چند ثانیه دیگر دوباره باز می‌شود. فروش‌ها ماند.")
 
 
 def telegram_text(user, kind: str, body: str, page: str, error: str, settings: dict) -> str:

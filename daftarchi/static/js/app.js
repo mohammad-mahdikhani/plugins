@@ -87,6 +87,7 @@ const state = {
   importResult: null,
   importFile: null,
   support: false,
+  updating: false,
   supportTab: "chat",
   supportLog: [],
   lastError: "",
@@ -396,10 +397,10 @@ async function addByBarcode(code) {
 }
 
 function updateBanner() {
-  if (!state.update?.update) return "";
-  return `<div class="banner">نسخه ${esc(state.update.version)} آماده است. دانلود کنید و روی همین دفترچی نصب کنید. فروش و حساب‌ها می‌مانند.
-    <a class="btn" href="${esc(state.update.url)}" target="_blank" rel="noopener">دانلود نصب‌کننده</a>
-    ${state.update.notes ? `<div class="hint">${esc(state.update.notes)}</div>` : ""}
+  if (!state.update?.update && !state.updating) return "";
+  return `<div class="banner">${state.updating ? "در حال آپدیت همین دفترچی. فروش‌ها می‌مانند." : `نسخه ${esc(state.update.version)} آماده است.`}
+    <button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>
+    ${state.update?.notes ? `<div class="hint">${esc(state.update.notes)}</div>` : ""}
   </div>`;
 }
 function supportHtml() {
@@ -412,7 +413,7 @@ function supportHtml() {
   const panel = state.supportTab === "bug"
     ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><button class="btn primary" type="submit">ارسال گزارش</button></form>`
     : state.supportTab === "update"
-      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${fresh ? `نسخه ${esc(update.version)} آماده است. فایل را دانلود کنید و روی همین دفترچی اجرا کنید. فروش و حساب‌ها می‌مانند.` : "همین نسخه برای انتشار است. فروش و حساب‌ها با به‌روزرسانی پاک نمی‌شوند."}</p>${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}${fresh ? `<a class="btn primary" href="${esc(update.url)}" target="_blank" rel="noopener">دانلود نسخه تازه</a>` : ""}<button type="button" class="btn" data-act="check-update">بررسی دوباره</button>`
+      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. با آپدیت، همین دفترچی عوض می‌شود و فروش‌ها می‌مانند.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>`
       : `<div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="field"><label>پیام</label><textarea name="body" required rows="3" placeholder="برای پشتیبانی بنویسید"></textarea></div><button class="btn primary" type="submit">ارسال به تلگرام</button></form>`;
   const sheet = state.support ? `<section class="support-sheet" data-act="stop"><div class="row-actions"><strong>پشتیبانی دفترچی</strong><button type="button" class="btn" data-act="toggle-support">بستن</button></div><div class="seg">${[["chat", "چت"], ["bug", "گزارش خطا"], ["update", "به‌روزرسانی"]].map(([id, label]) => `<button type="button" class="${state.supportTab === id ? "on" : ""}" data-act="support-tab" data-tab="${id}">${label}</button>`).join("")}</div>${panel}</section>` : "";
   return `${sheet}<button type="button" class="dock" data-act="toggle-support">${state.support ? "بستن پشتیبانی" : "پشتیبانی"}</button>`;
@@ -1178,10 +1179,9 @@ function updatesHtml() {
       ${info.notes ? `<p class="hint">${esc(info.notes)}</p>` : ""}
       ${info.error && info.reachable ? `<p class="hint">${esc(info.error)}</p>` : ""}
       <div class="row-actions">
-        <button type="button" class="btn" data-act="reload-panel-update">بررسی دوباره</button>
-        <button type="button" class="btn primary" data-act="install-remote" ${info.update && info.app_url ? "" : "disabled"}>دریافت و نصب نسخه جدید</button>
+        <button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>
       </div>
-      <p class="hint">برنامه نسخه را از وب‌بیکری می‌خواند. اگر گیت‌هاب باز نشود، همان پاسخ سایت کافی است. نصب فقط فایل‌های برنامه را عوض می‌کند و فروش‌ها می‌مانند.</p>
+      <p class="hint">مثل به‌روزرسانی تلگرام: همین دکمه نسخه را از وب‌بیکری می‌گیرد، روی همین برنامه می‌نشاند و دفترچی را دوباره باز می‌کند. فروش‌ها و حساب‌ها می‌مانند.</p>
       ${info.full_url ? `<p class="hint">اگر این رایانه به گیت‌هاب نرسید، نسخه ویندوز را از این آدرس دانلود کنید:</p><p class="ltr">${esc(info.full_url)}</p>` : ""}
       ${info.mac_url ? `<p class="hint">فایل نصب مک (setup.dmg):</p><p class="ltr">${esc(info.mac_url)}</p>` : ""}
       ${info.linux_url ? `<p class="hint">نسخه لینوکس:</p><p class="ltr">${esc(info.linux_url)}</p>` : ""}
@@ -1756,6 +1756,27 @@ async function onClick(event) {
     } else if (act === "reload-panel-update") {
       await loaders.updates();
       render();
+    } else if (act === "self-update") {
+      state.updating = true;
+      render();
+      let installed = false;
+      try {
+        await loaders.updates();
+        const info = state.panelUpdate || {};
+        if (!info.update || !info.app_url) {
+          toast(info.reachable ? "همین نسخه آخر است" : (info.error || "ارتباط با سرور به‌روزرسانی برقرار نشد"));
+          return;
+        }
+        const result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
+        installed = true;
+        toast(result.message || "آپدیت شد. دفترچی دوباره باز می‌شود");
+        setTimeout(() => location.reload(), 4000);
+      } finally {
+        if (!installed) {
+          state.updating = false;
+          render();
+        }
+      }
     } else if (act === "install-remote" || act === "install-file") {
       let result;
       if (act === "install-file") {
