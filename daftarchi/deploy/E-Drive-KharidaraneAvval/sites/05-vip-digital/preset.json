@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-05",
+  "label": "دیجیتال VIP",
+  "note": "کسب‌وکار VIP شماره ۵",
+  "settings": {
+    "shop_name": "دیجیتال VIP",
+    "wp_url": "https://example-shop-05.ir",
+    "gateway_callback": "https://example-shop-05.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

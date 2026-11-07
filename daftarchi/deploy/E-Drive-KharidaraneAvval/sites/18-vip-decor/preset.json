@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-18",
+  "label": "دکور VIP",
+  "note": "کسب‌وکار VIP شماره ۱۸",
+  "settings": {
+    "shop_name": "دکور VIP",
+    "wp_url": "https://example-shop-18.ir",
+    "gateway_callback": "https://example-shop-18.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

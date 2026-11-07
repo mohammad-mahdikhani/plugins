@@ -1,0 +1,17 @@
+{
+  "site_id": "studio-separate",
+  "label": "نسخه مجزا",
+  "studio_unlock": true,
+  "note": "جدا از دفترچی نصب‌شده. داده داخل پوشه data همین نسخه است.",
+  "settings": {
+    "shop_name": "دفترچی استودیو",
+    "wp_url": "",
+    "gateway_callback": "",
+    "gateway_sandbox": "1",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "0",
+    "manager_phone": "",
+    "studio_unlock": "1"
+  }
+}
