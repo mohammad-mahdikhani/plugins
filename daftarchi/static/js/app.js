@@ -1158,6 +1158,7 @@ function settingsHtml() {
     <button class="btn primary" type="submit">ذخیره تنظیمات</button>
   </form>
   <section class="card" style="margin-top:14px"><h2 class="section-title">ساخت اکانت</h2>
+    <p class="hint">نام، موبایل و جیمیل ثبت‌نام، بدون رمز، در وب‌بیکری ذخیره می‌شود.</p>
     <table><thead><tr><th>نام</th><th>موبایل</th><th>جیمیل</th><th>نقش</th></tr></thead><tbody>${state.users.map((user) => `<tr><td>${esc(user.name)}</td><td class="ltr">${esc(user.phone)}</td><td class="ltr">${esc(user.email || "—")}${user.email && !user.email_verified ? " · تأیید نشده" : ""}</td><td>${user.role === "admin" ? "مدیر" : "صندوقدار"}</td></tr>`).join("")}</tbody></table>
     <form data-act="create-user"><div class="grid-2"><div class="field"><label>نام</label><input name="name" required></div><div class="field"><label>موبایل</label><input class="ltr" name="phone" required></div></div><div class="grid-2"><div class="field"><label>جیمیل</label><input class="ltr" name="email"></div><div class="field"><label>رمز</label><input type="password" name="password" required></div></div><div class="field"><label>نقش</label><select name="role"><option value="cashier">صندوقدار</option><option value="admin">مدیر</option></select></div><button class="btn primary" type="submit">ساخت کاربر</button></form>
   </section>`;
@@ -1167,7 +1168,7 @@ function updatesHtml() {
   const info = state.panelUpdate || {};
   const remote = info.update
     ? `<p>نسخه ${esc(info.latest)} آماده است.</p>`
-    : `<p>${info.reachable ? "همین نسخه آخر است." : "فهرست نسخه از گیت‌هاب خوانده نشد. می‌توانید فایل زیپ را دستی نصب کنید."}</p>`;
+    : `<p>${info.reachable ? "همین نسخه آخر است." : esc(info.error || "ارتباط با سرور به‌روزرسانی برقرار نشد. می‌توانید فایل زیپ را دستی نصب کنید.")}</p>`;
   return `<div class="stack">
     <section class="card"><h2 class="section-title">به‌روزرسانی پنل و اپ</h2>
       <p>نسخه این برنامه: <strong class="ltr">${esc(info.current || "")}</strong></p>
@@ -1175,12 +1176,12 @@ function updatesHtml() {
       ${info.latest ? `<p>نسخه موجود: <strong class="ltr">${esc(info.latest)}</strong></p>` : ""}
       ${remote}
       ${info.notes ? `<p class="hint">${esc(info.notes)}</p>` : ""}
-      ${info.error ? `<p class="hint">${esc(info.error)}</p>` : ""}
+      ${info.error && info.reachable ? `<p class="hint">${esc(info.error)}</p>` : ""}
       <div class="row-actions">
         <button type="button" class="btn" data-act="reload-panel-update">بررسی دوباره</button>
         <button type="button" class="btn primary" data-act="install-remote" ${info.update && info.app_url ? "" : "disabled"}>دریافت و نصب نسخه جدید</button>
       </div>
-      <p class="hint">هاست و کانفیگ لازم نیست. برنامه نسخه را از گیت‌هاب می‌گیرد، فقط فایل‌های پنل و اپ را عوض می‌کند و داده فروشگاه را نگه می‌دارد. بعد از نصب، صفحه خودش تازه می‌شود.</p>
+      <p class="hint">برنامه نسخه را از وب‌بیکری می‌خواند. اگر گیت‌هاب باز نشود، همان پاسخ سایت کافی است. نصب فقط فایل‌های برنامه را عوض می‌کند و فروش‌ها می‌مانند.</p>
       ${info.full_url ? `<p class="hint">اگر این رایانه به گیت‌هاب نرسید، نسخه ویندوز را از این آدرس دانلود کنید:</p><p class="ltr">${esc(info.full_url)}</p>` : ""}
       ${info.mac_url ? `<p class="hint">فایل نصب مک (setup.dmg):</p><p class="ltr">${esc(info.mac_url)}</p>` : ""}
       ${info.linux_url ? `<p class="hint">نسخه لینوکس:</p><p class="ltr">${esc(info.linux_url)}</p>` : ""}

@@ -151,6 +151,9 @@ HOST_ACCOUNT_URLS = (
     "https://webakery.ir/license-server/accounts.php",
     "https://webakery.ir/daftarchi/accounts.php",
 )
+HOST_SIGNUP_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/signup",
+)
 HOST_MAIL_KEY = "daftarchi-webakery-mail"
 HOST_TELEGRAM_URLS = (
     "https://webakery.ir/daftarchi/telegram.php",
@@ -1897,6 +1900,46 @@ def explain_host_pay(detail: str) -> str:
     return f"پرداخت از هاست ساخته نشد: {text[:180]}"
 
 
+def signup_host_item(conn, user) -> dict:
+    settings = get_settings(conn)
+    return {
+        "name": user["name"] or "",
+        "phone": user["phone"] or "",
+        "email": (user["email"] or "").lower(),
+        "verified": int(user["email_verified"] or 0),
+        "shop": settings.get("shop_name") or "",
+        "channel": update_channel(),
+        "created_at": user["created_at"] or "",
+    }
+
+
+def report_signup(item: dict) -> None:
+    if not item or not (item.get("phone") or item.get("email")):
+        return
+    payload = {"key": HOST_MAIL_KEY, "action": "signup", **item}
+    if "password" in payload:
+        payload.pop("password", None)
+    for url in HOST_SIGNUP_URLS:
+        try:
+            status, body = http_request("POST", url, payload=payload, timeout=6)
+        except AppError as exc:
+            log.warning("signup host %s: %s", url, exc)
+            continue
+        except Exception:
+            log.exception("signup host %s", url)
+            continue
+        if status < 400 and isinstance(body, dict) and body.get("ok"):
+            return
+    log.warning("signup was not stored on webakery")
+
+
+def push_signup(conn, user) -> None:
+    try:
+        report_signup(signup_host_item(conn, user))
+    except Exception:
+        log.exception("signup report")
+
+
 def host_account(action: str, fields: dict) -> dict:
     payload = {"key": HOST_MAIL_KEY, "action": action, **fields}
     failures = []
@@ -2985,17 +3028,18 @@ def release_manifest_urls() -> list[str]:
 
 
 def read_studio_manifest() -> dict:
-    last = {"ok": False, "error": "فهرست نسخه خوانده نشد", "manifest": studio_manifest_url()}
+    last = {"ok": False, "error": "ارتباط با سرور به‌روزرسانی برقرار نشد", "manifest": studio_manifest_url()}
+    reached = ""
     for url in release_manifest_urls():
         try:
             status, body = http_request("GET", url, timeout=8)
-        except AppError as exc:
-            last = {"ok": False, "error": str(exc), "manifest": url}
+        except AppError:
             continue
-        if status >= 400 or not isinstance(body, dict) or not str(body.get("version") or "").strip():
-            last = {"ok": False, "error": "فهرست نسخه خوانده نشد", "manifest": url}
-            continue
-        return {"ok": True, "manifest": url, "body": body}
+        if status < 400 and isinstance(body, dict) and str(body.get("version") or "").strip():
+            return {"ok": True, "manifest": url, "body": body}
+        reached = url
+    if reached:
+        return {"ok": True, "manifest": reached, "body": {}, "error": ""}
     return last
 
 
@@ -3306,9 +3350,12 @@ def register():
                 user_id = cur.lastrowid
         if not reopen:
             send_gmail_code(conn, settings, email, user_id, "verify")
+            fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            push_signup(conn, fresh)
             return jsonify(ok=True, email=email, needs_verify=True, delivery="email")
         conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
         fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        push_signup(conn, fresh)
         flag = get_settings(conn).get("must_change_password") == "1"
         user = public_user(fresh)
     session.clear()
@@ -3341,6 +3388,7 @@ def verify_email():
         conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user["id"],))
         fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
         clear_initial_secret(conn, fresh)
+        push_signup(conn, fresh)
     return jsonify(ok=True)
 
 
@@ -3501,6 +3549,7 @@ def create_user():
             (name, phone, email or None, hash_pw(password), role, 1, iso()),
         )
         row = conn.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
+        push_signup(conn, row)
     return jsonify(user=public_user(row))
 
 

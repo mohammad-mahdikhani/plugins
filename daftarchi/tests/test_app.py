@@ -637,6 +637,29 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(seen, ["https://webakery.ir/wp-json/daftarchi/v1/version?channel=customer"])
         self.assertEqual(appmod.clean_channel("../x"), "")
 
+    def test_update_stays_connected_when_github_does_not_answer(self):
+        prev = os.environ.get("DAFTARCHI_CHANNEL")
+        os.environ["DAFTARCHI_CHANNEL"] = "customer"
+        original = appmod.http_request
+
+        def fake(method, url, payload=None, headers=None, form=None, timeout=12):
+            if "wp-json/daftarchi/v1/version" in url:
+                return 404, {"version": ""}
+            raise appmod.AppError("اتصال برقرار نشد: timed out", 502)
+
+        appmod.http_request = fake
+        try:
+            body = self.client.get("/api/panel/update").get_json()
+        finally:
+            appmod.http_request = original
+            if prev is None:
+                os.environ.pop("DAFTARCHI_CHANNEL", None)
+            else:
+                os.environ["DAFTARCHI_CHANNEL"] = prev
+        self.assertTrue(body["reachable"])
+        self.assertEqual(body["error"], "")
+        self.assertEqual(body["latest"], "")
+
     def test_studio_unlock_skips_trial_limit(self):
         product = self.add_product(barcode="studio-open")
         self.open_register(0)
@@ -1712,6 +1735,49 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
         self.assertTrue(calls)
 
+
+    def test_signup_is_reported_to_webakery_without_the_password(self):
+        self.client.put("/api/settings", json={"shop_name": "فروشگاه پاکان"})
+        seen = []
+
+        def host(method, url, payload=None, headers=None, form=None, timeout=12):
+            if url == appmod.HOST_MAIL_URL:
+                seen.append(("mail", payload))
+                return 200, {"ok": True, "service": "daftarchi-mail"}
+            if url in appmod.HOST_SIGNUP_URLS:
+                seen.append(("signup", payload))
+                return 200, {"ok": True, "service": "daftarchi-signups"}
+            raise appmod.AppError("unexpected url", 502)
+
+        original = appmod.http_request
+        appmod.http_request = host
+        try:
+            created = self.client.post("/api/auth/register", json={
+                "name": "نگار پاکان",
+                "phone": "09124445566",
+                "email": "negar.pakan@gmail.com",
+                "password": "secret1",
+            })
+            self.assertEqual(created.status_code, 200, created.get_json())
+            signup = [payload for kind, payload in seen if kind == "signup"][-1]
+            self.assertEqual(signup["name"], "نگار پاکان")
+            self.assertEqual(signup["phone"], "09124445566")
+            self.assertEqual(signup["email"], "negar.pakan@gmail.com")
+            self.assertEqual(signup["shop"], "فروشگاه پاکان")
+            self.assertEqual(signup["verified"], 0)
+            self.assertNotIn("password", signup)
+            self.assertNotIn("secret1", json.dumps(signup))
+            code = "".join(ch for ch in seen[-2][1]["text"] if ch.isdigit())[:6] if seen[-2][0] == "mail" else ""
+            if not code:
+                mail = next(payload for kind, payload in seen if kind == "mail" and payload)
+                code = "".join(ch for ch in mail["text"] if ch.isdigit())[:6]
+            verified = self.client.post("/api/auth/verify", json={"ident": "negar.pakan@gmail.com", "code": code})
+            self.assertEqual(verified.status_code, 200, verified.get_json())
+        finally:
+            appmod.http_request = original
+        latest = [payload for kind, payload in seen if kind == "signup"][-1]
+        self.assertEqual(latest["verified"], 1)
+        self.assertEqual(latest["email"], "negar.pakan@gmail.com")
 
     def test_gmail_signup_sends_code_and_blocks_login(self):
         refused = self.client.post("/api/auth/register", json={
