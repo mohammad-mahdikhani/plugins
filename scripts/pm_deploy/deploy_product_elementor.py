@@ -327,7 +327,7 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
 .pm-product-summary .pm-qty-stepper .pm-qty::-webkit-outer-spin-button,.pm-product-summary .pm-qty-stepper .pm-qty::-webkit-inner-spin-button{{-webkit-appearance:none;margin:0}}
 .pm-product-summary .single_add_to_cart_button{{width:auto!important;min-width:11.5rem;height:48px;margin:0;padding:0 1.5rem;border-radius:999px;box-shadow:none}}
       </style>
-      <form class="cart pm-add-to-cart" method="post" action="">
+      <form class="cart pm-add-to-cart" method="post" action="{html.escape(product.get("permalink") or "")}">
         <div class="pm-qty-row">
           <div class="pm-qty-stepper" role="group" aria-label="تعداد">
             <button type="button" class="pm-qty-stepper__btn" data-pm-qty-step="1" aria-label="افزایش تعداد">+</button>

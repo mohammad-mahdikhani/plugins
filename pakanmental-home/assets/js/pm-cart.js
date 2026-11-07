@@ -288,8 +288,12 @@
     e.preventDefault();
     var qtyInput = form.querySelector("input.qty");
     var qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
-    addProduct(parseInt(productId, 10), qty).catch(function () {
-      form.submit();
+    var pid = parseInt(productId, 10);
+    addProduct(pid, qty).catch(function () {
+      var url = new URL(form.getAttribute("action") || window.location.href, window.location.origin);
+      url.searchParams.set("add-to-cart", String(pid));
+      url.searchParams.set("quantity", String(qty));
+      window.location.href = url.toString();
     });
   });
 
