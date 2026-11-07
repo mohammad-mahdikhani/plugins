@@ -1,6 +1,6 @@
 <?php
 /**
- * Site-wide WooCommerce product/category document (Hello header never used).
+ * Apply Elementor site templates (header/footer/single/archive) instead of Hello.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -9,37 +9,19 @@ final class PM_Shell_Chrome {
 
 	public static function init(): void {
 		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 100000 );
-		add_filter( 'elementor/utils/is_post_type_support', array( __CLASS__, 'disable_elementor_for_products' ), 10, 2 );
-		add_filter( 'elementor/utils/is_post_type_supported', array( __CLASS__, 'disable_elementor_for_products' ), 10, 2 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ), 40 );
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
-	}
-
-	/**
-	 * @param bool   $supported Whether Elementor supports the post type.
-	 * @param string $post_type Post type.
-	 */
-	public static function disable_elementor_for_products( $supported, $post_type ) {
-		if ( 'product' === $post_type ) {
-			return false;
-		}
-		return $supported;
+		add_action( 'elementor/frontend/after_enqueue_styles', array( __CLASS__, 'hide_hello_chrome' ) );
 	}
 
 	public static function uses_shell(): bool {
-		if ( class_exists( 'PM_Chrome' ) && is_callable( array( 'PM_Chrome', 'uses_wc_shell_template' ) ) && PM_Chrome::uses_wc_shell_template() ) {
-			return false;
-		}
 		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
 			return false;
 		}
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			return false;
 		}
-		if ( is_product_taxonomy() ) {
-			return true;
-		}
-		return is_singular( 'product' );
+		return is_singular( 'product' ) || is_product_taxonomy();
 	}
 
 	/**
@@ -61,15 +43,26 @@ final class PM_Shell_Chrome {
 		if ( self::uses_shell() ) {
 			$classes[] = 'pm-site';
 			$classes[] = 'pm-wc-shell';
+			$classes[] = 'elementor-page';
 		}
 		return $classes;
+	}
+
+	public static function hide_hello_chrome(): void {
+		if ( ! self::uses_shell() ) {
+			return;
+		}
+		wp_add_inline_style(
+			'elementor-frontend',
+			'html body.pm-wc-shell .site-header,html body.pm-wc-shell header#site-header,html body.pm-wc-shell .dynamic-header,html body.pm-wc-shell .site-footer,html body.pm-wc-shell footer#site-footer{display:none!important}'
+		);
 	}
 
 	public static function enqueue(): void {
 		if ( ! self::uses_shell() ) {
 			return;
 		}
-		$home = 'https://www.pakanmental.com/wp-content/plugins/pakanmental-home/';
+		$home = trailingslashit( plugins_url( 'pakanmental-home' ) );
 		$ver  = defined( 'PM_HOME_VERSION' ) ? PM_HOME_VERSION : '1.1.2';
 		wp_enqueue_style(
 			'pm-fonts',
@@ -108,14 +101,49 @@ final class PM_Shell_Chrome {
 	}
 
 	public static function render_header(): void {
+		$header_id = PM_Shell_Templates::id( 'header' );
+		if ( $header_id > 0 && class_exists( '\Elementor\Plugin' ) ) {
+			PM_Shell_Templates::render( $header_id );
+			return;
+		}
 		include PM_SHELL_PATH . 'templates/partials/pm-header.php';
 	}
 
 	public static function render_footer(): void {
+		$footer_id = PM_Shell_Templates::id( 'footer' );
+		if ( $footer_id > 0 && class_exists( '\Elementor\Plugin' ) ) {
+			PM_Shell_Templates::render( $footer_id );
+			return;
+		}
 		include PM_SHELL_PATH . 'templates/partials/pm-footer.php';
 	}
 
+	public static function render_main(): void {
+		if ( is_singular( 'product' ) ) {
+			$tpl = PM_Shell_Templates::id( 'single_product' );
+			if ( $tpl > 0 && class_exists( '\Elementor\Plugin' ) ) {
+				PM_Shell_Templates::render( $tpl );
+				return;
+			}
+			while ( have_posts() ) {
+				the_post();
+				include PM_SHELL_PATH . 'woocommerce/content-single-product.php';
+			}
+			return;
+		}
+
+		$tpl = PM_Shell_Templates::id( 'product_archive' );
+		if ( $tpl > 0 && class_exists( '\Elementor\Plugin' ) ) {
+			PM_Shell_Templates::render( $tpl );
+			return;
+		}
+		echo do_shortcode( '[pm_product_archive]' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
 	public static function attributes_html( int $product_id ): string {
+		if ( class_exists( 'PM_Game_Specs' ) && is_callable( array( 'PM_Game_Specs', 'render' ) ) ) {
+			return PM_Game_Specs::render( $product_id );
+		}
 		if ( ! function_exists( 'wc_get_product' ) ) {
 			return '';
 		}

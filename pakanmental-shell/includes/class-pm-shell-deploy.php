@@ -34,6 +34,31 @@ final class PM_Shell_Deploy {
 				),
 			)
 		);
+		register_rest_route(
+			'pm-shell/v1',
+			'/ensure-templates',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'callback'            => array( __CLASS__, 'ensure_templates' ),
+			)
+		);
+	}
+
+	public static function ensure_templates(): WP_REST_Response {
+		delete_transient( 'pm_shell_templates_ready' );
+		PM_Shell_Templates::ensure_library_templates();
+		$ids = PM_Shell_Templates::all();
+		$out = array();
+		foreach ( $ids as $key => $id ) {
+			$out[ $key ] = array(
+				'id'       => (int) $id,
+				'edit_url' => PM_Shell_Templates::edit_url( (int) $id ),
+			);
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'templates' => $out ), 200 );
 	}
 
 	/**
