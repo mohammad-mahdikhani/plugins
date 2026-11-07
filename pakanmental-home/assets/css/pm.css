@@ -1474,7 +1474,7 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   white-space: nowrap;
 }
 
-/* Categories — 2-row carousel, at least 4 tiles visible */
+/* Categories — single-row carousel, at least 4 tiles visible */
 .pm-cats-carousel {
   --pm-cat-visible: 4;
 }
@@ -1495,8 +1495,8 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 .pm-cats {
   display: grid;
   direction: rtl;
-  grid-template-rows: repeat(2, auto);
-  grid-auto-flow: row;
+  grid-template-rows: auto;
+  grid-auto-flow: column;
   grid-template-columns: repeat(var(--pm-cat-cols, 4), minmax(0, 1fr));
   gap: 0.65rem;
   width: calc(100% * var(--pm-cat-cols, 4) / var(--pm-cat-visible, 4));

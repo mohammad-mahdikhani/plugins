@@ -41,10 +41,14 @@ final class PM_Template {
 		$products = pm_get_row_products(
 			array(
 				'slug'    => $config['slug'] ?? '',
+				'term_id' => isset( $config['term_id'] ) ? (int) $config['term_id'] : 0,
 				'limit'   => $limit,
 				'orderby' => $config['orderby'] ?? 'date',
 			)
 		);
+		if ( empty( $products ) && ! empty( $config['skip_empty'] ) ) {
+			return;
+		}
 
 		$track_id = 'pm-track-' . $config['id'];
 		$alt      = ! empty( $config['alt'] );
@@ -54,7 +58,9 @@ final class PM_Template {
 				<header class="pm-section__head">
 					<div>
 						<h2 id="<?php echo esc_attr( $config['id'] ); ?>-title"><?php echo esc_html( $config['title'] ); ?></h2>
-						<p><?php echo esc_html( $config['subtitle'] ); ?></p>
+						<?php if ( ! empty( $config['subtitle'] ) ) : ?>
+							<p><?php echo esc_html( $config['subtitle'] ); ?></p>
+						<?php endif; ?>
 					</div>
 					<a class="pm-more" href="<?php echo esc_url( $config['more'] ); ?>"><?php esc_html_e( 'مشاهده همه', 'pakanmental-home' ); ?></a>
 				</header>
@@ -66,6 +72,8 @@ final class PM_Template {
 							foreach ( $products as $product ) {
 								self::render_product_card( $product, ! empty( $config['badge'] ) );
 							}
+						} elseif ( ! empty( $config['allow_empty'] ) ) {
+							echo '<p class="pm-empty">' . esc_html__( 'به‌زودی محصول این دسته اینجا دیده می‌شود.', 'pakanmental-home' ) . '</p>';
 						} else {
 							foreach ( pm_placeholder_products( 6, $config['placeholder_prefix'], ! empty( $config['badge'] ) ) as $item ) {
 								self::render_placeholder_card( $item['title'], $item['badge'] );
