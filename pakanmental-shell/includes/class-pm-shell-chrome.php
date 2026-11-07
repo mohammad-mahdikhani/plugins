@@ -119,22 +119,13 @@ final class PM_Shell_Chrome {
 	}
 
 	public static function render_main(): void {
+		// Product and category HTML is built from the current query. The shared
+		// Elementor library documents cache the first render and would repeat it.
 		if ( is_singular( 'product' ) ) {
-			$tpl = PM_Shell_Templates::id( 'single_product' );
-			if ( $tpl > 0 && class_exists( '\Elementor\Plugin' ) ) {
-				PM_Shell_Templates::render( $tpl );
-				return;
-			}
 			while ( have_posts() ) {
 				the_post();
 				include PM_SHELL_PATH . 'woocommerce/content-single-product.php';
 			}
-			return;
-		}
-
-		$tpl = PM_Shell_Templates::id( 'product_archive' );
-		if ( $tpl > 0 && class_exists( '\Elementor\Plugin' ) ) {
-			PM_Shell_Templates::render( $tpl );
 			return;
 		}
 		echo do_shortcode( '[pm_product_archive]' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

@@ -1,7 +1,8 @@
 <?php
 /**
  * Site-wide product template. One layout for every product and category.
- * Elementor documents: header 124, footer 125, single 468, archive 469.
+ * Elementor documents: header 124, footer 125.
+ * Product and category body come from the current query, not a cached Elementor document.
  */
 
 add_action(
@@ -40,6 +41,9 @@ add_action(
 );
 
 function pm_tpl_document( string $which ): void {
+	// Build the page body before Elementor header/footer. Elementor caches the
+	// shared template and would otherwise repeat the last product or category.
+	$main = ( 'single' === $which ) ? pm_tpl_single_product() : pm_tpl_product_archive();
 	status_header( 200 );
 	$home = trailingslashit( plugins_url( 'pakanmental-home' ) );
 	$ver  = '1.2.1';
@@ -82,13 +86,7 @@ function pm_tpl_document( string $which ): void {
 	<?php
 	wp_body_open();
 	pm_tpl_elementor( 124 );
-	echo '<main id="pm-main" class="pm-main">';
-	if ( 'single' === $which ) {
-		pm_tpl_elementor_or_shortcode( 468, '[pm_single_product]' );
-	} else {
-		pm_tpl_elementor_or_shortcode( 469, '[pm_product_archive]' );
-	}
-	echo '</main>';
+	echo '<main id="pm-main" class="pm-main">' . $main . '</main>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	pm_tpl_elementor( 125 );
 	wp_footer();
 	?>
@@ -123,15 +121,15 @@ function pm_tpl_single_product(): string {
 	if ( ! function_exists( 'wc_get_product' ) ) {
 		return '';
 	}
-	$product = null;
-	if ( is_singular( 'product' ) ) {
-		$product = wc_get_product( get_queried_object_id() );
-	}
-	if ( ! $product instanceof WC_Product ) {
-		global $product;
-	}
+	$product_id = is_singular( 'product' ) ? (int) get_queried_object_id() : 0;
+	$product    = $product_id ? wc_get_product( $product_id ) : null;
 	if ( ! $product instanceof WC_Product ) {
 		return '';
+	}
+	$post_object = get_post( $product_id );
+	if ( $post_object instanceof WP_Post ) {
+		$GLOBALS['post'] = $post_object;
+		setup_postdata( $post_object );
 	}
 	$GLOBALS['product'] = $product;
 	ob_start();
@@ -150,7 +148,7 @@ function pm_tpl_single_product(): string {
 				</div>
 				<div class="pm-product-summary">
 					<?php woocommerce_breadcrumb(); ?>
-					<?php woocommerce_template_single_title(); ?>
+					<h1 class="product_title entry-title"><?php echo esc_html( $product->get_name() ); ?></h1>
 					<?php woocommerce_template_single_rating(); ?>
 					<div class="pm-product-summary__price"><?php woocommerce_template_single_price(); ?></div>
 					<?php if ( $product->get_short_description() ) : ?>
@@ -176,32 +174,60 @@ function pm_tpl_single_product(): string {
 
 function pm_tpl_product_archive(): string {
 	$term = get_queried_object();
+	if ( ! $term instanceof WP_Term ) {
+		$term = null;
+	}
+	$name     = $term instanceof WP_Term ? $term->name : '';
+	$products = array();
+	if ( $term instanceof WP_Term && function_exists( 'wc_get_products' ) ) {
+		$found = wc_get_products(
+			array(
+				'status'   => 'publish',
+				'limit'    => 24,
+				'paginate' => false,
+				'orderby'  => 'date',
+				'order'    => 'DESC',
+				'tax_query' => array(
+					array(
+						'taxonomy' => $term->taxonomy,
+						'field'    => 'term_id',
+						'terms'    => array( (int) $term->term_id ),
+					),
+				),
+			)
+		);
+		$products = is_array( $found ) ? $found : array();
+	}
 	ob_start();
 	?>
 	<section class="pm-page-head">
 		<div class="pm-container">
-			<?php if ( function_exists( 'is_product_category' ) && is_product_category() && $term instanceof WP_Term ) : ?>
-				<h1><?php echo esc_html( $term->name ); ?></h1>
-			<?php else : ?>
-				<h1><?php single_term_title(); ?></h1>
-			<?php endif; ?>
+			<h1><?php echo esc_html( $name ); ?></h1>
 		</div>
 	</section>
 	<section class="pm-shop">
 		<div class="pm-container">
-			<?php
-			if ( function_exists( 'woocommerce_product_loop_start' ) ) {
-				woocommerce_product_loop_start();
-				if ( have_posts() ) {
-					while ( have_posts() ) {
-						the_post();
-						wc_get_template_part( 'content', 'product' );
+			<?php if ( ! $products ) : ?>
+				<p class="pm-empty"><?php echo esc_html__( 'در این دسته‌بندی هنوز محصولی نیست.', 'pakanmental' ); ?></p>
+			<?php elseif ( function_exists( 'woocommerce_product_loop_start' ) ) : ?>
+				<?php woocommerce_product_loop_start(); ?>
+				<?php foreach ( $products as $archive_product ) : ?>
+					<?php
+					if ( ! $archive_product instanceof WC_Product ) {
+						continue;
 					}
-				}
-				woocommerce_product_loop_end();
-				woocommerce_pagination();
-			}
-			?>
+					$archive_post = get_post( $archive_product->get_id() );
+					if ( $archive_post instanceof WP_Post ) {
+						$GLOBALS['post'] = $archive_post;
+						setup_postdata( $archive_post );
+					}
+					$GLOBALS['product'] = $archive_product;
+					wc_get_template_part( 'content', 'product' );
+					?>
+				<?php endforeach; ?>
+				<?php woocommerce_product_loop_end(); ?>
+				<?php wp_reset_postdata(); ?>
+			<?php endif; ?>
 		</div>
 	</section>
 	<?php

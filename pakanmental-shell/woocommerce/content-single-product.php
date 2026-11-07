@@ -27,7 +27,7 @@ if ( post_password_required() ) {
 			</div>
 			<div class="pm-product-summary">
 				<?php woocommerce_breadcrumb(); ?>
-				<?php woocommerce_template_single_title(); ?>
+				<h1 class="product_title entry-title"><?php echo esc_html( $product->get_name() ); ?></h1>
 				<?php woocommerce_template_single_rating(); ?>
 				<div class="pm-product-summary__price">
 					<?php woocommerce_template_single_price(); ?>
