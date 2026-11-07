@@ -265,6 +265,8 @@
   document.body.addEventListener("click", function (e) {
     var stepBtn = e.target.closest("[data-pm-qty-step]");
     if (!stepBtn) return;
+    if (e._pmQtyHandled) return;
+    e._pmQtyHandled = true;
     e.preventDefault();
     var wrap = stepBtn.closest(".pm-qty-stepper") || stepBtn.closest("form");
     var input = wrap ? wrap.querySelector("input.qty") : null;

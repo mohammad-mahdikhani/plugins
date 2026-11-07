@@ -338,22 +338,6 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
         </div>
         <input type="hidden" name="add-to-cart" value="{pid}" />
       </form>
-      <script>
-      (function(){{
-        document.addEventListener("click", function(e){{
-          var btn = e.target.closest("[data-pm-qty-step]");
-          if (!btn) return;
-          e.preventDefault();
-          var wrap = btn.closest(".pm-qty-stepper");
-          var input = wrap && wrap.querySelector("input.qty");
-          if (!input) return;
-          var min = parseInt(input.min || "1", 10) || 1;
-          var next = (parseInt(input.value, 10) || 1) + (parseInt(btn.getAttribute("data-pm-qty-step"), 10) || 0);
-          if (next < min) next = min;
-          input.value = String(next);
-        }});
-      }})();
-      </script>
       {_product_promises_html()}
     </div>
   </div>
