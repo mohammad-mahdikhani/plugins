@@ -1981,7 +1981,9 @@ def studio_unlock_active(settings: dict | None = None) -> bool:
     return str(settings.get("studio_unlock") or "").strip().lower() in ("1", "true", "yes", "on")
 
 
-def seed_studio_license(conn) -> None:
+def seed_paid_license(conn, buyer_name: str, plan: str = "50y") -> None:
+    if plan not in PLANS:
+        return
     now = now_dt()
     paid = conn.execute(
         """SELECT 1 FROM licenses
@@ -1992,16 +1994,21 @@ def seed_studio_license(conn) -> None:
         return
     admin = conn.execute("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
     user_id = int(admin["id"]) if admin else None
-    settings = get_settings(conn)
-    shop = str(settings.get("shop_name") or "استودیو").strip() or "استودیو"
+    name = clean_text(buyer_name, "خریدار", 80) or "خریدار"
     start = now.replace(microsecond=0)
-    end = add_months(start, PLANS["50y"][1])
+    end = add_months(start, PLANS[plan][1])
     conn.execute(
         """INSERT INTO licenses (plan, list_price, discount, payable, buyer_name, phone, starts_at, ends_at,
            payment_method, session_id, user_id, created_at, status, host_saved)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        ("50y", 0, 0, 0, shop, INITIAL_PHONE, iso(start), iso(end), "cash", None, user_id, iso(), "paid", 1),
+        (plan, 0, 0, 0, name, INITIAL_PHONE, iso(start), iso(end), "cash", None, user_id, iso(), "paid", 1),
     )
+
+
+def seed_studio_license(conn) -> None:
+    settings = get_settings(conn)
+    shop = str(settings.get("shop_name") or "استودیو").strip() or "استودیو"
+    seed_paid_license(conn, shop)
 
 
 def ensure_access(conn) -> dict:
@@ -2642,6 +2649,14 @@ def apply_site_preset(conn) -> None:
             "ON CONFLICT(key) DO UPDATE SET value='1'",
         )
         seed_studio_license(conn)
+    elif payload.get("unlimited") is True or str(payload.get("unlimited") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        buyer = str(payload.get("buyer_name") or payload.get("label") or "").strip()
+        seed_paid_license(conn, buyer or "خریدار")
     site_id = clean_text(payload.get("site_id"), "site", 40) if payload.get("site_id") else ""
     if site_id:
         conn.execute(

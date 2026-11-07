@@ -208,6 +208,40 @@ class DaftarchiTest(unittest.TestCase):
             names = archive.namelist()
             self.assertTrue(any("manylinux_2_17_x86_64" in name for name in names))
 
+    def test_jazayeri_package_is_unlimited_and_not_studio(self):
+        deploy = Path(__file__).resolve().parents[1] / "deploy"
+        expected = {
+            "Daftarchi-Jazayeri.zip": "Daftarchi-Jazayeri/Start-Daftarchi.bat",
+            "Daftarchi-Jazayeri-Mac.zip": "Daftarchi-Jazayeri/Start-Daftarchi.command",
+            "Daftarchi-Jazayeri-Linux.zip": "Daftarchi-Jazayeri/Start-Daftarchi.sh",
+        }
+        for filename, starter in expected.items():
+            zpath = deploy / filename
+            self.assertTrue(zpath.is_file(), zpath)
+            with zipfile.ZipFile(zpath) as archive:
+                names = archive.namelist()
+                script = archive.read(starter).decode()
+                preset = archive.read("Daftarchi-Jazayeri/preset.json").decode()
+                app_text = archive.read("Daftarchi-Jazayeri/app/app.py").decode()
+                readmes = [name for name in names if name.endswith("README-FA.txt")]
+            self.assertEqual(readmes, ["Daftarchi-Jazayeri/README-FA.txt"])
+            self.assertIn("DAFTARCHI_CHANNEL=customer", script)
+            self.assertIn("DAFTARCHI_PRESET", script)
+            self.assertNotIn("DAFTARCHI_UNLOCK", script)
+            self.assertNotIn("رستوران", script)
+            self.assertIn('"unlimited": true', preset)
+            self.assertIn("آرقای جزایری", preset)
+            self.assertNotIn("studio_unlock", preset)
+            self.assertIn('APP_VERSION = "1.1.13"', app_text)
+            self.assertIn("desktop_icon_available", app_text)
+            self.assertFalse(any("studio-unlock" in name for name in names))
+        dmg = (deploy / "Daftarchi-Jazayeri-setup.dmg").read_bytes()
+        self.assertGreater(len(dmg), 20_000_000)
+        self.assertEqual(dmg[-512:-508], b"koly")
+        setup = (deploy / "mac" / "setup-jazayeri.command").read_text(encoding="utf-8")
+        self.assertIn("Daftarchi-Jazayeri", setup)
+        self.assertNotIn("DAFTARCHI_UNLOCK", setup)
+
     def test_source_zip_is_the_program(self):
         zpath = Path(__file__).resolve().parents[1] / "deploy" / "Daftarchi-Source.zip"
         self.assertTrue(zpath.is_file(), zpath)
@@ -473,6 +507,41 @@ class DaftarchiTest(unittest.TestCase):
                 os.environ.pop("DAFTARCHI_UNLOCK", None)
             else:
                 os.environ["DAFTARCHI_UNLOCK"] = prev
+
+    def test_unlimited_preset_skips_trial_without_studio(self):
+        preset = Path(__file__).resolve().parents[1] / "deploy" / "customers" / "jazayeri" / "preset.json"
+        self.assertIn("آرقای جزایری", preset.read_text(encoding="utf-8"))
+        prev = os.environ.get("DAFTARCHI_PRESET")
+        os.environ["DAFTARCHI_PRESET"] = str(preset)
+        try:
+            folder = Path(os.environ["DAFTARCHI_DATA"])
+            for path in folder.glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            access = self.client.get("/api/auth/me").get_json()["access"]
+            self.assertEqual(access["mode"], "paid")
+            self.assertEqual(access["title"], "پنجاه ساله")
+            self.assertTrue(access["active"])
+            self.assertGreater(access["days_left"], 365 * 40)
+            settings = self.client.get("/api/settings").get_json()["settings"]
+            self.assertEqual(settings["shop_name"], "آرقای جزایری")
+            self.assertNotEqual(settings.get("studio_unlock"), "1")
+            product = self.add_product(barcode="jazayeri-open")
+            self.open_register(0)
+            sale = self.client.post("/api/sales", json={
+                "items": [{"product_id": product["id"], "qty": 1}],
+                "payment_method": "cash",
+            })
+            self.assertEqual(sale.status_code, 200, sale.get_json())
+        finally:
+            if prev is None:
+                os.environ.pop("DAFTARCHI_PRESET", None)
+            else:
+                os.environ["DAFTARCHI_PRESET"] = prev
+            folder = Path(os.environ["DAFTARCHI_DATA"])
+            for path in folder.glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
 
     def test_trial_lasts_seven_days_then_blocks_sales(self):
         access = self.client.get("/api/auth/me").get_json()["access"]
