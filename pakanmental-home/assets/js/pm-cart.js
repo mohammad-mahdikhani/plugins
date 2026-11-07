@@ -126,11 +126,11 @@
         formatMoney(price, cart) +
         "</span>" +
         '<div class="pm-mini-cart__qty">' +
-        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="-1" aria-label="کم کردن">−</button>' +
+        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="1" aria-label="زیاد کردن">+</button>' +
         '<span class="pm-mini-cart__qty-val">' +
         faNum(item.quantity) +
         "</span>" +
-        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="1" aria-label="زیاد کردن">+</button>' +
+        '<button type="button" class="pm-mini-cart__qty-btn" data-pm-qty-delta="-1" aria-label="کم کردن">−</button>' +
         '<button type="button" class="pm-mini-cart__remove" data-pm-remove aria-label="حذف">×</button>' +
         "</div></div></li>";
     });

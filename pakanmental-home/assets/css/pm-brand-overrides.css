@@ -63,6 +63,25 @@ button.single_add_to_cart_button.button {
   background-color: var(--pm-brand-green-hover) !important;
 }
 
+.pm-mini-cart__qty-btn,
+.pm-qty-stepper__btn {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--pm-brand-green-deep) !important;
+  border-color: transparent !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.pm-mini-cart__qty-btn:hover,
+.pm-qty-stepper__btn:hover {
+  background: #e8f6f1 !important;
+  color: var(--pm-brand-green-hover) !important;
+}
+
 .wc-block-components-button:not(.is-link),
 .wc-block-components-button.contained,
 .wc-block-cart__submit-button,
