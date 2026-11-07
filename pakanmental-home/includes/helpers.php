@@ -96,21 +96,25 @@ function pm_get_row_products( array $args ): array {
 		'order'   => 'DESC',
 	);
 
-	if ( ! empty( $args['slug'] ) ) {
+	$term_id = isset( $args['term_id'] ) ? (int) $args['term_id'] : 0;
+	if ( ! $term_id && ! empty( $args['slug'] ) ) {
 		$term = get_term_by( 'slug', $args['slug'], 'product_cat' );
 		if ( ! $term ) {
 			$term = get_term_by( 'slug', sanitize_title( $args['slug'] ), 'product_cat' );
 		}
 		if ( $term ) {
-			$query['tax_query'] = array(
-				array(
-					'taxonomy'         => 'product_cat',
-					'field'            => 'term_id',
-					'terms'            => (int) $term->term_id,
-					'include_children' => true,
-				),
-			);
+			$term_id = (int) $term->term_id;
 		}
+	}
+	if ( $term_id ) {
+		$query['tax_query'] = array(
+			array(
+				'taxonomy'         => 'product_cat',
+				'field'            => 'term_id',
+				'terms'            => $term_id,
+				'include_children' => true,
+			),
+		);
 	}
 
 	return wc_get_products( $query );
@@ -153,12 +157,13 @@ function pm_product_promises_html(): string {
 }
 
 /**
- * Parent WooCommerce product categories for the homepage grid.
+ * Parent WooCommerce product category terms (skip Uncategorized).
+ *
+ * @return WP_Term[]
  */
-function pm_home_parent_categories_html(): string {
-	$shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' );
+function pm_home_parent_category_terms(): array {
 	if ( ! taxonomy_exists( 'product_cat' ) ) {
-		return '<div class="pm-cats"></div>';
+		return array();
 	}
 
 	$terms = get_terms(
@@ -171,11 +176,11 @@ function pm_home_parent_categories_html(): string {
 		)
 	);
 	if ( is_wp_error( $terms ) || empty( $terms ) ) {
-		return '<div class="pm-cats"></div>';
+		return array();
 	}
 
 	$default_id = (int) get_option( 'default_product_cat' );
-	$html       = '<div class="pm-cats" data-pm-home-cats>';
+	$out        = array();
 	foreach ( $terms as $term ) {
 		if ( ! $term instanceof WP_Term ) {
 			continue;
@@ -186,16 +191,40 @@ function pm_home_parent_categories_html(): string {
 		if ( 'uncategorized' === $term->slug || false !== strpos( $term->slug, 'دسته-بندی' ) ) {
 			continue;
 		}
+		$out[] = $term;
+	}
+	return $out;
+}
+
+/**
+ * Parent WooCommerce product categories for the homepage single-row carousel.
+ */
+function pm_home_parent_categories_html(): string {
+	$shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' );
+	$terms = pm_home_parent_category_terms();
+	if ( empty( $terms ) ) {
+		return '<div class="pm-carousel pm-cats-carousel"><div class="pm-cats-track"><div class="pm-cats"></div></div></div>';
+	}
+
+	$tiles = '';
+	foreach ( $terms as $term ) {
 		$link = get_term_link( $term );
 		if ( is_wp_error( $link ) ) {
 			$link = $shop_url;
 		}
-		$html .= sprintf(
+		$tiles .= sprintf(
 			'<a class="pm-cat" href="%s"><span class="pm-cat__label">%s</span></a>',
 			esc_url( $link ),
 			esc_html( $term->name )
 		);
 	}
-	$html .= '</div>';
-	return $html;
+	$cols = max( 4, count( $terms ) );
+	return '<div class="pm-carousel pm-cats-carousel">'
+		. '<button type="button" class="pm-carousel__btn pm-carousel__btn--prev" data-pm-scroll="pm-track-cats" data-pm-dir="prev" aria-label="' . esc_attr__( 'قبلی', 'pakanmental-home' ) . '">‹</button>'
+		. '<div class="pm-cats-track" id="pm-track-cats" tabindex="0">'
+		. '<div class="pm-cats" data-pm-home-cats style="--pm-cat-cols:' . esc_attr( (string) $cols ) . '">'
+		. $tiles
+		. '</div></div>'
+		. '<button type="button" class="pm-carousel__btn pm-carousel__btn--next" data-pm-scroll="pm-track-cats" data-pm-dir="next" aria-label="' . esc_attr__( 'بعدی', 'pakanmental-home' ) . '">›</button>'
+		. '</div>';
 }

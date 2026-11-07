@@ -43,7 +43,19 @@ def fetch_products(
         params["category"] = category_id
     try:
         data = _get("/products", params)
-        return data if isinstance(data, list) else []
+        if isinstance(data, list) and data:
+            return data
+    except Exception:
+        data = []
+
+    try:
+        from .builder import req
+
+        qs = f"per_page={per_page}&orderby={urllib.parse.quote(orderby)}&order=desc&status=publish"
+        if category_id:
+            qs += f"&category={int(category_id)}"
+        listing = req("GET", f"{SITE}/wp-json/wc/v3/products?{qs}")
+        return listing if isinstance(listing, list) else []
     except Exception:
         return []
 
@@ -147,12 +159,15 @@ def carousel_row(
     placeholder_prefix: str = "",
     category_id: int | None = None,
     orderby: str = "date",
+    allow_empty: bool = False,
 ) -> str:
     more = html.escape(more_url or URLS["shop"])
     cards = ""
     if products:
         for i, product in enumerate(products):
             cards += pm_card(product, badge=badge and i < 2)
+    elif allow_empty:
+        cards = '<p class="pm-empty">به‌زودی محصول این دسته اینجا دیده می‌شود.</p>'
     else:
         prefix = placeholder_prefix or title
         for i in range(1, 7):
@@ -168,11 +183,12 @@ def carousel_row(
     if category_id:
         cat_attr = f' data-category="{int(category_id)}"'
     badge_attr = ' data-badge="1"' if badge else ""
+    sub = f"<p>{html.escape(subtitle)}</p>" if subtitle else ""
     return f"""
 <section class="pm-section{section_alt}">
   <div class="pm-container">
     <header class="pm-section__head">
-      <div><h2>{html.escape(title)}</h2><p>{html.escape(subtitle)}</p></div>
+      <div><h2>{html.escape(title)}</h2>{sub}</div>
       <a class="pm-more" href="{more}">مشاهده همه</a>
     </header>
     <div class="pm-carousel">

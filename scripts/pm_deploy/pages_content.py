@@ -102,7 +102,7 @@ def _is_uncategorized(cat: dict) -> bool:
     return False
 
 
-def home_categories_html() -> str:
+def _parent_categories() -> list[dict]:
     try:
         categories = req("GET", f"{SITE}/wp-json/wc/v3/products/categories?per_page=100&hide_empty=false")
         if not isinstance(categories, list):
@@ -116,32 +116,43 @@ def home_categories_html() -> str:
         if int(cat.get("parent") or 0) == 0 and not _is_uncategorized(cat)
     ]
     parents.sort(key=lambda cat: ((cat.get("menu_order") or 0), cat.get("name") or ""))
+    return parents
 
-    parts = ['<div class="pm-cats" data-pm-home-cats>']
-    for cat in parents:
-        name = cat.get("name") or ""
-        slug = unquote(cat.get("slug") or "")
-        href = cat.get("permalink") or ""
-        if not href or href.rstrip("/") == URLS["shop"].rstrip("/"):
-            href = f"{SITE}/product-category/{quote(slug)}/" if slug else URLS["shop"]
-        parts.append(category_tile(name, _category_icon_key(name, slug), href))
-    parts.append("</div>")
-    return "\n".join(parts)
+
+def _category_href(cat: dict) -> str:
+    slug = unquote(cat.get("slug") or "")
+    href = cat.get("permalink") or ""
+    if not href or href.rstrip("/") == URLS["shop"].rstrip("/"):
+        href = f"{SITE}/product-category/{quote(slug)}/" if slug else URLS["shop"]
+    return href
+
+
+def home_categories_html() -> str:
+    parents = _parent_categories()
+    tiles = [
+        category_tile(cat.get("name") or "", _category_icon_key(cat.get("name") or "", unquote(cat.get("slug") or "")), _category_href(cat))
+        for cat in parents
+    ]
+    cols = max(4, len(tiles))
+    return "\n".join(
+        [
+            '<div class="pm-carousel pm-cats-carousel">',
+            '<button type="button" class="pm-carousel__btn pm-carousel__btn--prev" data-pm-scroll="pm-track-cats" data-pm-dir="prev" aria-label="قبلی">‹</button>',
+            '<div class="pm-cats-track" id="pm-track-cats" tabindex="0">',
+            f'<div class="pm-cats" data-pm-home-cats style="--pm-cat-cols:{cols}">',
+            *tiles,
+            "</div></div>",
+            '<button type="button" class="pm-carousel__btn pm-carousel__btn--next" data-pm-scroll="pm-track-cats" data-pm-dir="next" aria-label="بعدی">›</button>',
+            "</div>",
+        ]
+    )
 
 
 def home_product_rows_html() -> str:
-    categories = wc.fetch_categories()
+    parents = _parent_categories()
     trend = wc.fetch_products(per_page=8, orderby="date")
     if not trend:
         trend = wc.fetch_products(per_page=8, orderby="popularity")
-
-    puzzle_id = wc.category_id(categories, "پازل")
-    board_id = wc.category_id(categories, "بازی-فکری", "بازی فکری")
-    figure_id = wc.category_id(categories, "اکشن-فیگور", "اکشن فیگور")
-
-    puzzle = wc.fetch_products(per_page=8, category_id=puzzle_id) if puzzle_id else []
-    board = wc.fetch_products(per_page=8, category_id=board_id) if board_id else []
-    figure = wc.fetch_products(per_page=8, category_id=figure_id) if figure_id else []
 
     html = wc.carousel_row(
         title="جدیدترین محصولات",
@@ -154,36 +165,23 @@ def home_product_rows_html() -> str:
         placeholder_prefix="محصول",
         orderby="date",
     )
-    if puzzle or puzzle_id:
+    for i, cat in enumerate(parents):
+        cat_id = int(cat.get("id") or 0)
+        name = cat.get("name") or ""
+        if not cat_id or not name:
+            continue
+        products = wc.fetch_products(per_page=8, category_id=cat_id, orderby="date")
         html += wc.carousel_row(
-            title="پازل",
-            subtitle="چالش تصویری برای همه سن‌ها",
-            row_id="puzzle",
-            products=puzzle,
-            more_url=wc.category_permalink(categories, "پازل"),
-            placeholder_prefix="پازل",
-            category_id=puzzle_id,
-        )
-    if board or board_id:
-        html += wc.carousel_row(
-            title="بردگیم",
-            subtitle="شب دورهم با بازی رومیزی",
-            row_id="board",
-            products=board,
-            more_url=wc.category_permalink(categories, "بازی-فکری", "بازی فکری"),
-            alt=True,
-            placeholder_prefix="بردگیم",
-            category_id=board_id,
-        )
-    if figure or figure_id:
-        html += wc.carousel_row(
-            title="اکشن فیگور",
-            subtitle="کلکسیون و هدیه",
-            row_id="figure",
-            products=figure,
-            more_url=wc.category_permalink(categories, "اکشن-فیگور", "اکشن فیگور"),
-            placeholder_prefix="فیگور",
-            category_id=figure_id,
+            title=name,
+            subtitle="جدیدترین محصولات این دسته",
+            row_id=f"cat-{cat_id}",
+            products=products,
+            more_url=_category_href(cat),
+            alt=i % 2 == 0,
+            placeholder_prefix=name,
+            category_id=cat_id,
+            orderby="date",
+            allow_empty=True,
         )
     return html
 
