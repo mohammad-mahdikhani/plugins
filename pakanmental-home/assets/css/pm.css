@@ -1844,6 +1844,22 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   opacity: 0.85;
 }
 
+body.pm-wc-shell .site-header,
+body.pm-wc-shell .site-footer:not(.pm-footer),
+body.pm-wc-shell .page-header,
+body.pm-wc-shell header.site-header,
+body.pm-wc-shell footer.site-footer:not(.pm-footer) {
+  display: none !important;
+}
+
+body.pm-wc-shell #content.site-main,
+body.pm-wc-shell .site-main:not(.pm-main) {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
 /* Page templates */
 .pm-page-head {
   padding: 2rem 0 1rem;
