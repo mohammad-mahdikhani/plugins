@@ -108,9 +108,11 @@ function pm_tpl_document( string $which ): void {
 		body.pm-wc-shell #pm-main a,body.pm-wc-shell .woocommerce-loop-product__title,body.pm-wc-shell .product_title{color:#1e4339!important}
 		body.pm-wc-shell #pm-main a.button,body.pm-wc-shell #pm-main button.button,body.pm-wc-shell .single_add_to_cart_button{background:#4aa88e!important;border:none!important;border-radius:999px!important;color:#faf7f2!important;box-shadow:none!important}
 		body.pm-wc-shell .price,body.pm-wc-shell .price *{color:#2a5f52!important}
-		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.5rem!important;align-items:center!important;margin:0 auto!important}
+		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.5rem!important;align-items:start!important;margin:0 auto!important}
+		body.pm-wc-shell .pm-product-single__crumb{width:100%!important;margin:0 0 .85rem!important;padding:0!important}
+		body.pm-wc-shell .pm-product-single__crumb .woocommerce-breadcrumb{display:block!important;width:100%!important;margin:0!important;padding:0!important;text-align:start!important;color:#6d8f84!important;font-size:.86rem!important;line-height:1.6!important}
 		body.pm-wc-shell .pm-product-gallery,body.pm-wc-shell .pm-product-summary{width:100%!important;max-width:none!important;min-width:0!important;float:none!important;margin:0!important}
-		body.pm-wc-shell .pm-product-summary{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.85rem!important}
+		body.pm-wc-shell .pm-product-summary{display:flex!important;flex-direction:column!important;align-items:stretch!important;align-self:start!important;gap:.85rem!important;padding:0!important;margin:0!important}
 		body.pm-wc-shell .pm-product-summary .product_title{margin:0!important;font-size:clamp(1.45rem,2.2vw,2rem)!important;line-height:1.45!important;font-weight:800!important}
 		body.pm-wc-shell .pm-product-summary__price,body.pm-wc-shell .pm-product-summary .price{margin:0!important;font-size:1.55rem!important;font-weight:800!important}
 		body.pm-wc-shell .woocommerce-product-gallery,body.pm-wc-shell .woocommerce div.product div.images{width:100%!important;max-width:none!important;float:none!important;margin:0!important;opacity:1!important;position:relative!important}
@@ -277,13 +279,16 @@ function pm_tpl_single_product(): string {
 	?>
 	<div id="product-<?php echo (int) $product->get_id(); ?>" <?php wc_product_class( 'pm-wc-single-product', $product ); ?>>
 		<section class="pm-product-single">
-			<div class="pm-container pm-product-single__grid">
+			<div class="pm-container">
+				<div class="pm-product-single__crumb">
+					<?php woocommerce_breadcrumb(); ?>
+				</div>
+				<div class="pm-product-single__grid">
 				<div class="pm-product-gallery">
 					<?php woocommerce_show_product_sale_flash(); ?>
 					<?php woocommerce_show_product_images(); ?>
 				</div>
 				<div class="pm-product-summary">
-					<?php woocommerce_breadcrumb(); ?>
 					<h1 class="product_title entry-title"><?php echo esc_html( $product->get_name() ); ?></h1>
 					<?php woocommerce_template_single_rating(); ?>
 					<div class="pm-product-summary__price"><?php woocommerce_template_single_price(); ?></div>
@@ -292,6 +297,7 @@ function pm_tpl_single_product(): string {
 					<?php endif; ?>
 					<?php echo pm_tpl_attributes_html( (int) $product->get_id() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					<div class="pm-qty-row"><?php woocommerce_template_single_add_to_cart(); ?></div>
+				</div>
 				</div>
 			</div>
 		</section>

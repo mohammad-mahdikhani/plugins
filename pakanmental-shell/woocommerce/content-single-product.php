@@ -20,13 +20,16 @@ if ( post_password_required() ) {
 ?>
 <div id="product-<?php the_ID(); ?>" <?php wc_product_class( 'pm-wc-single-product', $product ); ?>>
 	<section class="pm-product-single">
-		<div class="pm-container pm-product-single__grid">
+		<div class="pm-container">
+			<div class="pm-product-single__crumb">
+				<?php woocommerce_breadcrumb(); ?>
+			</div>
+			<div class="pm-product-single__grid">
 			<div class="pm-product-gallery">
 				<?php woocommerce_show_product_sale_flash(); ?>
 				<?php woocommerce_show_product_images(); ?>
 			</div>
 			<div class="pm-product-summary">
-				<?php woocommerce_breadcrumb(); ?>
 				<h1 class="product_title entry-title"><?php echo esc_html( $product->get_name() ); ?></h1>
 				<?php woocommerce_template_single_rating(); ?>
 				<div class="pm-product-summary__price">
@@ -46,6 +49,7 @@ if ( post_password_required() ) {
 					echo pm_product_promises_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				}
 				?>
+			</div>
 			</div>
 		</div>
 	</section>
