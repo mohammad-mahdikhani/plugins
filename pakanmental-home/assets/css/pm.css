@@ -3645,6 +3645,24 @@ body.woocommerce-order-received .pm-checkout-steps {
 .woocommerce input.input-text,
 .woocommerce textarea,
 .woocommerce select,
+/* One required mark. WooCommerce prints the asterisk, and a second one was generated beside it. */
+.woocommerce form .form-row label.required_field::before,
+.woocommerce form .form-row label.required_field::after,
+.woocommerce form .form-row .required::before,
+.woocommerce form .form-row .required::after,
+.woocommerce form .form-row abbr.required::before,
+.woocommerce form .form-row abbr.required::after {
+  content: none !important;
+  display: none !important;
+}
+
+.woocommerce form .form-row .required,
+.woocommerce form .form-row abbr.required {
+  visibility: visible !important;
+  color: #c23b3b;
+  font-weight: 700;
+}
+
 .woocommerce-checkout .form-row input.input-text,
 .woocommerce-checkout .form-row select,
 .woocommerce-checkout .form-row textarea {
