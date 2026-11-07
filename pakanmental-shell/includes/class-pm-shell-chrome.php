@@ -121,6 +121,13 @@ final class PM_Shell_Chrome {
 	public static function render_main(): void {
 		// Product and category HTML is built from the current query. The shared
 		// Elementor library documents cache the first render and would repeat it.
+		// Elementor also swaps the description tab for the whole canvas, which
+		// prints the product a second time.
+		if ( class_exists( '\Elementor\Plugin' ) ) {
+			$frontend = \Elementor\Plugin::$instance->frontend;
+			$priority = defined( '\Elementor\Frontend::THE_CONTENT_FILTER_PRIORITY' ) ? (int) \Elementor\Frontend::THE_CONTENT_FILTER_PRIORITY : 9;
+			remove_filter( 'the_content', array( $frontend, 'apply_builder_in_content' ), $priority );
+		}
 		if ( is_singular( 'product' ) ) {
 			while ( have_posts() ) {
 				the_post();

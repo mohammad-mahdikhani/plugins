@@ -54,7 +54,6 @@ if ( post_password_required() ) {
 
 	<section class="pm-section pm-section--alt pm-related">
 		<div class="pm-container">
-			<h2><?php esc_html_e( 'محصولات مرتبط', 'pakanmental-shell' ); ?></h2>
 			<?php woocommerce_output_related_products(); ?>
 		</div>
 	</section>
