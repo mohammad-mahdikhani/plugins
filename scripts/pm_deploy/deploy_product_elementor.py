@@ -72,6 +72,7 @@ def _apply_product_elementor_settings(client: ElementorMcp, post_id: int) -> Non
 
 
 def fetch_product_store(product_id: int) -> dict:
+    import urllib.error
     import urllib.request
 
     url = f"https://www.pakanmental.com/wp-json/wc/store/v1/products/{product_id}"
@@ -82,8 +83,27 @@ def fetch_product_store(product_id: int) -> dict:
             "User-Agent": "PakanMentalDeploy/1.0",
         },
     )
-    with urllib.request.urlopen(req_obj, timeout=45) as res:
-        return json.loads(res.read().decode())
+    try:
+        with urllib.request.urlopen(req_obj, timeout=45) as res:
+            return json.loads(res.read().decode())
+    except urllib.error.HTTPError:
+        v3 = fetch_product_wc_v3(product_id)
+        images = []
+        if v3.get("images"):
+            images = v3["images"]
+        return {
+            "id": v3.get("id"),
+            "name": v3.get("name") or "",
+            "permalink": v3.get("permalink") or "",
+            "images": images,
+            "prices": {
+                "price": str(v3.get("price") or "0"),
+                "regular_price": str(v3.get("regular_price") or "0"),
+                "sale_price": str(v3.get("sale_price") or "0"),
+                "currency_minor_unit": 0,
+            },
+            "categories": v3.get("categories") or [],
+        }
 
 
 def fetch_product_wc_v3(product_id: int) -> dict:
