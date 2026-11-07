@@ -107,6 +107,7 @@ def main() -> None:
     pages = [
         (PAGE_IDS["home"], "home", home_main(), True, False),
         (PAGE_IDS["shop"], "shop", shop_main(), False, True),
+        (PAGE_IDS.get("wc_shop", 67), "shop", shop_main(), False, True),
         (PAGE_IDS["cart"], "cart", cart_main(), False, False),
         (PAGE_IDS["wc_cart"], "cart", cart_main(), False, False),
         (PAGE_IDS["checkout"], "cart", checkout_main(), False, False),

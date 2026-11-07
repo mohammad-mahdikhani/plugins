@@ -317,11 +317,23 @@ body.single-product.elementor-page .woocommerce-Tabs-panel {{ display: block !im
       <h1>{html.escape(name)}</h1>
       <p class="pm-product-summary__price">{price}</p>
       {specs}
-      <form class="cart pm-add-to-cart" method="post" action="">
+      <style id="pm-atc-minimal">
+.pm-product-summary form.cart.pm-add-to-cart{{display:flex!important;flex-direction:row!important;flex-wrap:wrap;align-items:center!important;justify-content:center!important;gap:.7rem}}
+.pm-product-summary .pm-qty-row{{display:flex!important;flex-direction:row!important;flex-wrap:wrap;align-items:center!important;justify-content:center!important;grid-template-columns:none!important;gap:.7rem;width:100%}}
+.pm-qty-stepper{{display:inline-flex;direction:ltr;align-items:center;justify-content:space-between;min-width:11.25rem;height:48px;padding:0 .3rem;border:1.5px solid color-mix(in srgb, var(--pm-mint-500, #4aa88e) 48%, var(--pm-teal-700, #2a5f52));border-radius:999px;background:#fff}}
+.pm-qty-stepper__btn{{width:36px;height:36px;border:0;border-radius:50%;background:transparent;color:var(--pm-teal-700,#2a5f52);font-size:1.2rem;font-weight:600;cursor:pointer;line-height:1}}
+.pm-qty-stepper__btn:hover{{background:var(--pm-mint-50,#e8f6f1);color:var(--pm-mint-600,#3d8f78)}}
+.pm-product-summary .pm-qty-stepper .pm-qty{{width:2.4rem!important;border:0!important;box-shadow:none!important;background:transparent;text-align:center;font-weight:700;-moz-appearance:textfield;appearance:textfield}}
+.pm-product-summary .pm-qty-stepper .pm-qty::-webkit-outer-spin-button,.pm-product-summary .pm-qty-stepper .pm-qty::-webkit-inner-spin-button{{-webkit-appearance:none;margin:0}}
+.pm-product-summary .single_add_to_cart_button{{width:auto!important;min-width:11.5rem;height:48px;margin:0;padding:0 1.5rem;border-radius:999px;box-shadow:none}}
+      </style>
+      <form class="cart pm-add-to-cart" method="post" action="{html.escape(product.get("permalink") or "")}">
         <div class="pm-qty-row">
-          <label class="pm-qty-label">تعداد
+          <div class="pm-qty-stepper" role="group" aria-label="تعداد">
+            <button type="button" class="pm-qty-stepper__btn" data-pm-qty-step="1" aria-label="افزایش تعداد">+</button>
             <input type="number" class="qty pm-qty" name="quantity" value="1" min="1" step="1" inputmode="numeric" aria-label="تعداد" />
-          </label>
+            <button type="button" class="pm-qty-stepper__btn" data-pm-qty-step="-1" aria-label="کاهش تعداد">−</button>
+          </div>
           <button type="submit" name="add-to-cart" value="{pid}" class="pm-btn pm-btn--primary single_add_to_cart_button">افزودن به سبد خرید</button>
         </div>
         <input type="hidden" name="add-to-cart" value="{pid}" />
@@ -364,7 +376,14 @@ def deploy_product(post_id: int) -> None:
 
 
 def main() -> None:
-    deploy_product(347)
+    ids = [347]
+    try:
+        listing = req("GET", "https://www.pakanmental.com/wp-json/wc/v3/products?per_page=50&status=publish")
+        ids = [int(item["id"]) for item in listing if item.get("id")]
+    except Exception:
+        pass
+    for pid in ids:
+        deploy_product(pid)
 
 
 if __name__ == "__main__":

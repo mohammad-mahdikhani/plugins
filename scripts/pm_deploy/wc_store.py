@@ -145,6 +145,8 @@ def carousel_row(
     alt: bool = False,
     badge: bool = False,
     placeholder_prefix: str = "",
+    category_id: int | None = None,
+    orderby: str = "date",
 ) -> str:
     more = html.escape(more_url or URLS["shop"])
     cards = ""
@@ -162,6 +164,10 @@ def carousel_row(
 </article>"""
     section_alt = " pm-section--alt" if alt else ""
     track_id = f"track-{row_id}"
+    cat_attr = ""
+    if category_id:
+        cat_attr = f' data-category="{int(category_id)}"'
+    badge_attr = ' data-badge="1"' if badge else ""
     return f"""
 <section class="pm-section{section_alt}">
   <div class="pm-container">
@@ -171,7 +177,7 @@ def carousel_row(
     </header>
     <div class="pm-carousel">
       <button type="button" class="pm-carousel__btn pm-carousel__btn--prev" data-pm-scroll="{track_id}" data-pm-dir="prev" aria-label="قبلی">‹</button>
-      <div class="pm-track" id="{track_id}" tabindex="0">{cards}
+      <div class="pm-track" id="{track_id}" data-pm-product-row data-orderby="{html.escape(orderby)}" data-per-page="8"{cat_attr}{badge_attr} tabindex="0">{cards}
       </div>
       <button type="button" class="pm-carousel__btn pm-carousel__btn--next" data-pm-scroll="{track_id}" data-pm-dir="next" aria-label="بعدی">›</button>
     </div>
