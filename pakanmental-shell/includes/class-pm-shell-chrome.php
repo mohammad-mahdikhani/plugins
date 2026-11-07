@@ -75,9 +75,11 @@ final class PM_Shell_Chrome {
 		wp_add_inline_style(
 			'pm-site',
 			'html body.pm-wc-shell .site-header,html body.pm-wc-shell header#site-header,html body.pm-wc-shell .dynamic-header,html body.pm-wc-shell .site-footer,html body.pm-wc-shell footer#site-footer{display:none!important}'
-			. '.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)!important;gap:1.5rem!important;align-items:start!important;width:min(1200px,92vw)!important;margin:0 auto!important}'
-			. '.pm-game-specs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.55rem!important;list-style:none!important;margin:0 0 1.15rem!important;padding:0!important;width:100%!important}'
-			. '.pm-game-spec{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;aspect-ratio:1/1!important;width:100%!important;padding:.45rem .3rem!important;text-align:center!important;box-sizing:border-box!important;background:linear-gradient(180deg,#fff 0%,#e8f6f1 100%)!important;border:1.5px solid #4aa88e!important;border-radius:18px!important}'
+			. 'body.pm-wc-shell{--pm-shell-width:min(1200px,92vw)}'
+			. 'body.pm-wc-shell #pm-main,body.pm-wc-shell .pm-header__bar{width:var(--pm-shell-width)!important;max-width:var(--pm-shell-width)!important;margin-inline:auto!important}'
+			. '.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)!important;gap:1.5rem!important;align-items:start!important;width:100%!important;margin:0 auto!important}'
+			. 'body.pm-wc-shell .pm-game-specs{display:flex!important;flex-wrap:wrap!important;gap:.4rem!important;width:auto!important;max-width:100%!important}'
+			. 'body.pm-wc-shell .pm-game-spec{aspect-ratio:auto!important;width:auto!important;max-width:6.4rem!important;height:auto!important;padding:.32rem .4rem!important;border-radius:10px!important;box-shadow:none!important}'
 			. '@media(max-width:768px){.pm-product-single .pm-product-single__grid{grid-template-columns:1fr!important}}'
 		);
 		foreach ( array( 'pm-header', 'pm-mega-menu', 'pm-mobile', 'pm-search', 'pm-trust-badges' ) as $handle ) {
