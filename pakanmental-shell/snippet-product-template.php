@@ -108,16 +108,24 @@ function pm_tpl_document( string $which ): void {
 		body.pm-wc-shell #pm-main a,body.pm-wc-shell .woocommerce-loop-product__title,body.pm-wc-shell .product_title{color:#1e4339!important}
 		body.pm-wc-shell #pm-main a.button,body.pm-wc-shell #pm-main button.button,body.pm-wc-shell .single_add_to_cart_button{background:#4aa88e!important;border:none!important;border-radius:999px!important;color:#faf7f2!important;box-shadow:none!important}
 		body.pm-wc-shell .price,body.pm-wc-shell .price *{color:#2a5f52!important}
-		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.25rem!important;align-items:start!important;margin:0 auto!important}
-		body.pm-wc-shell .pm-product-gallery,body.pm-wc-shell .woocommerce-product-gallery,body.pm-wc-shell .woocommerce div.product div.images{width:100%!important;max-width:none!important;float:none!important;margin:0!important;opacity:1!important}
-		body.pm-wc-shell .woocommerce-product-gallery__wrapper,body.pm-wc-shell .flex-viewport,body.pm-wc-shell .woocommerce-product-gallery__image,body.pm-wc-shell .woocommerce-product-gallery__image a{width:100%!important;height:auto!important;max-height:none!important;display:block!important;transform:none!important;margin:0!important}
+		.pm-product-single .pm-product-single__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:1.5rem!important;align-items:center!important;margin:0 auto!important}
+		body.pm-wc-shell .pm-product-gallery,body.pm-wc-shell .pm-product-summary{width:100%!important;max-width:none!important;min-width:0!important;float:none!important;margin:0!important}
+		body.pm-wc-shell .pm-product-summary{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.85rem!important}
+		body.pm-wc-shell .pm-product-summary .product_title{margin:0!important;font-size:clamp(1.45rem,2.2vw,2rem)!important;line-height:1.45!important;font-weight:800!important}
+		body.pm-wc-shell .pm-product-summary__price,body.pm-wc-shell .pm-product-summary .price{margin:0!important;font-size:1.55rem!important;font-weight:800!important}
+		body.pm-wc-shell .woocommerce-product-gallery,body.pm-wc-shell .woocommerce div.product div.images{width:100%!important;max-width:none!important;float:none!important;margin:0!important;opacity:1!important;position:relative!important}
+		body.pm-wc-shell .woocommerce-product-gallery__wrapper,body.pm-wc-shell .flex-viewport,body.pm-wc-shell .woocommerce-product-gallery__image,body.pm-wc-shell .woocommerce-product-gallery__image a{width:100%!important;height:auto!important;max-height:none!important;display:block!important;transform:none!important;margin:0!important;left:auto!important;position:relative!important}
 		body.pm-wc-shell .flex-viewport{overflow:visible!important}
 		body.pm-wc-shell .woocommerce-product-gallery__image:not(:first-child){display:none!important}
-		body.pm-wc-shell .woocommerce-product-gallery__image img,body.pm-wc-shell .pm-product-gallery img{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1/1!important;object-fit:contain!important;background:#f6f3ee!important;border-radius:18px!important}
-		body.pm-wc-shell .pm-game-specs{display:flex!important;flex-wrap:wrap!important;gap:.4rem!important;list-style:none!important;margin:0 0 .9rem!important;padding:0!important;width:auto!important;max-width:100%!important}
-		body.pm-wc-shell .pm-game-spec{display:flex!important;flex:0 0 auto!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;aspect-ratio:auto!important;width:auto!important;min-width:4.6rem!important;max-width:6.4rem!important;height:auto!important;padding:.32rem .4rem!important;text-align:center!important;box-sizing:border-box!important;background:linear-gradient(180deg,#fff 0%,#e8f6f1 100%)!important;border:1px solid #b7ddd1!important;border-radius:10px!important;box-shadow:none!important;gap:.08rem!important}
-		body.pm-wc-shell .pm-game-spec__label{font-size:.6rem!important;font-weight:600!important;color:#2a5f52!important;line-height:1.2!important}
-		body.pm-wc-shell .pm-game-spec__value{font-size:.72rem!important;font-weight:700!important;color:#1e4339!important;line-height:1.25!important}
+		body.pm-wc-shell .woocommerce-product-gallery__image img,body.pm-wc-shell .pm-product-gallery img{width:100%!important;max-width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1/1!important;object-fit:contain!important;background:#f6f3ee!important;border-radius:18px!important}
+		body.pm-wc-shell .pm-game-specs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.55rem!important;list-style:none!important;margin:0!important;padding:0!important;width:100%!important;max-width:none!important}
+		body.pm-wc-shell .pm-game-spec{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;aspect-ratio:auto!important;width:100%!important;min-width:0!important;max-width:none!important;min-height:4.6rem!important;height:auto!important;padding:.55rem .4rem!important;text-align:center!important;box-sizing:border-box!important;background:linear-gradient(180deg,#fff 0%,#e8f6f1 100%)!important;border:1px solid #b7ddd1!important;border-radius:14px!important;box-shadow:none!important;gap:.15rem!important}
+		body.pm-wc-shell .pm-game-spec__label{font-size:.75rem!important;font-weight:600!important;color:#2a5f52!important;line-height:1.25!important}
+		body.pm-wc-shell .pm-game-spec__value{font-size:.95rem!important;font-weight:800!important;color:#1e4339!important;line-height:1.3!important}
+		body.pm-wc-shell .pm-qty-row,body.pm-wc-shell .pm-product-summary form.cart{display:flex!important;flex-direction:row!important;align-items:center!important;gap:.65rem!important;width:100%!important;margin:0!important}
+		body.pm-wc-shell .pm-product-summary .quantity{float:none!important;margin:0!important;flex:0 0 4.6rem!important}
+		body.pm-wc-shell .pm-product-summary .quantity .qty{width:100%!important;height:48px!important;text-align:center!important}
+		body.pm-wc-shell .pm-product-summary .single_add_to_cart_button{flex:1 1 auto!important;width:auto!important;min-height:48px!important;font-size:1rem!important}
 		body.pm-wc-shell #pm-main .woocommerce-tabs{margin:1.5rem 0 0!important;padding:0!important;border:0!important}
 		body.pm-wc-shell #pm-main .woocommerce-tabs ul.tabs{display:flex!important;flex-wrap:wrap!important;gap:.4rem!important;justify-content:flex-start!important;align-items:center!important;list-style:none!important;margin:0 0 .85rem!important;padding:0!important;overflow:visible!important;border:0!important;background:transparent!important}
 		body.pm-wc-shell #pm-main .woocommerce-tabs ul.tabs::before,body.pm-wc-shell #pm-main .woocommerce-tabs ul.tabs::after,body.pm-wc-shell #pm-main .woocommerce-tabs ul.tabs li::before,body.pm-wc-shell #pm-main .woocommerce-tabs ul.tabs li::after{display:none!important;content:none!important;border:0!important;box-shadow:none!important}
@@ -154,6 +162,16 @@ function pm_tpl_document( string $which ): void {
 			body.pm-wc-shell .pm-header__cart-mobile{display:flex!important;grid-column:3;justify-self:end}
 			body.pm-wc-shell .related.products ul.products,.pm-product-single .pm-product-single__grid{grid-template-columns:1fr!important}
 			body.pm-wc-shell .related.products ul.products{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+			body.pm-wc-shell .pm-product-single__grid{align-items:stretch!important;gap:1rem!important}
+			body.pm-wc-shell .pm-product-summary .product_title{font-size:1.4rem!important}
+			body.pm-wc-shell .pm-product-summary__price,body.pm-wc-shell .pm-product-summary .price{font-size:1.3rem!important}
+			body.pm-wc-shell .pm-game-specs{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+			body.pm-wc-shell .pm-product-summary .single_add_to_cart_button{min-height:46px!important}
+		}
+		@media(max-width:560px){
+			body.pm-wc-shell .pm-game-specs{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+			body.pm-wc-shell .pm-product-summary form.cart{flex-wrap:wrap!important}
+			body.pm-wc-shell .pm-product-summary .single_add_to_cart_button{flex:1 1 100%!important}
 		}
 	</style>
 </head>
