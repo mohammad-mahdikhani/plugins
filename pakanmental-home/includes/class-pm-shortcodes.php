@@ -157,6 +157,7 @@ final class PM_Shortcodes {
 			foreach ( $result->products as $product ) {
 				self::render_shop_product_card( $product );
 			}
+			echo '<script>(function(){document.querySelectorAll(".pm-product__buy").forEach(function(form){if(form.dataset.pmQtyBound)return;form.dataset.pmQtyBound="1";form.addEventListener("click",function(e){var btn=e.target.closest("[data-pm-qty-step]");if(!btn||!form.contains(btn))return;e.preventDefault();var input=form.querySelector("input.qty");if(!input)return;var next=(parseInt(input.value,10)||1)+(parseInt(btn.getAttribute("data-pm-qty-step"),10)||0);input.value=String(next<1?1:next);});});})();</script>';
 		} else {
 			echo '<p class="pm-empty">' . esc_html__( 'هنوز محصولی منتشر نشده است.', 'pakanmental-home' ) . '</p>';
 		}
@@ -196,6 +197,16 @@ final class PM_Shortcodes {
 				<h3 class="pm-product__title"><?php echo esc_html( $product->get_name() ); ?></h3>
 				<p class="pm-product__price"><?php echo wp_kses_post( $product->get_price_html() ); ?></p>
 			</a>
+			<?php if ( $product->is_purchasable() && $product->is_in_stock() && $product->is_type( 'simple' ) ) : ?>
+				<form class="pm-product__buy cart" method="post" action="<?php echo esc_url( $product->get_permalink() ); ?>">
+					<div class="pm-product__stepper">
+						<button type="button" data-pm-qty-step="-1" aria-label="<?php esc_attr_e( 'کم کردن', 'pakanmental-home' ); ?>">−</button>
+						<input class="qty" type="number" name="quantity" value="1" min="1" inputmode="numeric" aria-label="<?php esc_attr_e( 'تعداد', 'pakanmental-home' ); ?>">
+						<button type="button" data-pm-qty-step="1" aria-label="<?php esc_attr_e( 'زیاد کردن', 'pakanmental-home' ); ?>">+</button>
+					</div>
+					<button type="submit" class="pm-product__add single_add_to_cart_button" name="add-to-cart" value="<?php echo esc_attr( (string) $product->get_id() ); ?>"><?php esc_html_e( 'افزودن به سبد خرید', 'pakanmental-home' ); ?></button>
+				</form>
+			<?php endif; ?>
 		</article>
 		<?php
 	}

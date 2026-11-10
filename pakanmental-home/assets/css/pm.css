@@ -2196,6 +2196,95 @@ body.error404 .pm-header__nav .pm-seg__link.is-active {
   color: var(--pm-text-muted);
 }
 
+.pm-product {
+  display: flex;
+  flex-direction: column;
+}
+
+.pm-product__link {
+  padding-bottom: 0;
+}
+
+.pm-product__buy {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0;
+  padding: 0 0.65rem 0.65rem;
+}
+
+.pm-product__stepper {
+  display: inline-flex;
+  direction: ltr;
+  align-items: center;
+  height: 32px;
+  padding: 0 0.1rem;
+  border: 1px solid #d5ebe3;
+  border-radius: var(--pm-pill);
+  background: #fff;
+  align-self: flex-start;
+}
+
+.pm-product__stepper button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: var(--pm-teal-900);
+  border-radius: 50%;
+  font: 700 1rem/1 inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pm-product__stepper input.qty {
+  width: 1.7rem !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center;
+  font: 700 0.78rem/1 inherit;
+  color: var(--pm-teal-900);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pm-product__stepper input.qty::-webkit-outer-spin-button,
+.pm-product__stepper input.qty::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pm-product__buy .pm-product__add,
+.pm-product__buy .single_add_to_cart_button {
+  width: 100% !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 0.65rem !important;
+  border: 0 !important;
+  border-radius: var(--pm-pill) !important;
+  background: var(--pm-mint-500) !important;
+  color: #fff !important;
+  font-family: inherit !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  float: none !important;
+  white-space: nowrap;
+}
+
+.pm-product__buy .pm-product__add:hover,
+.pm-product__buy .single_add_to_cart_button:hover {
+  background: var(--pm-mint-600) !important;
+}
+
 .pm-pagination {
   display: flex;
   gap: 0.35rem;
