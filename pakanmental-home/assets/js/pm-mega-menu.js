@@ -57,6 +57,56 @@
     return byParent;
   }
 
+  function esc(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[ch];
+    });
+  }
+
+  function mountBrands(brands) {
+    var list = (brands || []).filter(function (brand) {
+      return brand && brand.name && brand.link;
+    });
+    list.sort(function (a, b) {
+      return a.name.localeCompare(b.name, "fa");
+    });
+    if (!list.length) return;
+    var html =
+      '<section class="pm-mega__brands" data-pm-mega-brands><p class="pm-mega__brands-title">برندها</p><ul class="pm-mega__brand-list">';
+    list.forEach(function (brand) {
+      html +=
+        '<li><a href="' + esc(brand.link) + '">' + esc(brand.name) + "</a></li>";
+    });
+    html += "</ul></section>";
+    grids.forEach(function (grid) {
+      if (
+        grid.parentElement &&
+        !grid.parentElement.querySelector("[data-pm-mega-brands]")
+      ) {
+        grid.insertAdjacentHTML("afterend", html);
+      }
+    });
+  }
+
+  function loadBrands() {
+    if (document.documentElement.getAttribute("data-pm-brands-mounted")) return;
+    document.documentElement.setAttribute("data-pm-brands-mounted", "1");
+    fetch("/wp-json/wp/v2/product_brand?per_page=100&hide_empty=false", {
+      credentials: "same-origin",
+    })
+      .then(function (res) {
+        return res.ok ? res.json() : [];
+      })
+      .then(mountBrands)
+      .catch(function () {});
+  }
+
   function renderMenu(items) {
     var byParent = buildTree(items);
     var roots = byParent[0] || [];
@@ -127,6 +177,8 @@
         el.innerHTML = fail;
       });
     });
+
+  loadBrands();
 
   trigger.addEventListener("click", function (e) {
     if (isDesktop()) return;
