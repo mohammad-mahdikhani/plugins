@@ -1,11 +1,12 @@
 const PRIMARY = [
   ["pos", "فروش"],
-  ["dashboard", "پیشخوان"],
-  ["products", "کالا", "admin"],
+  ["dashboard", "پیشخوان", "stock"],
+  ["products", "کالا", "stock"],
   ["register", "صندوق"],
 ];
 const MORE = [
-  ["inventory", "انبار", "admin"],
+  ["inventory", "انبار", "stock"],
+  ["checks", "چک", "admin"],
   ["accounts", "حسابداری", "admin"],
   ["customers", "مشتریان"],
   ["licenses", "لایسنس", "admin"],
@@ -199,10 +200,17 @@ async function loadUpdate() {
   catch { state.update = null; }
 }
 function isAdmin() { return state.user?.role === "admin"; }
+function isStock() { return isAdmin() || state.user?.role === "stock"; }
+function canSee(level) {
+  if (!level) return true;
+  if (level === "stock") return isStock();
+  if (level === "admin") return isAdmin();
+  return false;
+}
 function allowed(page) {
   const item = NAV.find((row) => row[0] === page);
   if (!item) return false;
-  if (item[2] === "admin" && !isAdmin()) return false;
+  if (!canSee(item[2])) return false;
   return modeAllows(page);
 }
 async function guard(fn) {
@@ -231,14 +239,21 @@ const loaders = {
     state.registerInfo = registerInfo;
     updatePromise.then(() => { if (state.page === "dashboard") paintChrome(); });
   },
+  async checks() {
+    const [checks, bank] = await Promise.all([api("/api/checks"), api("/api/bank/sms")]);
+    state.checks = checks;
+    state.checkAlerts = checks.alerts || [];
+    state.bankMessages = bank.messages || [];
+  },
   async pos() {
-    const [products, pending, registerInfo] = await Promise.all([
-      api("/api/products"), api("/api/sales?status=pending&limit=20"), api("/api/register"),
+    const [products, pending, registerInfo, alerts] = await Promise.all([
+      api("/api/products"), api("/api/sales?status=pending&limit=20"), api("/api/register"), api("/api/checks/alerts"),
     ]);
     state.products = stampProducts(products.products);
     state.posLimit = PAGE_SIZE;
     state.pending = pending.sales;
     state.registerInfo = registerInfo;
+    state.checkAlerts = alerts.alerts || [];
     syncCartStock();
   },
   async products() {
@@ -597,8 +612,8 @@ function homePage() {
 function modeAllows(page) {
   if (page === "licenses") return true;
   const allow = {
-    offline: ["pos", "products", "register", "customers", "settings", "updates"],
-    hybrid: ["pos", "dashboard", "products", "register", "inventory", "customers", "settings", "updates"],
+    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "customers", "settings", "updates"],
+    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "customers", "settings", "updates"],
     online: ["products", "settings", "updates"],
   }[state.shopMode];
   if (!allow) return true;
@@ -606,7 +621,7 @@ function modeAllows(page) {
 }
 function visibleNav(list) {
   return list.filter((item) => {
-    if (item[2] === "admin" && !isAdmin()) return false;
+    if (!canSee(item[2])) return false;
     if (item[0] === "licenses" && state.shopMode && state.access?.active) return false;
     return modeAllows(item[0]);
   });
@@ -903,6 +918,8 @@ function posHtml() {
   return `<div class="pos">
     <section class="card cart">
       ${closed ? `<div class="banner">صندوق بسته است. <button type="button" class="btn" data-act="nav" data-page="register">باز کردن صندوق</button></div>` : ""}
+      ${lowStockBanner(state.products)}
+      ${checkAlertBanner()}
       <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد را اینجا بگیرید"></div>
       ${state.scanHit ? `<div class="banner">همین بارکد: <strong>${esc(state.scanHit.name)}</strong> · قیمت ${money(state.scanHit.price)} · موجودی ${num(state.scanHit.stock)}</div>` : ""}
       ${lines}
@@ -941,8 +958,18 @@ function productRows() {
   if (!rows.length) return `<p class="empty">کالایی در این فهرست نیست.</p>`;
   const shown = rows.slice(0, state.productLimit);
   return `<table><thead><tr><th></th><th>نام</th><th>بارکد</th><th>مودیان</th><th>قیمت فروش</th><th>موجودی</th><th></th></tr></thead><tbody>
-    ${shown.map((product) => `<tr><td>${thumb(product.image, product.name, true)}</td><td>${esc(product.name)}${product.woo_id ? ` <span class="pill">ووکامرس</span>` : ""}${product.type === "variable" ? ` <span class="pill">متغیر</span>` : ""}${variationLines(product)}</td><td class="ltr">${esc(product.barcode || "—")}</td><td class="ltr">${esc(product.tax_code || "—")}</td><td class="num">${product.type === "variable" ? `از ${money(product.price)}` : money(product.price)}</td><td class="num">${num(product.stock)} ${product.low ? `<span class="pill warn">کم</span>` : ""}</td><td class="row-actions"><button type="button" class="btn" data-act="edit-product" data-id="${product.id}">ویرایش</button><button type="button" class="btn danger" data-act="archive-product" data-id="${product.id}">بایگانی</button></td></tr>`).join("")}
+    ${shown.map((product) => `<tr><td>${thumb(product.image, product.name, true)}</td><td>${esc(product.name)}${product.woo_id ? ` <span class="pill">ووکامرس</span>` : ""}${product.type === "variable" ? ` <span class="pill">متغیر</span>` : ""}${variationLines(product)}</td><td class="ltr">${esc(product.barcode || "—")}</td><td class="ltr">${esc(product.tax_code || "—")}</td><td class="num">${product.type === "variable" ? `از ${money(product.price)}` : money(product.price)}</td><td class="num">${num(product.stock)} ${product.low ? `<span class="pill warn">کم</span>` : ""}</td><td class="row-actions">${isAdmin() ? `<button type="button" class="btn" data-act="edit-product" data-id="${product.id}">ویرایش</button><button type="button" class="btn danger" data-act="archive-product" data-id="${product.id}">بایگانی</button>` : ""}</td></tr>`).join("")}
   </tbody></table>${moreControl("more-products", rows.length, state.productLimit)}`;
+}
+function lowStockBanner(rows) {
+  const low = (rows || []).filter((product) => product.low);
+  if (!low.length) return "";
+  return `<div class="banner">موجودی این کالاها به زیر حد هشدار رسیده: ${low.slice(0, 8).map((product) => esc(product.name)).join("، ")}</div>`;
+}
+function checkAlertBanner() {
+  const alerts = state.checkAlerts || [];
+  if (!alerts.length) return "";
+  return `<div class="banner">سررسید چک: ${alerts.slice(0, 4).map((row) => `${esc(row.number)} تا ${esc(row.due_jalali)}`).join("، ")}</div>`;
 }
 function productsHtml() {
   const imported = state.importResult;
@@ -951,9 +978,9 @@ function productsHtml() {
     ${imported.errors?.length ? `<div>${imported.errors.map((row) => `<div>ردیف ${num(row.row)}: ${esc(row.error)}</div>`).join("")}</div>` : ""}
   </div>` : "";
   const woo = state.shopMode !== "offline";
-  return `<div class="stack">${banner}
+  return `<div class="stack">${lowStockBanner(state.products)}${banner}
     <section class="card"><div class="row-actions">
-      <button type="button" class="btn primary" data-act="new-product">کالای جدید</button>
+      ${isAdmin() ? `<button type="button" class="btn primary" data-act="new-product">کالای جدید</button>` : ""}
       <a class="btn" href="/api/products/template">نمونه اکسل</a>
       <button type="button" class="btn" data-act="open-import">ورود با اکسل</button>
       ${woo ? `<button type="button" class="btn" data-act="woo-push">ارسال همه به ووکامرس</button><button type="button" class="btn" data-act="woo-pull">دریافت از ووکامرس</button>` : ""}
@@ -979,13 +1006,33 @@ function inventoryHtml() {
   if (!data) return "";
   const options = stockChoices(inventoryFiltered().slice(0, PAGE_SIZE));
   const pay = data.pay_accounts.map((account) => `<option value="${esc(account.code)}">${esc(account.name)}</option>`).join("");
-  return `<div class="stack"><section class="card"><input id="inventory-query" value="${esc(state.inventoryQuery)}" placeholder="جستجوی کالا برای دیدن و تعدیل"><div id="inventory-box">${inventoryTable()}</div>
-    <details><summary>تعدیل موجودی</summary><form data-act="adjust"><div class="field"><label>کالا</label><select name="product_id">${options}</select><p class="hint">اگر کالا در فهرست نیست، نامش را بالا بنویسید.</p></div><div class="field"><label>موجودی جدید</label><input name="stock" inputmode="numeric" required></div><div class="field"><label>شرح</label><input name="note"></div><button class="btn primary" type="submit">ثبت</button></form></details>
-    <details><summary>رسید خرید</summary><form data-act="purchase"><div class="grid-2"><div class="field"><label>کالا</label><select name="product_id">${options}</select></div><div class="field"><label>تعداد</label><input name="qty" inputmode="numeric" required></div></div><div class="grid-2"><div class="field"><label>فی خرید</label><input name="unit_cost" inputmode="numeric" required></div><div class="field"><label>پرداخت از</label><select name="pay_code">${pay}</select></div></div><p class="hint">اگر فی خرید وارد شود، میانگین قیمت خرید عوض می‌شود و سند حسابداری می‌خورد.</p><button class="btn primary" type="submit">ثبت خرید</button></form></details>
+  return `<div class="stack">${lowStockBanner(data.products)}<section class="card"><input id="inventory-query" value="${esc(state.inventoryQuery)}" placeholder="جستجوی کالا برای دیدن موجودی"><div id="inventory-box">${inventoryTable()}</div>
+    ${isAdmin() ? `<details><summary>تعدیل موجودی</summary><form data-act="adjust"><div class="field"><label>کالا</label><select name="product_id">${options}</select><p class="hint">اگر کالا در فهرست نیست، نامش را بالا بنویسید.</p></div><div class="field"><label>موجودی جدید</label><input name="stock" inputmode="numeric" required></div><div class="field"><label>شرح</label><input name="note"></div><button class="btn primary" type="submit">ثبت</button></form></details>` : `<p class="hint">این حساب موجودی را می‌بیند. تغییر موجودی با مدیر است.</p>`}
+    ${isAdmin() ? `<details><summary>رسید خرید</summary><form data-act="purchase"><div class="grid-2"><div class="field"><label>کالا</label><select name="product_id">${options}</select></div><div class="field"><label>تعداد</label><input name="qty" inputmode="numeric" required></div></div><div class="grid-2"><div class="field"><label>فی خرید</label><input name="unit_cost" inputmode="numeric" required></div><div class="field"><label>پرداخت از</label><select name="pay_code">${pay}</select></div></div><p class="hint">اگر فی خرید وارد شود، میانگین قیمت خرید عوض می‌شود و سند حسابداری می‌خورد.</p><button class="btn primary" type="submit">ثبت خرید</button></form></details>` : ""}
   </section>
   <section class="card"><h2 class="section-title">گردش اخیر</h2><table><thead><tr><th>زمان</th><th>کالا</th><th>نوع</th><th>از</th><th>به</th><th>شرح</th></tr></thead><tbody>
     ${data.logs.map((row) => `<tr><td>${esc(row.at_jalali)}</td><td>${esc(row.product_name)}</td><td>${KINDS[row.kind] || esc(row.kind)}</td><td class="num">${num(row.old_value)}</td><td class="num">${num(row.new_value)}</td><td>${esc(row.note || "")}</td></tr>`).join("") || `<tr><td colspan="6">گردشی نیست.</td></tr>`}
   </tbody></table></section></div>`;
+}
+
+function checksHtml() {
+  const data = state.checks;
+  if (!data) return "";
+  const rows = (data.checks || []).map((row) => `<tr><td class="ltr">${esc(row.number)}</td><td>${esc(row.person)}</td><td class="num">${money(row.amount)}</td><td>${esc(row.due_jalali)}</td><td>${row.kind === "out" ? "صادره" : "وارده"}</td><td>${row.status === "collected" ? "وصول شد" : "باز"}</td><td>${row.status === "pending" ? `<button type="button" class="btn" data-act="collect-check" data-id="${row.id}">وصول و برداشت از صندوق</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="7">چکی ثبت نشده.</td></tr>`;
+  const messages = (state.bankMessages || []).map((row) => `<tr><td>${esc(row.at_jalali)}</td><td class="num">${money(row.amount)}</td><td>${esc(row.raw)}</td></tr>`).join("") || `<tr><td colspan="3">پیامکی ثبت نشده.</td></tr>`;
+  return `<div class="stack">${checkAlertBanner()}
+    <section class="card"><h2 class="section-title">چک</h2>
+      <form data-act="save-check"><div class="grid-2"><div class="field"><label>شماره چک</label><input name="number" required></div><div class="field"><label>طرف</label><input name="person" required></div></div>
+      <div class="grid-2"><div class="field"><label>مبلغ</label><input name="amount" inputmode="numeric" required></div><div class="field"><label>سررسید</label><input name="due_on" placeholder="۱۴۰۴/۰۹/۲۰" required></div></div>
+      <div class="field"><label>نوع</label><select name="kind"><option value="in">وارده؛ بعد از وصول از صندوق به بانک می‌رود</option><option value="out">صادره؛ بعد از وصول از صندوق کم می‌شود</option></select></div>
+      <button class="btn primary" type="submit">ثبت چک</button></form>
+      <table><thead><tr><th>شماره</th><th>طرف</th><th>مبلغ</th><th>سررسید</th><th>نوع</th><th>وضعیت</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    </section>
+    <section class="card"><h2 class="section-title">پیامک بانکی</h2><p class="hint">متن پیامک واریز را اینجا بگذارید. مبلغ به تومان در حساب بانک ثبت می‌شود و پیامک تکراری دوباره نمی‌خورد.</p>
+      <form data-act="save-bank-sms"><div class="field"><label>متن پیامک</label><textarea name="text" required></textarea></div><button class="btn primary" type="submit">ثبت واریزی</button></form>
+      <table><thead><tr><th>زمان</th><th>مبلغ</th><th>متن</th></tr></thead><tbody>${messages}</tbody></table>
+    </section>
+  </div>`;
 }
 
 function accountsHtml() {
@@ -1161,7 +1208,7 @@ function settingsHtml() {
   <section class="card" style="margin-top:14px"><h2 class="section-title">ساخت اکانت</h2>
     <p class="hint">نام، موبایل و جیمیل ثبت‌نام، بدون رمز، در وب‌بیکری ذخیره می‌شود.</p>
     <table><thead><tr><th>نام</th><th>موبایل</th><th>جیمیل</th><th>نقش</th></tr></thead><tbody>${state.users.map((user) => `<tr><td>${esc(user.name)}</td><td class="ltr">${esc(user.phone)}</td><td class="ltr">${esc(user.email || "—")}${user.email && !user.email_verified ? " · تأیید نشده" : ""}</td><td>${user.role === "admin" ? "مدیر" : "صندوقدار"}</td></tr>`).join("")}</tbody></table>
-    <form data-act="create-user"><div class="grid-2"><div class="field"><label>نام</label><input name="name" required></div><div class="field"><label>موبایل</label><input class="ltr" name="phone" required></div></div><div class="grid-2"><div class="field"><label>جیمیل</label><input class="ltr" name="email"></div><div class="field"><label>رمز</label><input type="password" name="password" required></div></div><div class="field"><label>نقش</label><select name="role"><option value="cashier">صندوقدار</option><option value="admin">مدیر</option></select></div><button class="btn primary" type="submit">ساخت کاربر</button></form>
+    <form data-act="create-user"><div class="grid-2"><div class="field"><label>نام</label><input name="name" required></div><div class="field"><label>موبایل</label><input class="ltr" name="phone" required></div></div><div class="grid-2"><div class="field"><label>جیمیل</label><input class="ltr" name="email"></div><div class="field"><label>رمز</label><input type="password" name="password" required></div></div><div class="field"><label>نقش</label><select name="role"><option value="cashier">صندوقدار</option><option value="stock">مسئول موجودی</option><option value="admin">مدیر</option></select></div><button class="btn primary" type="submit">ساخت کاربر</button></form>
   </section>`;
 }
 
@@ -1268,7 +1315,7 @@ function pageHtml() {
     return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید لایسنس بسته است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">خرید لایسنس</button></section>`;
   }
   const pages = {
-    dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml,
+    dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml,
     accounts: accountsHtml, register: registerHtml, licenses: licensesHtml, customers: customersHtml,
     sms: smsHtml, settings: settingsHtml, updates: updatesHtml,
   };
@@ -1430,7 +1477,17 @@ async function onSubmit(event) {
       render();
     } else if (act === "save-product") await saveProduct(form, data);
     else if (act === "save-settings") await saveSettings(form);
-    else if (act === "create-user") {
+    else if (act === "save-check") {
+      await api("/api/checks", { method: "POST", body: data });
+      await loaders.checks();
+      toast("چک ثبت شد");
+      render();
+    } else if (act === "save-bank-sms") {
+      const saved = await api("/api/bank/sms", { method: "POST", body: data });
+      await loaders.checks();
+      toast(saved.message || "ثبت شد");
+      render();
+    } else if (act === "create-user") {
       await api("/api/users", { method: "POST", body: data });
       await loaders.settings();
       toast("کاربر ساخته شد");
@@ -1807,6 +1864,11 @@ async function onClick(event) {
       await loaders.products();
       const saved = (result.created || 0) + (result.updated || 0);
       toast(result.errors?.length ? `${num(saved)} کالا ثبت شد و ${num(result.errors.length)} ردیف رد شد` : `${num(saved)} کالا ثبت شد`);
+      render();
+    } else if (act === "collect-check") {
+      await api(`/api/checks/${el.dataset.id}/collect`, { method: "POST", body: {} });
+      await loaders.checks();
+      toast("چک وصول شد و از صندوق برداشت شد");
       render();
     } else if (act === "new-product") { state.modal = { type: "product", product: null }; render(); }
     else if (act === "edit-product") {

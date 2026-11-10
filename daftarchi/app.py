@@ -573,6 +573,13 @@ def require_admin():
     return user
 
 
+def require_stock():
+    user = require_user()
+    if user["role"] not in {"admin", "stock"}:
+        raise AppError("فقط مدیر یا مسئول موجودی به این بخش دسترسی دارد", 403)
+    return user
+
+
 def acc(conn, code: str):
     row = conn.execute("SELECT * FROM accounts WHERE code=?", (code,)).fetchone()
     if not row:
@@ -2450,7 +2457,7 @@ def init_db():
               phone TEXT UNIQUE NOT NULL,
               email TEXT UNIQUE,
               password_hash TEXT NOT NULL,
-              role TEXT NOT NULL CHECK(role IN ('admin','cashier')),
+              role TEXT NOT NULL CHECK(role IN ('admin','cashier','stock')),
               email_verified INTEGER NOT NULL DEFAULT 1,
               created_at TEXT NOT NULL
             );
@@ -2609,6 +2616,28 @@ def init_db():
               user_id INTEGER,
               created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS checks (
+              id INTEGER PRIMARY KEY,
+              number TEXT NOT NULL,
+              person TEXT NOT NULL,
+              amount INTEGER NOT NULL,
+              due_on TEXT NOT NULL,
+              kind TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'pending',
+              note TEXT,
+              user_id INTEGER,
+              entry_id INTEGER,
+              created_at TEXT NOT NULL,
+              collected_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS bank_messages (
+              id INTEGER PRIMARY KEY,
+              fingerprint TEXT NOT NULL UNIQUE,
+              raw TEXT NOT NULL,
+              amount INTEGER NOT NULL,
+              entry_id INTEGER,
+              created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS notifications (
               id INTEGER PRIMARY KEY,
               channel TEXT NOT NULL,
@@ -2651,6 +2680,26 @@ def init_db():
         user_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
         if "email_verified" not in user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1")
+        user_sql = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        if user_sql and "'stock'" not in user_sql["sql"]:
+            conn.execute("ALTER TABLE users RENAME TO users_roles_old")
+            conn.execute(
+                """CREATE TABLE users (
+                  id INTEGER PRIMARY KEY,
+                  name TEXT NOT NULL,
+                  phone TEXT UNIQUE NOT NULL,
+                  email TEXT UNIQUE,
+                  password_hash TEXT NOT NULL,
+                  role TEXT NOT NULL CHECK(role IN ('admin','cashier','stock')),
+                  email_verified INTEGER NOT NULL DEFAULT 1,
+                  created_at TEXT NOT NULL
+                )"""
+            )
+            conn.execute(
+                """INSERT INTO users (id, name, phone, email, password_hash, role, email_verified, created_at)
+                   SELECT id, name, phone, email, password_hash, role, email_verified, created_at FROM users_roles_old"""
+            )
+            conn.execute("DROP TABLE users_roles_old")
         if not conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             conn.execute(
                 "INSERT INTO users (name, phone, email, password_hash, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?)",
@@ -3535,7 +3584,7 @@ def create_user():
         raise AppError("شماره موبایل کاربر معتبر نیست")
     if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise AppError("ایمیل معتبر نیست")
-    if role not in {"admin", "cashier"}:
+    if role not in {"admin", "cashier", "stock"}:
         raise AppError("نقش کاربر نامعتبر است")
     if len(password) < 6:
         raise AppError("رمز حداقل ۶ حرف است")
@@ -4383,9 +4432,165 @@ def sniff_image(blob: bytes) -> str | None:
     return None
 
 
+def parse_due(value) -> str:
+    text = str(value or "").translate(DIGITS).strip().replace("-", "/")
+    match = re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", text)
+    if not match:
+        raise AppError("سررسید را مثل ۱۴۰۴/۰۹/۲۰ بنویسید")
+    year, month, day = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    try:
+        if year > 1700:
+            due = datetime(year, month, day).date()
+        else:
+            due = jdatetime.date(year, month, day).togregorian()
+    except ValueError as exc:
+        raise AppError("سررسید نامعتبر است") from exc
+    return due.isoformat()
+
+
+def check_row(row) -> dict:
+    item = dict(row)
+    item["due_jalali"] = to_jalali(row["due_on"] + "T00:00:00")
+    item["at_jalali"] = to_jalali(row["created_at"])
+    item["soon"] = row["status"] == "pending" and row["due_on"] <= (now_dt().date() + timedelta(days=3)).isoformat()
+    return item
+
+
+def due_checks(conn) -> list:
+    soon = (now_dt().date() + timedelta(days=3)).isoformat()
+    rows = conn.execute(
+        "SELECT * FROM checks WHERE status='pending' AND due_on<=? ORDER BY due_on, id",
+        (soon,),
+    ).fetchall()
+    return [check_row(row) for row in rows]
+
+
+@app.get("/api/checks/alerts")
+def check_alerts():
+    require_user()
+    with connect() as conn:
+        alerts = due_checks(conn)
+    return jsonify(alerts=alerts)
+
+
+@app.get("/api/checks")
+def list_checks():
+    require_admin()
+    with connect() as conn:
+        rows = conn.execute("SELECT * FROM checks ORDER BY due_on, id DESC").fetchall()
+        alerts = due_checks(conn)
+    return jsonify(checks=[check_row(row) for row in rows], alerts=alerts)
+
+
+@app.post("/api/checks")
+def create_check():
+    user = require_admin()
+    payload = body_json()
+    number = clean_text(payload.get("number"), "شماره چک", 40, required=True)
+    person = clean_text(payload.get("person"), "طرف چک", 80, required=True)
+    amount = parse_money(payload.get("amount"), "مبلغ")
+    due_on = parse_due(payload.get("due_on"))
+    kind = payload.get("kind") or "in"
+    if kind not in {"in", "out"}:
+        raise AppError("نوع چک نامعتبر است")
+    note = clean_text(payload.get("note"), "شرح", 160)
+    with connect() as conn:
+        cur = conn.execute(
+            """INSERT INTO checks (number, person, amount, due_on, kind, status, note, user_id, created_at)
+               VALUES (?,?,?,?,?,'pending',?,?,?)""",
+            (number, person, amount, due_on, kind, note, user["id"], iso()),
+        )
+        row = conn.execute("SELECT * FROM checks WHERE id=?", (cur.lastrowid,)).fetchone()
+    return jsonify(check=check_row(row))
+
+
+@app.post("/api/checks/<int:check_id>/collect")
+def collect_check(check_id: int):
+    user = require_admin()
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM checks WHERE id=?", (check_id,)).fetchone()
+        if not row:
+            raise AppError("چک پیدا نشد", 404)
+        if row["status"] != "pending":
+            raise AppError("این چک قبلاً تعیین‌تکلیف شده")
+        cash = acc(conn, "1000")["id"]
+        bank = acc(conn, "1010")["id"]
+        capital = acc(conn, "3000")["id"]
+        if row["kind"] == "in":
+            lines = [(bank, int(row["amount"]), 0), (cash, 0, int(row["amount"]))]
+            memo = f"وصول چک {row['number']} و برداشت از صندوق"
+        else:
+            lines = [(capital, int(row["amount"]), 0), (cash, 0, int(row["amount"]))]
+            memo = f"برداشت از صندوق بابت چک {row['number']}"
+        entry_id = post_entry(conn, memo, lines, "check", check_id, user["id"])
+        conn.execute(
+            "UPDATE checks SET status='collected', entry_id=?, collected_at=? WHERE id=?",
+            (entry_id, iso(), check_id),
+        )
+        fresh = conn.execute("SELECT * FROM checks WHERE id=?", (check_id,)).fetchone()
+    return jsonify(check=check_row(fresh))
+
+
+def bank_deposit_amounts(text: str) -> list[int]:
+    normalized = str(text or "").translate(DIGITS)
+    found = []
+    for match in re.finditer(r"([0-9][0-9,]*)\s*(ریال|تومان)", normalized):
+        window = normalized[max(0, match.start() - 30):match.start()]
+        marker = window.rfind("واریز")
+        if marker < 0 or "مانده" in window[marker:]:
+            continue
+        number = int(match.group(1).replace(",", ""))
+        amount = number // 10 if match.group(2) == "ریال" else number
+        if amount > 0:
+            found.append(amount)
+    return found
+
+
+@app.get("/api/bank/sms")
+def list_bank_sms():
+    require_admin()
+    with connect() as conn:
+        rows = conn.execute("SELECT * FROM bank_messages ORDER BY id DESC LIMIT 40").fetchall()
+    return jsonify(messages=[{**dict(row), "at_jalali": to_jalali(row["created_at"])} for row in rows])
+
+
+@app.post("/api/bank/sms")
+def import_bank_sms():
+    user = require_admin()
+    payload = body_json()
+    raw = clean_text(payload.get("text"), "پیامک", 1000, required=True)
+    amounts = bank_deposit_amounts(raw)
+    if not amounts:
+        raise AppError("در این پیامک واریزی پیدا نشد")
+    fingerprint = hashlib.sha256(re.sub(r"\s+", "", raw.translate(DIGITS)).encode()).hexdigest()
+    posted = []
+    with connect() as conn:
+        existing = conn.execute("SELECT * FROM bank_messages WHERE fingerprint=?", (fingerprint,)).fetchone()
+        if existing:
+            return jsonify(duplicates=1, posted=[], message="این پیامک قبلاً ثبت شده")
+        bank = acc(conn, "1010")["id"]
+        capital = acc(conn, "3000")["id"]
+        for amount in amounts:
+            entry_id = post_entry(
+                conn,
+                "واریز بانکی از پیامک",
+                [(bank, amount, 0), (capital, 0, amount)],
+                "bank-sms",
+                None,
+                user["id"],
+            )
+            conn.execute(
+                """INSERT INTO bank_messages (fingerprint, raw, amount, entry_id, created_at)
+                   VALUES (?,?,?,?,?)""",
+                (fingerprint if len(amounts) == 1 else f"{fingerprint}:{amount}", raw, amount, entry_id, iso()),
+            )
+            posted.append({"amount": amount, "entry_id": entry_id})
+    return jsonify(duplicates=0, posted=posted, message="واریزی در حساب بانک ثبت شد")
+
+
 @app.get("/api/inventory")
 def inventory():
-    require_admin()
+    require_stock()
     with connect() as conn:
         threshold = setting_int(get_settings(conn), "low_stock")
         products = conn.execute("SELECT * FROM products WHERE active=1 ORDER BY stock ASC, name").fetchall()

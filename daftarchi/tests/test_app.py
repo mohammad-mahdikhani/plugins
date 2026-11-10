@@ -234,7 +234,9 @@ class DaftarchiTest(unittest.TestCase):
             self.assertIn('"unlimited": true', preset)
             self.assertIn("آرقای جزایری", preset)
             self.assertNotIn("studio_unlock", preset)
-            self.assertIn('APP_VERSION = "1.1.13"', app_text)
+            self.assertIn('APP_VERSION = "1.1.14"', app_text)
+            self.assertIn("/api/checks", app_text)
+            self.assertIn("وصول چک", app_text)
             self.assertIn("desktop_icon_available", app_text)
             self.assertFalse(any("studio-unlock" in name for name in names))
         dmg = (deploy / "Daftarchi-Jazayeri-setup.dmg").read_bytes()
@@ -243,6 +245,57 @@ class DaftarchiTest(unittest.TestCase):
         setup = (deploy / "mac" / "setup-jazayeri.command").read_text(encoding="utf-8")
         self.assertIn("Daftarchi-Jazayeri", setup)
         self.assertNotIn("DAFTARCHI_UNLOCK", setup)
+
+    def test_stock_role_sees_low_stock_and_checks_leave_the_register(self):
+        import jdatetime
+
+        self.add_product(name="پارچه", stock=1, barcode="222")
+        made = self.client.post("/api/users", json={
+            "name": "انبار", "phone": "09121111111", "password": "secret1", "role": "stock",
+        })
+        self.assertEqual(made.status_code, 200, made.get_json())
+        cashier = self.client.post("/api/users", json={
+            "name": "صندوق", "phone": "09122222222", "password": "secret1", "role": "cashier",
+        })
+        self.assertEqual(cashier.status_code, 200, cashier.get_json())
+        stock = appmod.app.test_client()
+        self.login("09121111111", "secret1", stock)
+        seen = stock.get("/api/inventory")
+        self.assertEqual(seen.status_code, 200, seen.get_json())
+        self.assertTrue(any(row["low"] for row in seen.get_json()["products"]))
+        self.assertEqual(stock.put("/api/settings", json={"shop_name": "نباید"}).status_code, 403)
+        self.assertEqual(stock.post("/api/inventory/adjust", json={"product_id": 1, "stock": 9}).status_code, 403)
+        desk = appmod.app.test_client()
+        self.login("09122222222", "secret1", desk)
+        self.assertEqual(desk.get("/api/inventory").status_code, 403)
+        tomorrow = jdatetime.date.fromgregorian(date=(appmod.now_dt() + appmod.timedelta(days=1)).date())
+        due = f"{tomorrow.year}/{tomorrow.month}/{tomorrow.day}"
+        denied = stock.post("/api/checks", json={"number": "100", "person": "خریدار", "amount": 250000, "due_on": due})
+        self.assertEqual(denied.status_code, 403)
+        created = self.client.post("/api/checks", json={
+            "number": "100", "person": "خریدار", "amount": 250000, "due_on": due, "kind": "in",
+        })
+        self.assertEqual(created.status_code, 200, created.get_json())
+        check_id = created.get_json()["check"]["id"]
+        alerts = self.client.get("/api/checks/alerts").get_json()["alerts"]
+        self.assertEqual([row["number"] for row in alerts], ["100"])
+        collected = self.client.post(f"/api/checks/{check_id}/collect")
+        self.assertEqual(collected.status_code, 200, collected.get_json())
+        books = self.accounts()
+        self.assertEqual(books["1010"]["amount"], 250000)
+        self.assertEqual(books["1010"]["side"], "بدهکار")
+        self.assertEqual(books["1000"]["amount"], 250000)
+        self.assertEqual(books["1000"]["side"], "بستانکار")
+        again = self.client.post(f"/api/checks/{check_id}/collect")
+        self.assertEqual(again.status_code, 400)
+        text = "واریز مبلغ 2,000,000 ریال\nمانده: 15,000,000 ریال"
+        posted = self.client.post("/api/bank/sms", json={"text": text})
+        self.assertEqual(posted.status_code, 200, posted.get_json())
+        self.assertEqual(posted.get_json()["posted"], [{"amount": 200000, "entry_id": posted.get_json()["posted"][0]["entry_id"]}])
+        duplicate = self.client.post("/api/bank/sms", json={"text": text})
+        self.assertEqual(duplicate.get_json()["duplicates"], 1)
+        books = self.accounts()
+        self.assertEqual(books["1010"]["amount"], 450000)
 
     def test_pakan_package_matches_barcode_stock_and_price(self):
         deploy = Path(__file__).resolve().parents[1] / "deploy"
