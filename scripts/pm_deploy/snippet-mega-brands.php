@@ -1,7 +1,7 @@
 <?php
 /**
  * Puzzle piece rows in the header mega menu.
- * 500-piece opens as an accordion. Brands only sit under 1000-piece.
+ * 1000- and 500-piece rows open on hover. Brands only sit under 1000-piece.
  */
 
 add_action(
@@ -47,18 +47,43 @@ add_action(
   function is500(name) {
     return /(?:^|[^0-9۰-۹])500(?:[^0-9۰-۹]|$)|۵۰۰/.test(name) && /(?:تکه|تیکه)/.test(name);
   }
+  function canHover() {
+    return window.matchMedia("(hover: hover) and (min-width: 901px)").matches;
+  }
+  function bindHover(details) {
+    if (details.dataset.pmPieceHover === "1") return;
+    details.dataset.pmPieceHover = "1";
+    details.open = false;
+    details.addEventListener("mouseenter", function () {
+      if (!canHover()) return;
+      details.open = true;
+    });
+    details.addEventListener("mouseleave", function () {
+      if (!canHover()) return;
+      details.open = false;
+    });
+    var summary = details.querySelector("summary");
+    if (!summary) return;
+    summary.addEventListener("click", function (event) {
+      if (!canHover() || event.target.closest("a")) return;
+      event.preventDefault();
+    });
+  }
   function pieceOf(anchor) {
     var li = anchor.closest("li");
     if (!li) return null;
     var existing = li.querySelector("details.pm-mega__acc");
-    if (existing) return existing;
+    if (existing) {
+      bindHover(existing);
+      return existing;
+    }
     var details = document.createElement("details");
     details.className = "pm-mega__acc";
-    details.open = true;
     var summary = document.createElement("summary");
     summary.appendChild(anchor);
     details.appendChild(summary);
     li.appendChild(details);
+    bindHover(details);
     return details;
   }
   function render() {
