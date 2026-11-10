@@ -1512,6 +1512,7 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 
 .pm-track {
   display: flex;
+  align-items: stretch;
   gap: 0.85rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
@@ -1586,6 +1587,7 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.35;
+  min-height: 2.7em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1612,22 +1614,34 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 .pm-card {
   display: flex;
   flex-direction: column;
+  align-self: stretch;
+  height: auto;
+}
+
+.pm-card .pm-card__link {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
 }
 
 .pm-card .pm-product__buy {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.4rem;
-  margin: 0.45rem 0 0;
-  padding: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding: 0.45rem 0 0;
 }
 
 .pm-card .pm-product__stepper {
   display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   direction: ltr;
   align-items: center;
-  align-self: flex-start;
+  justify-content: space-between;
+  flex: 0 0 5.5rem;
+  width: 5.5rem;
   height: 32px;
   padding: 0 0.1rem;
   border: 1px solid #d5ebe3;
@@ -1664,7 +1678,9 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 }
 
 .pm-card .pm-product__buy .pm-product__add {
-  width: 100% !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto !important;
   height: 32px !important;
   min-height: 32px !important;
   margin: 0 !important;
@@ -1674,7 +1690,7 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   background: var(--pm-mint-500) !important;
   color: #fff !important;
   font-family: inherit !important;
-  font-size: 0.78rem !important;
+  font-size: 0.72rem !important;
   font-weight: 700 !important;
   line-height: 1 !important;
   box-shadow: none !important;
@@ -2251,9 +2267,14 @@ body.error404 .pm-header__nav .pm-seg__link.is-active {
 
 .pm-product__title {
   margin: 0;
+  min-height: 2.7em;
   font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .pm-product__price {
@@ -2274,28 +2295,35 @@ body.error404 .pm-header__nav .pm-seg__link.is-active {
 }
 
 .pm-product__link {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   padding-bottom: 0;
 }
 
 .pm-product__buy {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.4rem;
-  margin: 0.45rem 0 0;
-  padding: 0 0.65rem 0.65rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  margin: auto 0 0;
+  padding: 0.45rem 0.65rem 0.65rem;
 }
 
 .pm-product__stepper {
   display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   direction: ltr;
   align-items: center;
+  justify-content: space-between;
+  flex: 0 0 5.5rem;
+  width: 5.5rem;
   height: 32px;
   padding: 0 0.1rem;
   border: 1px solid #d5ebe3;
   border-radius: var(--pm-pill);
   background: #fff;
-  align-self: flex-start;
 }
 
 .pm-product__stepper button {
@@ -2334,7 +2362,9 @@ body.error404 .pm-header__nav .pm-seg__link.is-active {
 
 .pm-product__buy .pm-product__add,
 .pm-product__buy .single_add_to_cart_button {
-  width: 100% !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto !important;
   height: 32px !important;
   min-height: 32px !important;
   margin: 0 !important;
