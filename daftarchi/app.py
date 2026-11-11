@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.19"
+APP_VERSION = "1.1.20"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -3426,45 +3426,34 @@ def download_update_zip(url: str) -> bytes:
     return blob
 
 
+def quiet_python() -> str:
+    current = os.environ.get("DAFTARCHI_PYTHON", "").strip() or __import__("sys").executable
+    if os.name != "nt":
+        return current
+    sibling = Path(current).with_name("pythonw.exe")
+    if sibling.is_file():
+        return str(sibling)
+    bundled = panel_root().parent / "python" / "pythonw.exe"
+    if bundled.is_file():
+        return str(bundled)
+    return current
+
+
 def schedule_restart() -> None:
+    """Relaunch the app without a terminal window on Windows or Mac."""
     root = panel_root()
-    parent = root.parent
     env = os.environ.copy()
+    python = quiet_python()
+    kwargs = {
+        "cwd": str(root),
+        "env": env,
+        "close_fds": True,
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
     if os.name == "nt":
-        bat = parent / "Start-Daftarchi.bat"
-        if bat.is_file():
-            helper = parent / "data" / "restart-daftarchi.cmd"
-            helper.parent.mkdir(parents=True, exist_ok=True)
-            helper.write_text(
-                f'@echo off\r\nping 127.0.0.1 -n 3 >nul\r\nstart "" "{bat}"\r\n',
-                encoding="utf-8",
-            )
-            subprocess.Popen(
-                ["cmd", "/c", str(helper)],
-                cwd=str(parent),
-                env=env,
-                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
-                close_fds=True,
-            )
-            threading.Timer(0.6, lambda: os._exit(0)).start()
-            return
-    else:
-        for name in ("Start-Daftarchi.command", "Start-Daftarchi.sh"):
-            script = parent / name
-            if script.is_file():
-                subprocess.Popen(
-                    ["/bin/sh", str(script)],
-                    cwd=str(parent),
-                    env=env,
-                    start_new_session=True,
-                    close_fds=True,
-                )
-                threading.Timer(0.6, lambda: os._exit(0)).start()
-                return
-    python = env.get("DAFTARCHI_PYTHON", "").strip() or __import__("sys").executable
-    kwargs = {"cwd": str(root), "env": env, "close_fds": True}
-    if os.name == "nt":
-        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True
     subprocess.Popen([python, str(root / "app.py")], **kwargs)

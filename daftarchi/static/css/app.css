@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.19") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.20") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.19") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.20") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.19") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.20") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -264,6 +264,7 @@ tr.selected { background: var(--soft); }
   opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
 #toast.show { opacity: 1; pointer-events: auto; }
+#toast.ok { background: #1f7a4d; }
 #toast p { margin: 0; }
 .toast-remedy { color: #e7e1d6; font-size: 13px; margin-top: 6px; }
 #toast .btn { margin-top: 8px; background: white; color: var(--ink); }

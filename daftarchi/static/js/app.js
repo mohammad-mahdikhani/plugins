@@ -140,6 +140,17 @@ function remedyFor(message) {
   if (text.includes("توکن") || text.includes("تلگرام") || text.includes("شناسه چت")) return "در تنظیمات، توکن ربات تلگرام و شناسه چت را ذخیره کنید.";
   return "اگر دوباره پیش آمد، گزارش خطا را بزنید تا متن برای پشتیبانی تلگرام برود.";
 }
+function markUpdated() {
+  try { sessionStorage.setItem("daftarchi-updated", "1"); } catch { /* private window */ }
+  toast("آپدیت شدی", { ok: true });
+}
+function showUpdated() {
+  let flag = "";
+  try { flag = sessionStorage.getItem("daftarchi-updated") || ""; } catch { flag = ""; }
+  if (!flag) return;
+  try { sessionStorage.removeItem("daftarchi-updated"); } catch { /* ignore */ }
+  toast("آپدیت شدی", { ok: true });
+}
 function toast(message, options) {
   let el = document.getElementById("toast");
   if (!el) {
@@ -150,6 +161,7 @@ function toast(message, options) {
   const problem = Boolean(options && options.error);
   if (problem) state.lastError = String(message || "");
   const report = problem && state.user ? `<button type="button" class="btn" data-act="report-error">گزارش این خطا</button>` : "";
+  el.classList.toggle("ok", Boolean(options && options.ok) && !problem);
   el.innerHTML = problem
     ? `<p>${esc(message)}</p><p class="toast-remedy">${esc(remedyFor(message))}</p>${report}`
     : esc(message);
@@ -1257,6 +1269,7 @@ function updatesHtml() {
       ${info.notes ? `<p class="hint">${esc(info.notes)}</p>` : ""}
       ${info.error && info.reachable ? `<p class="hint">${esc(info.error)}</p>` : ""}
       <div class="row-actions">
+        <button type="button" class="btn" data-act="check-panel-update" ${state.updating ? "disabled" : ""}>بررسی آپدیت</button>
         <button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>
       </div>
     </section>
@@ -1898,6 +1911,11 @@ async function onClick(event) {
       } else await submitSale(el.dataset.method, "");
     } else if (act === "confirm-card") {
       await submitSale("card", document.getElementById("pos-ref")?.value || "");
+    } else if (act === "check-panel-update") {
+      await loaders.updates();
+      const info = state.panelUpdate || {};
+      render();
+      toast(info.update ? `نسخه ${info.latest} آماده است` : (info.reachable ? "همین نسخه آخر است" : (info.error || "ارتباط با سرور به‌روزرسانی برقرار نشد")));
     } else if (act === "reload-panel-update") {
       await loaders.updates();
       render();
@@ -1914,8 +1932,8 @@ async function onClick(event) {
         }
         const result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
         installed = true;
-        toast(result.message || "آپدیت شد. دفترچی دوباره باز می‌شود");
-        setTimeout(() => location.reload(), 4000);
+        markUpdated();
+        setTimeout(() => location.reload(), 2500);
       } finally {
         if (!installed) {
           state.updating = false;
@@ -1933,7 +1951,7 @@ async function onClick(event) {
       } else {
         result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
       }
-      toast(result.message || "نصب شد");
+      markUpdated();
       setTimeout(() => location.reload(), 2500);
     } else if (act === "check-update") {
       await loadUpdate();
@@ -2147,6 +2165,7 @@ api("/api/auth/me").then(async (me) => {
     state.bootstrap = await api("/api/auth/bootstrap");
     state.desktopIcon = Boolean(state.bootstrap.desktop_icon);
     render();
+    showUpdated();
     return;
   }
   state.user = me.user;
@@ -2156,6 +2175,7 @@ api("/api/auth/me").then(async (me) => {
   readSetup(me.setup);
   const opened = location.hash.replace("#", "");
   await navigate(opened && allowed(opened) ? opened : homePage());
+  showUpdated();
 }).catch((err) => {
   $app().innerHTML = `<p class="empty">${esc(err.message || "برنامه باز نشد")}</p>`;
 });
