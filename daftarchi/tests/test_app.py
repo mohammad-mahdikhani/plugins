@@ -81,14 +81,14 @@ class DaftarchiTest(unittest.TestCase):
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.15", page)
-        self.assertIn("/static/js/app.js?v=1.1.15", page)
+        self.assertIn("/static/css/app.css?v=1.1.16", page)
+        self.assertIn("/static/js/app.js?v=1.1.16", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.15")
+        css = self.client.get("/static/css/app.css?v=1.1.16")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.15", css.get_data(as_text=True))
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.16", css.get_data(as_text=True))
         health = self.client.get("/api/health")
         self.assertIn("no-store", health.headers["Cache-Control"])
         me = self.client.get("/api/auth/me").get_json()
@@ -104,10 +104,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.15", worker)
+        self.assertIn("daftarchi-1.1.16", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.15", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.15", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.16", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.16", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 119483)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
@@ -430,7 +430,12 @@ class DaftarchiTest(unittest.TestCase):
 
         def fake_http(method, url, payload=None, headers=None, form=None, timeout=12):
             if method == "PUT":
-                seen.append((url, payload))
+                seen.append((url, payload or {}))
+                body = {"id": 70, "manage_stock": True}
+                if isinstance(payload, dict) and payload.get("stock_quantity") is not None:
+                    body["stock_quantity"] = payload["stock_quantity"]
+                    body["stock_status"] = payload.get("stock_status")
+                return 200, body
             return 200, {"id": 70}
 
         original = appmod.http_request
@@ -464,6 +469,8 @@ class DaftarchiTest(unittest.TestCase):
         zero = [payload for _url, payload in seen if payload.get("stock_quantity") == 0]
         self.assertEqual(len(zero), 1, seen)
         self.assertEqual(zero[0]["stock_status"], "outofstock")
+        self.assertEqual(zero[0]["backorders"], "no")
+        self.assertTrue(zero[0]["manage_stock"])
         parent = self.add_product(name="تیشرت", price=1000, stock=1, barcode="shirt", cost=0)
         db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
         db.execute("UPDATE products SET product_type='variable', woo_id=80, stock=1 WHERE id=?", (parent["id"],))
@@ -498,6 +505,57 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(variation[0]["stock_quantity"], 0, seen)
         self.assertEqual(variation[0]["stock_status"], "outofstock")
         self.assertEqual(parent_status[0]["stock_status"], "outofstock")
+        self.assertFalse(parent_status[0]["manage_stock"])
+        self.assertEqual(variation[0]["backorders"], "no")
+
+    def test_site_stock_zero_is_sent_again_until_it_sticks(self):
+        product = self.add_product(name="شکر", price=5000, stock=4, barcode="sugar", cost=0)
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE products SET woo_id=? WHERE id=?", (90, product["id"]))
+        db.commit()
+        db.close()
+        seen = []
+        state = {"ignore_stock": True}
+
+        def fake_http(method, url, payload=None, headers=None, form=None, timeout=12):
+            if method == "PUT":
+                seen.append((url, payload or {}))
+                if "woocommerce_manage_stock" in url:
+                    state["ignore_stock"] = False
+                    return 200, {"id": "woocommerce_manage_stock", "value": "yes"}
+                if state["ignore_stock"]:
+                    return 200, {"id": 90, "manage_stock": False, "stock_quantity": None, "stock_status": "instock"}
+                return 200, {
+                    "id": 90,
+                    "manage_stock": True,
+                    "stock_quantity": payload.get("stock_quantity"),
+                    "stock_status": payload.get("stock_status"),
+                }
+            return 200, {"id": 90}
+
+        original = appmod.http_request
+        appmod.http_request = fake_http
+        try:
+            self.client.put("/api/settings", json={
+                "wp_url": "https://shop.example",
+                "woo_key": "ck",
+                "woo_secret": "cs",
+            })
+            zeroed = self.client.post("/api/inventory/adjust", json={"product_id": product["id"], "stock": 0})
+            self.assertEqual(zeroed.status_code, 200, zeroed.get_json())
+            self.assertIn("صفر", zeroed.get_json()["woo_sync_note"])
+            restocked = self.client.post("/api/inventory/adjust", json={"product_id": product["id"], "stock": 6})
+            self.assertEqual(restocked.status_code, 200, restocked.get_json())
+        finally:
+            appmod.http_request = original
+        zeros = [payload for _url, payload in seen if payload.get("stock_quantity") == 0]
+        self.assertGreaterEqual(len(zeros), 2, seen)
+        self.assertTrue(any("woocommerce_manage_stock" in url for url, _payload in seen))
+        self.assertEqual(zeros[-1]["stock_status"], "outofstock")
+        self.assertEqual(zeros[-1]["backorders"], "no")
+        raised = [payload for _url, payload in seen if payload.get("stock_quantity") == 6]
+        self.assertTrue(raised, seen)
+        self.assertEqual(raised[-1]["stock_status"], "instock")
 
     def test_walk_in_buyer_is_optional_and_kept_for_the_club(self):
         self.open_register(0)
@@ -1368,7 +1426,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.15", seen["text"])
+        self.assertIn("1.1.16", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -2057,7 +2115,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.15")
+        self.assertEqual(appmod.APP_VERSION, "1.1.16")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -2122,7 +2180,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.15")
+        self.assertEqual(boot["version"], "1.1.16")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -2131,7 +2189,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.15", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.16", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)

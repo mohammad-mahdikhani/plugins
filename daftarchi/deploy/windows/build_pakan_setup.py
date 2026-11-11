@@ -46,11 +46,11 @@ InstallDir "$LOCALAPPDATA\\Daftarchi-Pakan"
 RequestExecutionLevel user
 ShowInstDetails show
 BrandingText "دفترچی فروشگاه پاکان"
-VIProductVersion 1.1.15.0
+VIProductVersion 1.1.16.0
 VIAddVersionKey "ProductName" "دفترچی فروشگاه پاکان"
 VIAddVersionKey "FileDescription" "نصب دفترچی برای فروشگاه پاکان"
-VIAddVersionKey "FileVersion" "1.1.15"
-VIAddVersionKey "ProductVersion" "1.1.15"
+VIAddVersionKey "FileVersion" "1.1.16"
+VIAddVersionKey "ProductVersion" "1.1.16"
 
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "نصب دفترچی"

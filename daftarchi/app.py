@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.15"
+APP_VERSION = "1.1.16"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2184,15 +2184,54 @@ def woo_stock_status(stock) -> str:
     return "instock" if int(stock or 0) > 0 else "outofstock"
 
 
+def woo_stock_fields(stock) -> dict:
+    quantity = 0 if stock is None else int(stock)
+    return {
+        "manage_stock": True,
+        "backorders": "no",
+        "stock_quantity": quantity,
+        "stock_status": "instock" if quantity > 0 else "outofstock",
+    }
+
+
+def site_stock_applied(body, quantity: int) -> bool:
+    if not isinstance(body, dict) or body.get("manage_stock") is False:
+        return False
+    raw = body.get("stock_quantity")
+    if raw is None or raw == "":
+        return False
+    try:
+        return int(raw) == int(quantity)
+    except (TypeError, ValueError):
+        return False
+
+
+def enable_site_stock_management(settings: dict) -> None:
+    try:
+        woo_request(settings, "PUT", "settings/products/woocommerce_manage_stock", payload={"value": "yes"})
+    except AppError:
+        log.warning("woocommerce manage stock setting was not changed")
+
+
+def put_site_stock(settings: dict, path: str, quantity: int, extra: dict | None = None):
+    fields = {**(extra or {}), **woo_stock_fields(quantity)}
+    _status, body = woo_request(settings, "PUT", path, payload=fields)
+    if site_stock_applied(body, quantity):
+        return body
+    enable_site_stock_management(settings)
+    _status, body = woo_request(settings, "PUT", path, payload=woo_stock_fields(quantity))
+    if not site_stock_applied(body, quantity):
+        raise AppError("عدد موجودی روی سایت ننشست. در ووکامرس، تنظیمات، محصولات، مدیریت موجودی را روشن کنید.")
+    return body
+
+
 def woo_item(row) -> dict:
     item = {
         "name": row["name"],
         "type": "simple",
         "regular_price": str(row["price"]),
-        "manage_stock": True,
-        "stock_quantity": int(row["stock"] or 0),
-        "stock_status": woo_stock_status(row["stock"]),
         "status": "publish",
+        **woo_stock_fields(row["stock"]),
     }
     if row["sku"]:
         item["sku"] = row["sku"]
@@ -2221,9 +2260,7 @@ def woo_auto_ready(settings: dict) -> bool:
 def variation_woo_payload(var) -> dict:
     payload = {"regular_price": str(var["price"])}
     if var["stock"] is not None:
-        payload["manage_stock"] = True
-        payload["stock_quantity"] = int(var["stock"])
-        payload["stock_status"] = woo_stock_status(var["stock"])
+        payload.update(woo_stock_fields(var["stock"]))
     return payload
 
 
@@ -2255,10 +2292,15 @@ def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id:
             return
         parent = int(row["woo_id"])
         vid = int(var["woo_id"])
-        woo_request(settings, "PUT", f"products/{parent}/variations/{vid}", payload=variation_woo_payload(var))
+        variation_path = f"products/{parent}/variations/{vid}"
+        if var["stock"] is None:
+            woo_request(settings, "PUT", variation_path, payload=variation_woo_payload(var))
+        else:
+            put_site_stock(settings, variation_path, int(var["stock"]), {"regular_price": str(var["price"])})
         status = parent_site_status(conn, product_id)
         if status:
-            woo_request(settings, "PUT", f"products/{parent}", payload={"stock_status": status})
+            parent_payload = {"manage_stock": False, "stock_status": status}
+            woo_request(settings, "PUT", f"products/{parent}", payload=parent_payload)
         return
     if product_kind(row) == "variable":
         if not row["woo_id"]:
@@ -2272,8 +2314,7 @@ def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id:
         return
     if not row["woo_id"]:
         return
-    item = woo_item(row)
-    woo_request(settings, "PUT", f"products/{int(row['woo_id'])}", payload=item)
+    put_site_stock(settings, f"products/{int(row['woo_id'])}", int(row["stock"] or 0), woo_item(row))
     conn.execute("UPDATE products SET updated_at=? WHERE id=?", (iso(), product_id))
 
 
@@ -2353,7 +2394,32 @@ def queue_woo_sync(product_id: int, variation_id: int | None = None, urgent: boo
 
 def maybe_queue_woo_sync(conn, product_id: int, variation_id: int | None = None) -> None:
     if woo_auto_ready(get_settings(conn)):
+        conn.commit()
         queue_woo_sync(product_id, variation_id, urgent=stock_hit_zero(conn, product_id, variation_id))
+
+
+def report_woo_stock(conn, product_id: int, variation_id: int | None = None) -> str:
+    note = woo_sync_note(conn, product_id)
+    settings = get_settings(conn)
+    if not woo_auto_ready(settings):
+        return note
+    linked = conn.execute("SELECT woo_id FROM products WHERE id=?", (product_id,)).fetchone()
+    if not linked or not linked["woo_id"]:
+        return note
+    conn.commit()
+    try:
+        push_product_row_to_woo(settings, conn, product_id, variation_id)
+    except AppError as exc:
+        return f"موجودی در دفترچی ذخیره شد، اما روی سایت ننشست: {exc}"
+    if variation_id:
+        var = conn.execute("SELECT stock FROM product_variations WHERE id=?", (variation_id,)).fetchone()
+        quantity = int(var["stock"]) if var and var["stock"] is not None else None
+    else:
+        row = conn.execute("SELECT stock, product_type FROM products WHERE id=?", (product_id,)).fetchone()
+        quantity = None if row and product_kind(row) == "variable" else int(row["stock"] or 0)
+    if quantity == 0:
+        return "موجودی صفر شد و همان صفر روی سایت هم نشست."
+    return "موجودی در دفترچی ذخیره شد و همان عدد روی سایت نشست."
 
 
 def save_settings(conn, payload: dict):
@@ -3792,8 +3858,7 @@ def create_product():
         threshold = setting_int(get_settings(conn), "low_stock")
         row = conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
         product = present_product(conn, row, threshold)
-        maybe_queue_woo_sync(conn, product_id)
-        note = woo_sync_note(conn, product_id)
+        note = report_woo_stock(conn, product_id)
     return jsonify(product=product, woo_sync_note=note)
 
 
@@ -3830,8 +3895,7 @@ def update_product(pid: int):
         threshold = setting_int(get_settings(conn), "low_stock")
         updated = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
         product = present_product(conn, updated, threshold)
-        maybe_queue_woo_sync(conn, pid)
-        note = woo_sync_note(conn, pid)
+        note = report_woo_stock(conn, pid)
     return jsonify(product=product, woo_sync_note=note)
 
 
@@ -4755,8 +4819,7 @@ def adjust_inventory():
         else:
             conn.execute("UPDATE products SET stock=?, updated_at=? WHERE id=?", (stock, iso(), pid))
             log_stock(conn, pid, "adjust", stock - row["stock"], row["stock"], stock, note, user["id"])
-        maybe_queue_woo_sync(conn, pid, variation_id if product_kind(row) == "variable" else None)
-        note = woo_sync_note(conn, pid)
+        note = report_woo_stock(conn, pid, variation_id if product_kind(row) == "variable" else None)
     return jsonify(ok=True, woo_sync_note=note)
 
 

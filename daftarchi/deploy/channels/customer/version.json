@@ -1,9 +1,9 @@
 {
-  "version": "1.1.15",
+  "version": "1.1.16",
   "channel": "customer",
-  "notes": "آیکون دفترچی روی دسکتاپ ویندوز قرار می‌گیرد. فروش‌ها می‌مانند.",
-  "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.15-app.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.15-app.zip",
+  "notes": "موجودی صفر روی سایت هم صفر می‌شود و اگر دوباره موجود کنید همان عدد می‌نشیند. فروش‌ها می‌مانند.",
+  "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.16-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.16-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-setup.dmg",
   "linux_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-Linux.zip"
