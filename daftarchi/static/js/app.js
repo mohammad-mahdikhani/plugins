@@ -412,11 +412,7 @@ async function addByBarcode(code) {
 }
 
 function updateBanner() {
-  if (!state.update?.update && !state.updating) return "";
-  return `<div class="banner">${state.updating ? "در حال آپدیت همین دفترچی. فروش‌ها می‌مانند." : `نسخه ${esc(state.update.version)} آماده است.`}
-    <button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>
-    ${state.update?.notes ? `<div class="hint">${esc(state.update.notes)}</div>` : ""}
-  </div>`;
+  return "";
 }
 function supportHtml() {
   const update = state.update;

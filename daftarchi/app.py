@@ -132,8 +132,6 @@ PANEL_DIRS = {"static", "templates"}
 TRIAL_DAYS = 7
 UPDATE_MANIFEST_URLS = (
     "https://webakery.ir/daftarchi/version.json",
-    "https://webakery.ir/license-server/version.json",
-    "https://webakery.ir/version.json",
 )
 UPDATE_MANIFEST_URL = UPDATE_MANIFEST_URLS[0]
 HOST_MAIL_URLS = (

@@ -2153,6 +2153,19 @@ class DaftarchiTest(unittest.TestCase):
             self.assertFalse(down["available"])
             self.assertFalse(down["update"])
             self.assertEqual(down["manifest"], "https://webakery.ir/daftarchi/version.json")
+
+            def stale(method, url, payload=None, headers=None, form=None, timeout=12):
+                self.assertNotIn("license-server", url)
+                if "daftarchi/version.json" in url:
+                    raise appmod.AppError("اتصال برقرار نشد", 502)
+                return 200, {"version": "1.2.0", "url": "https://webakery.ir/license-server/releases/Daftarchi-1.2.0.exe", "notes": "آپدیت به نسخه جدید"}
+
+            appmod.http_request = stale
+            quiet = self.client.get("/api/update").get_json()
+            self.assertFalse(quiet["update"])
+            self.assertNotEqual(quiet["version"], "1.2.0")
+            script = Path(__file__).resolve().parents[1].joinpath("static/js/app.js").read_text(encoding="utf-8")
+            self.assertIn("function updateBanner() {\n  return \"\";\n}", script)
         finally:
             appmod.http_request = original
 
