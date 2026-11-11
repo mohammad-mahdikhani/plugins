@@ -2898,6 +2898,46 @@ def desktop_icon_available() -> bool:
     return not launched_as_desktop()
 
 
+def place_windows_desktop_icon() -> str:
+    if os.name != "nt":
+        raise AppError("آیکون دسکتاپ از داخل خود ویندوز ساخته می‌شود.")
+    root = Path(__file__).resolve().parent
+    icon = root / "static" / "daftarchi.ico"
+    if not icon.is_file():
+        icon = root.parent / "daftarchi.ico"
+    bat = root.parent / "Start-Daftarchi.bat"
+    if not icon.is_file():
+        raise AppError("فایل آیکون دفترچی کنار برنامه نیست.")
+    target = bat if bat.is_file() else Path(__import__("sys").executable)
+    work = target.parent
+    script = (
+        "$desktop = [Environment]::GetFolderPath('Desktop')\n"
+        "$path = Join-Path $desktop ([char]0x062F + [char]0x0641 + [char]0x062A + [char]0x0631 + [char]0x0686 + [char]0x06CC + '.lnk')\n"
+        "$shell = New-Object -ComObject WScript.Shell\n"
+        "$link = $shell.CreateShortcut($path)\n"
+        f"$link.TargetPath = '{target}'\n"
+        f"$link.WorkingDirectory = '{work}'\n"
+        f"$link.IconLocation = '{icon},0'\n"
+        "$link.WindowStyle = 7\n"
+        "$link.Description = 'Daftarchi'\n"
+        "$link.Save()\n"
+        "Write-Output $path\n"
+    )
+    try:
+        done = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AppError("ویندوز میانبر دسکتاپ را نساخت.") from exc
+    if done.returncode != 0:
+        raise AppError("ویندوز میانبر دسکتاپ را نساخت.")
+    return "آیکون دفترچی روی دسکتاپ قرار گرفت."
+
+
 def _gzip_response(resp):
     if request.method == "HEAD" or resp.status_code != 200:
         return resp
@@ -2975,6 +3015,14 @@ def uploaded(name: str):
 @app.get("/api/health")
 def health():
     return jsonify(ok=True, name="دفترچی", version=APP_VERSION)
+
+
+@app.post("/api/desktop-shortcut")
+def desktop_shortcut():
+    require_user()
+    if os.name != "nt":
+        return jsonify(ok=False, detail="این دکمه روی ویندوز آیکون را روی دسکتاپ می‌گذارد.")
+    return jsonify(ok=True, detail=place_windows_desktop_icon())
 
 
 @app.get("/api/update")

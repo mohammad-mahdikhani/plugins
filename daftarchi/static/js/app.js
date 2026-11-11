@@ -506,11 +506,11 @@ function authHtml() {
   </form></div>`;
 }
 function showDesktopIcon() {
-  return state.desktopIcon && !state.installedApp;
+  return !state.installedApp;
 }
 function desktopIconButton(block) {
   if (!showDesktopIcon()) return "";
-  return `<button type="button" class="btn ${block ? "block" : ""}" data-act="desktop-icon">آیکون روی دسکتاپ</button>`;
+  return `<button type="button" class="btn ${block ? "block" : ""}" data-act="desktop-icon">آیکون دفترچی روی دسکتاپ</button>`;
 }
 function shortcutFile() {
   const url = `${location.origin}/`;
@@ -540,6 +540,15 @@ function downloadShortcut() {
   setTimeout(() => URL.revokeObjectURL(link.href), 1500);
 }
 async function createDesktopIcon() {
+  try {
+    const made = await api("/api/desktop-shortcut", { method: "POST" });
+    if (made.ok) {
+      toast(made.detail || "آیکون دفترچی روی دسکتاپ قرار گرفت.");
+      return;
+    }
+  } catch {
+    /* نسخه وب میانبر را دانلود می‌کند */
+  }
   const held = window.__desk && window.__desk.event;
   if (held) {
     window.__desk.event = null;
