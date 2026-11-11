@@ -1,10 +1,11 @@
 {
-  "version": "1.1.17",
+  "version": "1.1.19",
   "channel": "customer",
-  "notes": "خرید لایسنس در پیشخوان وب‌بیکری فهرست می‌شود. فروش‌ها می‌مانند.",
-  "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.17-app.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.17-app.zip",
+  "notes": "لینک نسخه قدیمی ویندوز از صفحه به‌روزرسانی برداشته شد. پنل پیامک برای مشتری‌های فروشگاه اضافه شد. فروش‌ها می‌مانند.",
+  "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.19-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "mac_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-setup.dmg",
-  "linux_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-Linux.zip"
+  "mac_url": "",
+  "linux_url": "",
+  "published_at": "2026-11-11T16:09:07+00:00"
 }

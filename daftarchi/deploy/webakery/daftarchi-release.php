@@ -1,4 +1,5 @@
 add_action('admin_menu', 'daftarchi_release_menu');
+add_action('wp_dashboard_setup', 'daftarchi_release_dashboard');
 add_action('admin_post_daftarchi_release_save', 'daftarchi_release_save');
 add_action('rest_api_init', 'daftarchi_release_route');
 add_action('template_redirect', 'daftarchi_release_legacy_json');
@@ -122,12 +123,63 @@ function daftarchi_release_publish($channel, $version, $notes) {
         'full_url' => $windows,
         'mac_url' => $mac,
         'linux_url' => $linux,
+        'published_at' => gmdate('c'),
     );
     file_put_contents(
         daftarchi_release_manifest_path($channel),
         wp_json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
     );
+    daftarchi_release_remember($manifest);
     return $manifest;
+}
+
+function daftarchi_release_history() {
+    $rows = get_option('daftarchi_release_history', array());
+    return is_array($rows) ? $rows : array();
+}
+
+function daftarchi_release_remember($manifest) {
+    $rows = daftarchi_release_history();
+    $fresh = array();
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        if (($row['channel'] ?? '') === $manifest['channel'] && ($row['version'] ?? '') === $manifest['version']) {
+            continue;
+        }
+        $fresh[] = $row;
+    }
+    array_unshift($fresh, $manifest);
+    update_option('daftarchi_release_history', array_slice($fresh, 0, 30), false);
+}
+
+function daftarchi_release_dashboard() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    wp_add_dashboard_widget('daftarchi_releases', 'آپدیت دفترچی', 'daftarchi_release_widget');
+}
+
+function daftarchi_release_widget() {
+    $channels = daftarchi_release_channels();
+    echo '<p>نسخه‌ای که این‌جا منتشر شود همان نسخه‌ای است که دفترچی‌های نصب‌شده با دکمه آپدیت می‌گیرند. فروش‌ها می‌مانند.</p>';
+    echo '<table class="widefat striped"><thead><tr><th>کانال</th><th>نسخه</th><th>پیام</th></tr></thead><tbody>';
+    foreach ($channels as $id => $label) {
+        $manifest = daftarchi_release_read($id);
+        echo '<tr><td>' . esc_html($label) . '</td><td>' . esc_html((string) ($manifest['version'] ?? '—')) . '</td><td>' . esc_html((string) ($manifest['notes'] ?? '')) . '</td></tr>';
+    }
+    echo '</tbody></table>';
+    $history = daftarchi_release_history();
+    if ($history) {
+        echo '<h3>انتشارهای قبلی</h3><ul>';
+        foreach (array_slice($history, 0, 8) as $row) {
+            $label = $channels[$row['channel'] ?? ''] ?? (string) ($row['channel'] ?? '');
+            echo '<li>' . esc_html($label . ' ' . (string) ($row['version'] ?? '')) . ' — ' . esc_html((string) ($row['notes'] ?? '')) . '</li>';
+        }
+        echo '</ul>';
+    }
+    echo '<p><a href="' . esc_url(admin_url('admin.php?page=daftarchi-release')) . '">انتشار آپدیت جدید</a></p>';
 }
 
 function daftarchi_release_save() {
