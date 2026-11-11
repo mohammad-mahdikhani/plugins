@@ -324,8 +324,8 @@ def footer() -> str:
     </div>
     <div class="pm-footer__col pm-footer__enamad">
       <h2 class="pm-footer__title">نماد اعتماد</h2>
-      <div class="pm-footer__enamad-slot" id="pm-enamad" data-pm-enamad>
-        <span class="pm-footer__enamad-placeholder">برای تنظیم از پیشخوان: افزونهٔ «Pakan Mental Home» را نصب و فعال کنید (منوی پاکن منتال). بدون افزونه: در المنتور همین div را باز کنید و کد اینماد را اینجا بچسبانید.</span>
+      <div class="pm-footer__enamad-slot is-loaded" id="pm-enamad" data-pm-enamad>
+        <a referrerpolicy="origin" target="_blank" href="https://trustseal.enamad.ir/?id=8307864&amp;Code=OArS4dagCSXSsWVPd7mEgJU3JnvNlYhG"><img src="https://www.pakanmental.com/wp-content/uploads/2026/11/enamad-pakan.png" alt="نماد اعتماد الکترونیکی" width="125" height="136"></a>
       </div>
     </div>
   </div>
