@@ -54,6 +54,7 @@ class AS_Advisor_REST {
 				'models'       => $models,
 				'other_kinds'  => AS_Advisor_Catalog::other_kinds(),
 				'questions'    => AS_Advisor_Questions::tree(),
+				'budgets'      => AS_Advisor_Catalog::budgets(),
 			)
 		);
 	}

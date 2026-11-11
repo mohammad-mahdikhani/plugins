@@ -1,5 +1,5 @@
 (function () {
-  var LS = "as-advisor-v1";
+  var LS = "as-advisor-v3";
   var boot = { support: "09373211344", other_kinds: [] };
   var answers = {};
   var step = 0;
@@ -50,6 +50,39 @@
   function currentId() {
     return steps[step] ? steps[step].id : "start";
   }
+  function budgetKey() {
+    if (answers.path === "other" && answers.other_kind) return answers.other_kind;
+    if (answers.path === "filter") {
+      var part = answers.part_type || "";
+      if (part === "pump" || part === "tank" || part === "cartridge") return part;
+      if (part === "filter") return answers.device_type === "air" ? "air_filter" : "water_filter";
+      if (part === "part") return answers.device_type === "air" ? "air_part" : "part";
+      if (answers.device_type === "air") return "filter_air";
+      if (answers.device_type === "water") return "filter_water";
+      return "filter";
+    }
+    return answers.path || "water";
+  }
+  function budgetPack() {
+    var raw = boot.budgets && (boot.budgets[budgetKey()] || boot.budgets[answers.path]);
+    if (!raw) return { min: 0, max: 0, note: "", options: [] };
+    if (Array.isArray(raw)) return { min: 0, max: 0, note: "", options: raw };
+    return raw;
+  }
+  function budgetOpts() {
+    var rows = budgetPack().options || [];
+    if (!rows.length) {
+      return [["unknown", "هنوز مشخص نکرده‌ام"]];
+    }
+    return rows.map(function (r) { return [r.id, r.label]; });
+  }
+  function setBudgetMax(id) {
+    var rows = budgetPack().options || [];
+    answers.budget_max = 0;
+    rows.forEach(function (r) {
+      if (r.id === id) answers.budget_max = r.max || 0;
+    });
+  }
   function buildSteps() {
     var p = answers.path;
     steps = [{ id: "path" }];
@@ -70,9 +103,7 @@
         { id: "space", q: "فضای نصب چقدر محدود است؟", opts: [
           ["under_sink", "زیر سینک یا فضای معمولی"], ["tight", "خیلی محدود"], ["unknown", "فرقی ندارد / نمی‌دانم"]
         ]},
-        { id: "budget", q: "بودجه تقریبی‌تان چقدر است؟", opts: [
-          ["low", "تا حدود ۴۵۰ هزار تومان"], ["mid", "تا حدود ۸۰۰ هزار تومان"], ["high", "بالاتر از این بازه"], ["unknown", "هنوز مشخص نکرده‌ام"]
-        ]}
+        { id: "budget", q: "بودجه تقریبی‌تان چقدر است؟", opts: budgetOpts() }
       ]);
     } else if (p === "air") {
       steps = steps.concat([
@@ -88,9 +119,7 @@
         { id: "noise", q: "صدای دستگاه چقدر برایتان مهم است؟", opts: [
           ["sleep", "برای خواب باید کم‌صدا باشد"], ["any", "محدودیت خاصی ندارم"]
         ]},
-        { id: "budget", q: "بودجه تقریبی‌تان چقدر است؟", opts: [
-          ["low", "تا حدود ۴۵۰ هزار تومان"], ["mid", "تا حدود ۸۰۰ هزار تومان"], ["high", "بالاتر از این بازه"], ["unknown", "هنوز مشخص نکرده‌ام"]
-        ]},
+        { id: "budget", q: "بودجه تقریبی‌تان چقدر است؟", opts: budgetOpts() },
         { id: "cost_priority", q: "کدام هزینه برایتان اولویت دارد؟", opts: [
           ["purchase", "قیمت خرید کمتر"], ["maintenance", "هزینه نگهداری کمتر"], ["unknown", "فرقی ندارد"]
         ]}
@@ -104,18 +133,14 @@
         { id: "part_type", q: "نوع فیلتر یا قطعه را می‌دانید؟", opts: [
           ["", "نمی‌دانم / فرقی ندارد"], ["filter", "فیلتر"], ["pump", "پمپ"], ["tank", "مخزن"], ["cartridge", "کارتریج"], ["part", "قطعه دیگر"]
         ]},
-        { id: "budget", q: "سقف بودجه؟", opts: [
-          ["low", "تا حدود ۴۵۰ هزار تومان"], ["mid", "تا حدود ۸۰۰ هزار تومان"], ["high", "محدودیتی ندارم"], ["unknown", "هنوز مشخص نکرده‌ام"]
-        ]}
+        { id: "budget", q: "سقف بودجه؟", opts: budgetOpts() }
       ]);
     } else if (p === "other") {
       var kinds = (boot.other_kinds || []).map(function (k) { return [k.id, k.label]; });
       if (!kinds.length) kinds = [["parts", "قطعات و تجهیزات"]];
       steps = steps.concat([
         { id: "other_kind", q: "دنبال کدام دسته هستید؟", opts: kinds },
-        { id: "budget", q: "سقف بودجه؟", opts: [
-          ["low", "تا حدود ۴۵۰ هزار تومان"], ["mid", "تا حدود ۸۰۰ هزار تومان"], ["high", "محدودیتی ندارم"], ["unknown", "هنوز مشخص نکرده‌ام"]
-        ]}
+        { id: "budget", q: "سقف بودجه؟", opts: budgetOpts() }
       ]);
     }
   }
@@ -167,6 +192,11 @@
       return;
     }
     var s = steps[step];
+    if (s.id === "budget") {
+      var pack = budgetPack();
+      s.opts = budgetOpts();
+      if (pack.note) s.note = pack.note;
+    }
     var html = chrome(root) + progressHtml() + "<h2>" + s.q + "</h2>";
     if (s.note) html += '<p class="as-adv-muted">' + s.note + "</p>";
     if (s.id === "model_pick") {
@@ -186,6 +216,7 @@
   }
   function setAns(k, v, root) {
     answers[k] = v;
+    if (k === "budget") setBudgetMax(v);
     if (k === "path") {
       step = 1;
       buildSteps();

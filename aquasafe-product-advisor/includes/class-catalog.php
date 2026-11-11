@@ -51,6 +51,31 @@ class AS_Advisor_Catalog {
 		return $list;
 	}
 
+	public static function budgets() {
+		$engine = new AS_Advisor_Engine();
+		$all    = self::all();
+		$map    = array(
+			'water'        => array( 'water_device' ),
+			'air'          => array( 'air_device' ),
+			'filter'       => array( 'water_filter', 'air_filter', 'cartridge', 'pump', 'tank', 'part', 'air_part' ),
+			'filter_water' => array( 'water_filter', 'cartridge', 'pump', 'tank', 'part' ),
+			'filter_air'   => array( 'air_filter', 'air_part' ),
+			'water_filter' => array( 'water_filter' ),
+			'air_filter'   => array( 'air_filter' ),
+			'other'        => array( 'part', 'tank', 'pump', 'cartridge', 'air_part' ),
+			'tank'         => array( 'tank' ),
+			'pump'         => array( 'pump' ),
+			'cartridge'    => array( 'cartridge' ),
+			'part'         => array( 'part' ),
+			'air_part'     => array( 'air_part' ),
+		);
+		$out = array();
+		foreach ( $map as $key => $kinds ) {
+			$out[ $key ] = $engine->budget_pack( $all, $kinds );
+		}
+		return $out;
+	}
+
 	public static function other_kinds() {
 		return array(
 			array( 'id' => 'tank', 'label' => 'منبع آب تحت فشار' ),

@@ -51,8 +51,24 @@ as_assert( 1 === count( $r['items'] ) && 10 === $r['items'][0]['id'], 'water bud
 $r = $e->recommend( array( 'path' => 'water', 'budget' => 'low' ), $catalog );
 as_assert( empty( array_filter( $r['items'], function ( $i ) { return 12 === $i['id']; } ) ), 'out of stock never recommended' );
 
-$r = $e->recommend( array( 'path' => 'water', 'budget' => 'low' ), array( item( array( 'id' => 99, 'price' => 900000000 ) ) ) );
+$r = $e->recommend( array( 'path' => 'water', 'budget' => 'low', 'budget_max' => 100000000 ), array( item( array( 'id' => 99, 'price' => 900000000 ) ) ) );
 as_assert( 0 === count( $r['items'] ) && $r['empty_reason'], 'empty when all over budget, no filler' );
+
+$opts = $e->budget_options_from_catalog( $catalog, array( 'water_device' ) );
+$low = null;
+foreach ( $opts as $o ) {
+	if ( 'low' === $o['id'] ) {
+		$low = $o['max'];
+	}
+}
+as_assert( $low && $low >= 320000000 && $low < 700000000, 'budget labels derived from in-stock water prices' );
+as_assert( false === strpos( json_encode( $opts, JSON_UNESCAPED_UNICODE ), 'هزار' ), 'does not use fake thousand-toman labels' );
+
+$pack = $e->budget_pack( $catalog, array( 'water_device' ) );
+as_assert( 320000000 === $pack['min'] && 700000000 === $pack['max'], 'category min and max come from in-stock Woo prices' );
+as_assert( false !== strpos( $pack['note'], '320,000,000' ) && false !== strpos( $pack['note'], '700,000,000' ), 'budget note shows the live range' );
+$air = $e->budget_pack( $catalog, array( 'air_filter' ) );
+as_assert( 14000000 === $air['min'] && 20000000 === $air['max'], 'each category has its own price range' );
 
 $r = $e->recommend( array( 'path' => 'air', 'area' => 'l' ), $catalog );
 as_assert( 0 === count( $r['items'] ), 'air large room not filled with undersized units' );

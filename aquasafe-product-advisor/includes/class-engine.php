@@ -31,7 +31,7 @@ class AS_Advisor_Engine {
 			return $this->empty_result( 'مسیر انتخاب مشخص نیست.', array() );
 		}
 
-		$budget = $this->budget_max( $answers );
+		$budget    = $this->budget_max( $answers, $pool );
 		$in_budget = $this->apply_budget( $pool, $budget );
 		if ( $budget && ! $in_budget && $pool ) {
 			return $this->empty_result(
@@ -162,7 +162,7 @@ class AS_Advisor_Engine {
 			);
 		}
 
-		$budget    = $this->budget_max( $answers );
+		$budget    = $this->budget_max( $answers, $pool );
 		$in_budget = $this->apply_budget( $pool, $budget );
 		$pool      = ( $budget && $in_budget ) ? $in_budget : ( $budget ? array() : $pool );
 		if ( $budget && ! $pool ) {
@@ -364,15 +364,157 @@ class AS_Advisor_Engine {
 		);
 	}
 
-	private function budget_max( array $answers ) {
-		$b = isset( $answers['budget'] ) ? $answers['budget'] : '';
-		$map = array(
-			'low'     => 450000000,
-			'mid'     => 800000000,
-			'high'    => 2000000000,
-			'unknown' => 0,
+	/**
+	 * Budget caps from in-stock prices of the given pool (no hardcoded shop prices).
+	 *
+	 * @return array{low:int,mid:int}
+	 */
+	public function budget_caps( array $pool ) {
+		$prices = array();
+		foreach ( $pool as $p ) {
+			if ( ( $p['stock_status'] ?? '' ) !== 'instock' ) {
+				continue;
+			}
+			$price = (int) ( $p['price'] ?? 0 );
+			if ( $price > 0 ) {
+				$prices[] = $price;
+			}
+		}
+		$prices = array_values( array_unique( $prices ) );
+		sort( $prices, SORT_NUMERIC );
+		if ( ! $prices ) {
+			return array( 'low' => 0, 'mid' => 0 );
+		}
+		$n     = count( $prices );
+		$i_low = (int) round( ( $n - 1 ) * 0.35 );
+		$i_mid = (int) round( ( $n - 1 ) * 0.7 );
+		$low   = $this->nice_price( $prices[ $i_low ] );
+		$mid   = $this->nice_price( $prices[ $i_mid ] );
+		if ( $mid < $low ) {
+			$mid = $low;
+		}
+		return array( 'low' => $low, 'mid' => $mid );
+	}
+
+	public function budget_options_from_catalog( array $catalog, array $kinds ) {
+		$pool = $this->only_in_stock( $this->filter_kind( $catalog, $kinds ) );
+		return $this->budget_option_rows( $pool );
+	}
+
+	/**
+	 * Min/max and budget choices from live in-stock prices of one category.
+	 *
+	 * @return array{min:int,max:int,count:int,note:string,options:array}
+	 */
+	public function budget_pack( array $catalog, array $kinds ) {
+		$pool   = $this->only_in_stock( $this->filter_kind( $catalog, $kinds ) );
+		$bounds = $this->price_bounds( $pool );
+		$note   = '';
+		if ( $bounds['min'] && $bounds['max'] ) {
+			$note = 'بازه قیمت محصولات موجود این دسته از ' . $this->format_toman( $bounds['min'] ) . ' تا ' . $this->format_toman( $bounds['max'] ) . ' است.';
+		}
+		return array(
+			'min'     => $bounds['min'],
+			'max'     => $bounds['max'],
+			'count'   => $bounds['count'],
+			'note'    => $note,
+			'options' => $this->budget_option_rows( $pool ),
 		);
-		return isset( $map[ $b ] ) ? $map[ $b ] : 0;
+	}
+
+	/**
+	 * @return array{min:int,max:int,count:int}
+	 */
+	public function price_bounds( array $pool ) {
+		$prices = array();
+		foreach ( $pool as $p ) {
+			if ( ( $p['stock_status'] ?? '' ) !== 'instock' ) {
+				continue;
+			}
+			$price = (int) ( $p['price'] ?? 0 );
+			if ( $price > 0 ) {
+				$prices[] = $price;
+			}
+		}
+		if ( ! $prices ) {
+			return array( 'min' => 0, 'max' => 0, 'count' => 0 );
+		}
+		return array(
+			'min'   => (int) min( $prices ),
+			'max'   => (int) max( $prices ),
+			'count' => count( $prices ),
+		);
+	}
+
+	public function budget_option_rows( array $pool ) {
+		$caps = $this->budget_caps( $pool );
+		$rows = array();
+		if ( ! empty( $caps['low'] ) ) {
+			$rows[] = array(
+				'id'    => 'low',
+				'max'   => $caps['low'],
+				'label' => 'تا حدود ' . $this->format_toman( $caps['low'] ),
+			);
+		}
+		if ( ! empty( $caps['mid'] ) && (int) $caps['mid'] > (int) $caps['low'] ) {
+			$rows[] = array(
+				'id'    => 'mid',
+				'max'   => $caps['mid'],
+				'label' => 'تا حدود ' . $this->format_toman( $caps['mid'] ),
+			);
+		}
+		$rows[] = array(
+			'id'    => 'high',
+			'max'   => 0,
+			'label' => 'بالاتر از این بازه / بدون سقف',
+		);
+		$rows[] = array(
+			'id'    => 'unknown',
+			'max'   => 0,
+			'label' => 'هنوز مشخص نکرده‌ام',
+		);
+		return $rows;
+	}
+
+	private function format_toman( $n ) {
+		$n = (int) $n;
+		if ( function_exists( 'number_format_i18n' ) ) {
+			return number_format_i18n( $n ) . ' تومان';
+		}
+		return number_format( $n ) . ' تومان';
+	}
+
+	private function nice_price( $n ) {
+		$n = (int) $n;
+		if ( $n <= 0 ) {
+			return 0;
+		}
+		$step = 10000000;
+		if ( $n < 10000000 ) {
+			$step = 500000;
+		}
+		if ( $n < 1000000 ) {
+			$step = 50000;
+		}
+		return (int) ( ceil( $n / $step ) * $step );
+	}
+
+	private function budget_max( array $answers, array $pool = array() ) {
+		if ( ! empty( $answers['budget_max'] ) ) {
+			return (int) $answers['budget_max'];
+		}
+		$b = isset( $answers['budget'] ) ? $answers['budget'] : '';
+		if ( ! $b || 'unknown' === $b || 'high' === $b ) {
+			return 0;
+		}
+		$caps = $this->budget_caps( $this->only_in_stock( $pool ) );
+		if ( 'low' === $b ) {
+			return (int) $caps['low'];
+		}
+		if ( 'mid' === $b ) {
+			return (int) $caps['mid'];
+		}
+		return 0;
 	}
 
 	private function users_num( $users ) {
