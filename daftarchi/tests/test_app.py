@@ -2402,5 +2402,66 @@ class DaftarchiTest(unittest.TestCase):
             moadian.os.urandom = real_random
 
 
+    def test_sms_panel_charges_three_percent_and_reaches_shop_customers(self):
+        self.open_register(0)
+        product = self.add_product(name="عطر", price=10000, stock=5)
+        sold = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}],
+            "payment_method": "cash",
+            "customer_first": "سارا",
+            "customer_last": "کریمی",
+            "customer_phone": "09123334455",
+        })
+        self.assertEqual(sold.status_code, 200, sold.get_json())
+        customer_id = self.client.get("/api/customers").get_json()["customers"][0]["id"]
+        empty = self.client.post("/api/sms/customers", json={"body": "سلام", "ids": [customer_id]})
+        self.assertEqual(empty.status_code, 400)
+        low = self.client.post("/api/sms/topup", json={"amount": 50000})
+        self.assertEqual(low.status_code, 400)
+        high = self.client.post("/api/sms/topup", json={"amount": 1500000})
+        self.assertEqual(high.status_code, 400)
+        seen = {}
+
+        def host(method, url, payload=None, headers=None, form=None, timeout=12):
+            seen["url"] = url
+            seen["payload"] = payload
+            if "pay.php" in str(url) and (payload or {}).get("action") == "request":
+                return 200, {"ok": True, "service": "daftarchi-pay", "trackId": 7788, "payUrl": "https://gateway.zibal.ir/start/7788"}
+            if "pay.php" in str(url) and (payload or {}).get("action") == "verify":
+                return 200, {"ok": True, "service": "daftarchi-pay", "result": 100, "refNumber": "SMS7788"}
+            if url in appmod.HOST_SMS_URLS:
+                seen["credit"] = payload
+                return 200, {"ok": True, "service": "daftarchi-sms", "saved": 1}
+            return 200, []
+
+        original = appmod.http_request
+        appmod.http_request = host
+        try:
+            started = self.client.post("/api/sms/topup", json={"amount": "۱۰۰۰۰۰"})
+            self.assertEqual(started.status_code, 200, started.get_json())
+            body = started.get_json()
+            self.assertEqual(body["credit"], 100000)
+            self.assertEqual(body["fee"], 3000)
+            self.assertEqual(body["payable"], 103000)
+            self.assertEqual(seen["payload"]["amount"], 1030000)
+            self.assertIn("کارمزد 3000", seen["payload"]["description"])
+            confirmed = self.client.post(f"/api/sms/topup/{body['topup']['id']}/confirm", json={})
+            self.assertEqual(confirmed.status_code, 200, confirmed.get_json())
+            self.assertEqual(confirmed.get_json()["balance"], 100000)
+            self.assertEqual(seen["credit"]["fee"], 3000)
+            self.assertEqual(seen["credit"]["credit"], 100000)
+            self.assertNotIn("password", seen["credit"])
+            sent = self.client.post("/api/sms/customers", json={"body": "تخفیف عطر", "ids": [customer_id]})
+            self.assertEqual(sent.status_code, 200, sent.get_json())
+            self.assertEqual(sent.get_json()["sent"], 1)
+            self.assertEqual(sent.get_json()["cost"], 200)
+            self.assertEqual(sent.get_json()["balance"], 99800)
+            wallet = self.client.get("/api/sms").get_json()
+            self.assertEqual(wallet["balance"], 99800)
+            self.assertEqual(wallet["messages"][0]["recipient"], "09123334455")
+        finally:
+            appmod.http_request = original
+
+
 if __name__ == "__main__":
     unittest.main()

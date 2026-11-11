@@ -155,6 +155,14 @@ HOST_SIGNUP_URLS = (
 HOST_LICENSE_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/license",
 )
+HOST_SMS_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/sms-credit",
+)
+SMS_CREDIT_MIN = 100_000
+SMS_CREDIT_MAX = 1_000_000
+SMS_FEE_PERCENT = 3
+SMS_UNIT_PRICE = 200
+SMS_PAGE_CHARS = 70
 HOST_MAIL_KEY = "daftarchi-webakery-mail"
 HOST_TELEGRAM_URLS = (
     "https://webakery.ir/daftarchi/telegram.php",
@@ -1440,7 +1448,26 @@ def require_woo(settings: dict):
     clean_base(settings["wp_url"])
 
 
-def deliver_sms(conn, settings: dict, recipient: str, text: str) -> tuple[str, str]:
+def sms_fee(credit: int) -> int:
+    return credit * SMS_FEE_PERCENT // 100
+
+
+def sms_pages(text: str) -> int:
+    length = len(text.strip())
+    return max(1, (length + SMS_PAGE_CHARS - 1) // SMS_PAGE_CHARS)
+
+
+def sms_message_cost(text: str) -> int:
+    return sms_pages(text) * SMS_UNIT_PRICE
+
+
+def sms_balance(conn) -> int:
+    paid = conn.execute("SELECT COALESCE(SUM(credit),0) AS c FROM sms_topups WHERE status='paid'").fetchone()["c"]
+    spent = conn.execute("SELECT COALESCE(SUM(cost),0) AS c FROM notifications WHERE channel='sms'").fetchone()["c"]
+    return int(paid) - int(spent)
+
+
+def deliver_sms(conn, settings: dict, recipient: str, text: str, cost: int = 0) -> tuple[str, str]:
     recipient = norm_phone(recipient)
     status, detail = "internal", "در صندوق پیامک سیستم ثبت شد"
     provider = settings.get("sms_provider") or "internal"
@@ -1478,8 +1505,8 @@ def deliver_sms(conn, settings: dict, recipient: str, text: str) -> tuple[str, s
     except Exception as exc:
         status, detail = "failed", str(exc)[:300]
     conn.execute(
-        "INSERT INTO notifications (channel, recipient, body, status, detail, created_at) VALUES ('sms',?,?,?,?,?)",
-        (recipient, text, status, detail, iso()),
+        "INSERT INTO notifications (channel, recipient, body, status, detail, created_at, cost) VALUES ('sms',?,?,?,?,?,?)",
+        (recipient, text, status, detail, iso(), cost if status != "failed" else 0),
     )
     return status, detail
 
@@ -2023,6 +2050,44 @@ def store_license_on_host(conn, row) -> bool:
     return saved
 
 
+def sms_host_item(conn, row) -> dict:
+    shop = conn.execute("SELECT phone FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    settings = get_settings(conn)
+    return {
+        "shop_phone": shop["phone"] if shop else "",
+        "shop": settings.get("shop_name") or "",
+        "local_id": int(row["id"]),
+        "credit": int(row["credit"]),
+        "fee": int(row["fee"]),
+        "payable": int(row["payable"]),
+        "status": row["status"] or "paid",
+        "gateway_ref": row["paid_ref"] or row["gateway_ref"] or "",
+        "paid_at": row["paid_at"] or "",
+    }
+
+
+def push_sms_credit(conn, row) -> bool:
+    if not row or row["status"] != "paid":
+        return False
+    payload = {"key": HOST_MAIL_KEY, "action": "sms-credit", **sms_host_item(conn, row)}
+    payload.pop("password", None)
+    saved = False
+    for url in HOST_SMS_URLS:
+        try:
+            status, body = http_request("POST", url, payload=payload, timeout=8)
+        except AppError as exc:
+            log.warning("sms credit %s: %s", url, exc)
+            continue
+        except Exception:
+            log.exception("sms credit %s", url)
+            continue
+        if status < 400 and isinstance(body, dict) and body.get("ok"):
+            saved = True
+            break
+    conn.execute("UPDATE sms_topups SET host_saved=? WHERE id=?", (1 if saved else 0, row["id"]))
+    return saved
+
+
 def sync_licenses_to_host(conn) -> None:
     rows = conn.execute(
         "SELECT * FROM licenses WHERE COALESCE(host_saved,0)=0 ORDER BY id DESC LIMIT 20"
@@ -2056,12 +2121,12 @@ def host_pay(action: str, fields: dict) -> dict:
     raise AppError(explain_host_pay(detail), 502)
 
 
-def webakery_payment(settings: dict, order_id: int, title: str, payable: int, buyer: str, phone: str) -> tuple[str, str, str]:
+def webakery_payment(settings: dict, order_id: int, title: str, payable: int, buyer: str, phone: str, description: str | None = None) -> tuple[str, str, str]:
     tuned = license_gateway_settings(settings)
     body = host_pay("request", {
         "amount": int(payable) * 10,
         "callbackUrl": tuned.get("gateway_callback") or WEBAKERY_URL,
-        "description": f"لایسنس {title} دفترچی — webakery.ir",
+        "description": description or f"لایسنس {title} دفترچی — webakery.ir",
         "orderId": str(order_id),
         "mobile": phone or "",
     })
@@ -2727,7 +2792,23 @@ def init_db():
               body TEXT NOT NULL,
               status TEXT NOT NULL,
               detail TEXT,
-              created_at TEXT NOT NULL
+              created_at TEXT NOT NULL,
+              cost INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS sms_topups (
+              id INTEGER PRIMARY KEY,
+              credit INTEGER NOT NULL,
+              fee INTEGER NOT NULL,
+              payable INTEGER NOT NULL,
+              status TEXT NOT NULL DEFAULT 'pending',
+              gateway TEXT,
+              gateway_ref TEXT,
+              pay_url TEXT,
+              paid_ref TEXT,
+              user_id INTEGER,
+              created_at TEXT NOT NULL,
+              paid_at TEXT,
+              host_saved INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS password_resets (
               id INTEGER PRIMARY KEY,
@@ -2835,6 +2916,9 @@ def init_db():
             for row in conn.execute("SELECT id FROM sales"):
                 conn.execute("UPDATE sales SET invoice_code=? WHERE id=?", (f"D{int(row['id']):08d}", row["id"]))
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_invoice_code ON sales(invoice_code)")
+        note_cols = {row["name"] for row in conn.execute("PRAGMA table_info(notifications)")}
+        if "cost" not in note_cols:
+            conn.execute("ALTER TABLE notifications ADD COLUMN cost INTEGER NOT NULL DEFAULT 0")
         relax_customer_phone(conn)
         apply_site_preset(conn)
 
@@ -5606,7 +5690,8 @@ def pay_return():
         return pay_page("پرداخت در وب‌بیکری انجام نشد یا لغو شد.", False)
     with connect() as conn:
         row = conn.execute("SELECT * FROM licenses WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
-        sale = None if row else conn.execute("SELECT * FROM sales WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
+        topup = None if row else conn.execute("SELECT * FROM sms_topups WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
+        sale = None if row or topup else conn.execute("SELECT * FROM sales WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
         settings = get_settings(conn)
         if row and row["gateway"] != "woocommerce":
             settings = license_gateway_settings(settings)
@@ -5620,6 +5705,11 @@ def pay_return():
                 saved = mark_license_paid(conn, row["id"], row["user_id"], ref)
                 store_license_on_host(conn, saved)
             return pay_page("لایسنس پرداخت شد و در دفترچی فعال است.", True)
+        if topup:
+            ref = host_zibal_verify(topup["gateway_ref"] or "")
+            with connect() as conn:
+                mark_sms_paid(conn, topup["id"], ref)
+            return pay_page("شارژ پیامک پرداخت شد و به موجودی پنل اضافه شد.", True)
         if sale:
             ref = gateway_verify(settings, sale)
             with connect() as conn:
@@ -5655,17 +5745,89 @@ def pay_page(message: str, ok: bool):
     )
 
 
+def sms_wallet(conn) -> dict:
+    rows = conn.execute("SELECT * FROM sms_topups ORDER BY id DESC LIMIT 20").fetchall()
+    topups = []
+    for row in rows:
+        item = dict(row)
+        item["at_jalali"] = to_jalali(row["created_at"])
+        topups.append(item)
+    return {
+        "balance": sms_balance(conn),
+        "fee_percent": SMS_FEE_PERCENT,
+        "min": SMS_CREDIT_MIN,
+        "max": SMS_CREDIT_MAX,
+        "unit_price": SMS_UNIT_PRICE,
+        "page_chars": SMS_PAGE_CHARS,
+        "topups": topups,
+    }
+
+
+def sms_credit_amount(raw) -> int:
+    try:
+        amount = int(str(raw or "").translate(DIGITS))
+    except ValueError:
+        amount = 0
+    if amount < SMS_CREDIT_MIN or amount > SMS_CREDIT_MAX:
+        raise AppError("شارژ پیامک از ۱۰۰ هزار تا ۱ میلیون تومان است")
+    return amount
+
+
+def customer_sms_targets(conn, ids: set[int] | None) -> list[tuple[int, str]]:
+    found = []
+    seen = set()
+    for row in conn.execute("SELECT id, phone FROM customers ORDER BY id"):
+        if ids is not None and int(row["id"]) not in ids:
+            continue
+        phone = norm_phone(row["phone"] or "")
+        if not re.fullmatch(r"09\d{9}", phone) or phone in seen:
+            continue
+        seen.add(phone)
+        found.append((int(row["id"]), phone))
+    return found
+
+
+def send_paid_sms(conn, settings: dict, recipient: str, text: str) -> tuple[str, str, int]:
+    cost = sms_message_cost(text)
+    if sms_balance(conn) < cost:
+        raise AppError(f"موجودی پیامک کافی نیست. این پیام {cost:,} تومان است و موجودی {sms_balance(conn):,} تومان.")
+    status, detail = deliver_sms(conn, settings, recipient, text, cost)
+    if status == "failed":
+        return status, detail, 0
+    return status, detail, cost
+
+
+def mark_sms_paid(conn, topup_id: int, ref: str):
+    row = conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
+    if not row:
+        raise AppError("شارژ پیامک پیدا نشد", 404)
+    if row["status"] == "paid":
+        return row
+    if row["status"] != "pending":
+        raise AppError("این شارژ قابل تأیید نیست")
+    updated = conn.execute(
+        "UPDATE sms_topups SET status='paid', paid_ref=?, paid_at=? WHERE id=? AND status='pending'",
+        (ref, iso(), topup_id),
+    )
+    if updated.rowcount != 1:
+        return conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
+    saved = conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
+    push_sms_credit(conn, saved)
+    return conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
+
+
 @app.get("/api/sms")
 def list_sms():
     require_admin()
     with connect() as conn:
         rows = conn.execute("SELECT * FROM notifications ORDER BY id DESC LIMIT 100").fetchall()
+        wallet = sms_wallet(conn)
     messages = []
     for row in rows:
         item = dict(row)
         item["at_jalali"] = to_jalali(row["created_at"])
         messages.append(item)
-    return jsonify(messages=messages)
+    return jsonify(messages=messages, **wallet)
 
 
 @app.post("/api/sms")
@@ -5677,8 +5839,98 @@ def send_sms():
     if not re.fullmatch(r"09\d{9}", recipient):
         raise AppError("شماره گیرنده معتبر نیست")
     with connect() as conn:
-        status, detail = deliver_sms(conn, get_settings(conn), recipient, text)
-    return jsonify(ok=status != "failed", status=status, detail=detail)
+        status, detail, cost = send_paid_sms(conn, get_settings(conn), recipient, text)
+        balance = sms_balance(conn)
+    return jsonify(ok=status != "failed", status=status, detail=detail, cost=cost, balance=balance)
+
+
+@app.post("/api/sms/customers")
+def send_customer_sms():
+    require_admin()
+    payload = body_json()
+    text = clean_text(payload.get("body"), "متن", 500, required=True)
+    raw_ids = payload.get("ids") or []
+    if not isinstance(raw_ids, list) or not raw_ids:
+        raise AppError("حداقل یک مشتری را انتخاب کنید")
+    ids = set()
+    for item in raw_ids:
+        if str(item).isdigit():
+            ids.add(int(item))
+    with connect() as conn:
+        targets = customer_sms_targets(conn, ids)
+        if not targets:
+            raise AppError("مشتری انتخاب‌شده موبایل معتبر ندارد")
+        cost = sms_message_cost(text) * len(targets)
+        if sms_balance(conn) < cost:
+            raise AppError(f"موجودی پیامک کافی نیست. این ارسال {cost:,} تومان است و موجودی {sms_balance(conn):,} تومان.")
+        settings = get_settings(conn)
+        sent = 0
+        failed = 0
+        for _customer_id, phone in targets:
+            status, _detail, _spent = send_paid_sms(conn, settings, phone, text)
+            if status == "failed":
+                failed += 1
+            else:
+                sent += 1
+        balance = sms_balance(conn)
+    return jsonify(ok=sent > 0, sent=sent, failed=failed, cost=sms_message_cost(text) * sent, balance=balance)
+
+
+@app.post("/api/sms/topup")
+def sms_topup():
+    user = require_admin()
+    credit = sms_credit_amount((body_json() or {}).get("amount"))
+    fee = sms_fee(credit)
+    payable = credit + fee
+    with connect() as conn:
+        settings = get_settings(conn)
+        cur = conn.execute(
+            """INSERT INTO sms_topups (credit, fee, payable, status, user_id, created_at)
+               VALUES (?,?,?,'pending',?,?)""",
+            (credit, fee, payable, user["id"], iso()),
+        )
+        topup_id = cur.lastrowid
+    try:
+        gateway_name, ref, pay_url = webakery_payment(
+            settings,
+            topup_id,
+            "پیامک",
+            payable,
+            user["name"],
+            user["phone"],
+            description=f"شارژ پیامک دفترچی {credit} تومان، کارمزد {fee} تومان",
+        )
+    except Exception:
+        with connect() as conn:
+            conn.execute("UPDATE sms_topups SET status='canceled' WHERE id=? AND status='pending'", (topup_id,))
+        raise
+    with connect() as conn:
+        conn.execute(
+            "UPDATE sms_topups SET gateway=?, gateway_ref=?, pay_url=? WHERE id=?",
+            (gateway_name, ref, pay_url, topup_id),
+        )
+        saved = conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
+    item = dict(saved)
+    return jsonify(ok=True, credit=credit, fee=fee, payable=payable, topup=item)
+
+
+@app.post("/api/sms/topup/<int:topup_id>/confirm")
+def confirm_sms_topup(topup_id: int):
+    require_admin()
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
+    if not row:
+        raise AppError("شارژ پیامک پیدا نشد", 404)
+    if row["status"] == "paid":
+        with connect() as conn:
+            return jsonify(ok=True, balance=sms_balance(conn), credit=row["credit"], fee=row["fee"])
+    if row["status"] != "pending" or not row["gateway_ref"]:
+        raise AppError("این شارژ قابل تأیید نیست")
+    ref = host_zibal_verify(row["gateway_ref"])
+    with connect() as conn:
+        saved = mark_sms_paid(conn, topup_id, ref)
+        balance = sms_balance(conn)
+    return jsonify(ok=True, balance=balance, credit=saved["credit"], fee=saved["fee"], payable=saved["payable"])
 
 
 def public_settings(data: dict) -> dict:

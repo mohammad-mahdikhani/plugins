@@ -283,7 +283,10 @@ const loaders = {
     state.customers = (await api("/api/customers")).customers;
   },
   async sms() {
-    state.sms = (await api("/api/sms")).messages;
+    const [wallet, people] = await Promise.all([api("/api/sms"), api("/api/customers")]);
+    state.smsWallet = wallet;
+    state.sms = wallet.messages;
+    state.customers = people.customers;
   },
   async settings() {
     const updatePromise = loadUpdate();
@@ -1131,7 +1134,30 @@ function customersHtml() {
 }
 
 function smsHtml() {
-  return `<div class="stack"><section class="card"><form data-act="send-sms"><div class="field"><label>شماره مدیر یا گیرنده</label><input class="ltr" name="recipient" required placeholder="09..."></div><div class="field"><label>متن</label><textarea name="body" required></textarea></div><button class="btn primary" type="submit">ارسال</button><p class="hint">اگر کاوه‌نگار یا ملی‌پیامک تنظیم نشده باشد، پیام در همین صندوق می‌ماند.</p></form></section>
+  const wallet = state.smsWallet || {};
+  const packs = [100000, 250000, 500000, 1000000];
+  const buyers = (state.customers || []).filter((row) => /^09\d{9}$/.test(String(row.phone || "")));
+  const pending = (wallet.topups || []).filter((row) => row.status === "pending" && row.pay_url);
+  const feeLine = (amount) => {
+    const fee = Math.floor(amount * 3 / 100);
+    return `${money(amount)} شارژ، کارمزد ${money(fee)}، پرداخت ${money(amount + fee)}`;
+  };
+  return `<div class="stack">
+    <section class="card">
+      <h2 class="section-title">پنل پیامک</h2>
+      <p>موجودی: <strong class="num">${money(wallet.balance || 0)}</strong></p>
+      <p class="hint">شارژ از ۱۰۰ هزار تا ۱ میلیون تومان است. از هر تراکنش ۳ درصد کارمزد جدا گرفته می‌شود و به موجودی اضافه نمی‌شود. هر ۷۰ حرف ${money(wallet.unit_price || 200)} از موجودی کم می‌شود.</p>
+      <div class="row-actions">${packs.map((amount) => `<button type="button" class="btn primary" data-act="sms-topup" data-amount="${amount}">${feeLine(amount)}</button>`).join("")}</div>
+      <form data-act="sms-topup-custom"><div class="field"><label>مبلغ دیگر، تومان</label><input name="amount" inputmode="numeric" required placeholder="مثلاً ۱۵۰۰۰۰"></div><button class="btn" type="submit">شارژ همین مبلغ</button></form>
+      ${pending.map((row) => `<p><a href="${esc(row.pay_url)}" target="_blank" rel="noopener">ادامه پرداخت ${money(row.payable)}</a> <button type="button" class="btn" data-act="confirm-sms" data-id="${row.id}">استعلام تأیید</button></p>`).join("")}
+    </section>
+    <section class="card">
+      <h2 class="section-title">پیامک به مشتریان فروشگاه</h2>
+      <div class="field"><label>متن</label><textarea id="sms-body" rows="3" required placeholder="متن پیام برای مشتریان"></textarea></div>
+      ${buyers.length ? buyers.map((row) => `<label class="check"><input type="checkbox" name="sms-customer" value="${row.id}">${esc(row.name)} <span class="ltr">${esc(row.phone)}</span></label>`).join("") : `<p class="empty">هنوز مشتری با موبایل ثبت نشده است.</p>`}
+      <button type="button" class="btn primary" data-act="send-customer-sms">ارسال به انتخاب‌شده‌ها</button>
+    </section>
+    <section class="card"><form data-act="send-sms"><div class="field"><label>یک شماره</label><input class="ltr" name="recipient" required placeholder="09..."></div><div class="field"><label>متن</label><textarea name="body" required></textarea></div><button class="btn primary" type="submit">ارسال</button><p class="hint">اگر کاوه‌نگار یا ملی‌پیامک در تنظیمات باشد، همان لحظه فرستاده می‌شود. وگرنه در صندوق دفترچی می‌ماند و از موجودی کم می‌شود.</p></form></section>
     <section class="card"><table><thead><tr><th>زمان</th><th>گیرنده</th><th>متن</th><th>وضعیت</th></tr></thead><tbody>
       ${state.sms.map((row) => `<tr><td>${esc(row.at_jalali)}</td><td class="ltr">${esc(row.recipient)}</td><td>${esc(row.body)}</td><td>${esc(row.status)} ${esc(row.detail || "")}</td></tr>`).join("") || `<tr><td colspan="4">پیامی نیست.</td></tr>`}
     </tbody></table></section></div>`;
@@ -1347,6 +1373,44 @@ function closePopup(popup) {
   try { if (popup && !popup.closed) popup.close(); } catch { /* پنجره را مرورگر بسته است */ }
 }
 
+async function startSmsTopup(amount) {
+  const popup = window.open("about:blank", "daftarchi-sms");
+  try {
+    const result = await api("/api/sms/topup", { method: "POST", body: { amount } });
+    const url = result.topup?.pay_url || "";
+    if (!url) throw new Error("زیبال صفحه پرداخت نداد");
+    if (popup && !popup.closed) popup.location.href = url;
+    else location.assign(url);
+    toast(`کارمزد ${money(result.fee)} جدا از شارژ ${money(result.credit)} است`);
+    watchSms(result.topup.id);
+    await loaders.sms();
+    render();
+  } catch (err) {
+    if (popup && !popup.closed) popup.close();
+    throw err;
+  }
+}
+
+function watchSms(id) {
+  let tries = 0;
+  const timer = setInterval(() => {
+    tries += 1;
+    if (tries > 40) {
+      clearInterval(timer);
+      return;
+    }
+    api(`/api/sms/topup/${id}/confirm`, { method: "POST", body: {} }).then(async (result) => {
+      clearInterval(timer);
+      toast(`موجودی پیامک ${money(result.balance)} شد`);
+      await loaders.sms();
+      render();
+    }).catch((err) => {
+      if (err.status === 409) return;
+      clearInterval(timer);
+    });
+  }, 4000);
+}
+
 function watchLicense(id) {
   let tries = 0;
   const timer = setInterval(() => {
@@ -1542,9 +1606,11 @@ async function onSubmit(event) {
       render();
     } else if (act === "send-sms") {
       const result = await api("/api/sms", { method: "POST", body: data });
-      toast(result.status === "sent" ? "پیامک ارسال شد" : result.detail || "در سیستم ثبت شد");
+      toast(result.status === "failed" ? (result.detail || "ارسال نشد") : `ارسال شد و ${money(result.cost)} از موجودی کم شد`);
       await loaders.sms();
       render();
+    } else if (act === "sms-topup-custom") {
+      await startSmsTopup(data.amount);
     } else if (act === "manual-gateway") {
       await api(`/api/sales/${data.id}/confirm`, { method: "POST", body: { mode: "manual", ref: data.ref } });
       state.modal = null;
@@ -1730,6 +1796,27 @@ async function onClick(event) {
   if (act === "tour-replay") { await guard(() => replayTour()); return; }
   if (act === "nav") { await guard(() => navigate(el.dataset.page)); return; }
   if (act === "chart") { state.chart = el.dataset.range; render(); return; }
+  if (act === "sms-topup") { await guard(() => startSmsTopup(el.dataset.amount)); return; }
+  if (act === "send-customer-sms") {
+    await guard(async () => {
+      const body = document.getElementById("sms-body")?.value || "";
+      const ids = [...document.querySelectorAll("input[name=sms-customer]:checked")].map((item) => Number(item.value));
+      const result = await api("/api/sms/customers", { method: "POST", body: { body, ids } });
+      toast(result.failed ? `${num(result.sent)} پیام رفت و ${num(result.failed)} تا نرفت` : `${num(result.sent)} پیام برای مشتریان ثبت شد`);
+      await loaders.sms();
+      render();
+    });
+    return;
+  }
+  if (act === "confirm-sms") {
+    await guard(async () => {
+      const result = await api(`/api/sms/topup/${el.dataset.id}/confirm`, { method: "POST", body: {} });
+      toast(`موجودی پیامک ${money(result.balance)} شد`);
+      await loaders.sms();
+      render();
+    });
+    return;
+  }
   if (act === "pick-plan") {
     const popup = window.open("about:blank", "_blank");
     await guard(() => buyLicense(el.dataset.plan, null, popup));
