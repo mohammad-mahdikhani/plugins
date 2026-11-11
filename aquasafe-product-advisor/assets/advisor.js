@@ -205,7 +205,7 @@
     var cl = $(root, "[data-close]");
     if (cl) cl.addEventListener("click", function () {
       track("dropoff");
-      root.hidden = true;
+      closeModal(root);
     });
     var unk = $(root, "[data-unknown-model]");
     if (unk) unk.addEventListener("click", function () {
@@ -359,8 +359,30 @@
       step = 99;
     } catch (e) {}
   }
+  function closeModal(root) {
+    if (!root) return;
+    root.classList.remove("is-open");
+    root.hidden = true;
+    root.setAttribute("hidden", "hidden");
+    root.style.display = "none";
+  }
+  function openModal() {
+    var modal = document.querySelector("[data-as-advisor=modal]");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.className = "as-advisor as-advisor-modal";
+      modal.setAttribute("data-as-advisor", "modal");
+      document.body.appendChild(modal);
+    }
+    modal.hidden = false;
+    modal.removeAttribute("hidden");
+    modal.style.display = "flex";
+    modal.classList.add("is-open");
+    mount(modal);
+    return modal;
+  }
   function mount(root) {
-    if (root.getAttribute("data-as-advisor") === "modal" && root.hidden) return;
+    if (root.getAttribute("data-as-advisor") === "modal" && !root.classList.contains("is-open")) return;
     load();
     hydrateFromHash();
     render(root);
@@ -379,12 +401,12 @@
     document.addEventListener("click", function (e) {
       var b = e.target.closest("[data-as-open]");
       if (!b) return;
-      var host = b.parentNode;
-      var modal = host.querySelector("[data-as-advisor=modal]");
-      if (!modal) return;
-      modal.hidden = false;
-      mount(modal);
+      e.preventDefault();
+      openModal();
     });
+    if (location.hash && location.hash.indexOf("asadv=") !== -1) {
+      openModal();
+    }
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootAll);
   else bootAll();

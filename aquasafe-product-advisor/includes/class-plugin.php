@@ -40,6 +40,6 @@ class AS_Advisor_Plugin {
 		if ( is_admin() || is_checkout() || is_cart() || is_account_page() ) {
 			return;
 		}
-		echo '<div class="as-advisor-fab-host"><button type="button" class="as-adv-fab" data-as-open>دستیار انتخاب محصول</button><div class="as-advisor as-advisor-modal" data-as-advisor="modal" hidden></div></div>';
+		echo '<div class="as-advisor-fab-host"><button type="button" class="as-adv-fab" data-as-open aria-haspopup="dialog">دستیار انتخاب محصول</button></div>';
 	}
 }
