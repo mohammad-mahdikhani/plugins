@@ -157,3 +157,43 @@ function moon_skin_part($location, $slug) {
 	}
 	get_template_part('template-parts/' . $slug);
 }
+
+add_action('init', 'moon_skin_bind_demo', 40);
+
+/**
+ * اگر فایل دمو وارد شده باشد و جایگاه‌ها خالی باشند، خانه و فهرست‌ها را می‌گذارد.
+ */
+function moon_skin_bind_demo() {
+	if (get_option('moon_skin_demo_bound')) {
+		return;
+	}
+	$home    = get_page_by_path('moon-home');
+	$primary = wp_get_nav_menu_object('منوی اصلی');
+	$footer  = wp_get_nav_menu_object('منوی پاصفحه');
+	if (!$home || !$primary || !$footer) {
+		return;
+	}
+
+	$locations = get_theme_mod('nav_menu_locations', array());
+	if (!is_array($locations)) {
+		$locations = array();
+	}
+	if (empty($locations['primary'])) {
+		$locations['primary'] = (int) $primary->term_id;
+	}
+	if (empty($locations['footer'])) {
+		$locations['footer'] = (int) $footer->term_id;
+	}
+	set_theme_mod('nav_menu_locations', $locations);
+
+	if ('posts' === get_option('show_on_front') && !(int) get_option('page_on_front')) {
+		update_option('show_on_front', 'page');
+		update_option('page_on_front', (int) $home->ID);
+		$blog = get_page_by_path('moon-magazine');
+		if ($blog && !(int) get_option('page_for_posts')) {
+			update_option('page_for_posts', (int) $blog->ID);
+		}
+	}
+
+	update_option('moon_skin_demo_bound', '1', false);
+}
