@@ -237,7 +237,7 @@ class DaftarchiTest(unittest.TestCase):
             self.assertIn('"unlimited": true', preset)
             self.assertIn("آرقای جزایری", preset)
             self.assertNotIn("studio_unlock", preset)
-            self.assertIn('APP_VERSION = "1.1.14"', app_text)
+            self.assertIn('APP_VERSION = "1.1.17"', app_text)
             self.assertIn("/api/checks", app_text)
             self.assertIn("وصول چک", app_text)
             self.assertIn("desktop_icon_available", app_text)
@@ -245,6 +245,10 @@ class DaftarchiTest(unittest.TestCase):
         dmg = (deploy / "Daftarchi-Jazayeri-setup.dmg").read_bytes()
         self.assertGreater(len(dmg), 20_000_000)
         self.assertEqual(dmg[-512:-508], b"koly")
+        setup_exe = (deploy / "Daftarchi-Jazayeri-setup.exe").read_bytes()
+        self.assertEqual(setup_exe[:2], b"MZ")
+        self.assertGreater(len(setup_exe), 8_000_000)
+        self.assertIn("دفترچی آرقای جزایری".encode("utf-16le"), setup_exe)
         setup = (deploy / "mac" / "setup-jazayeri.command").read_text(encoding="utf-8")
         self.assertIn("Daftarchi-Jazayeri", setup)
         self.assertNotIn("DAFTARCHI_UNLOCK", setup)
@@ -341,6 +345,38 @@ class DaftarchiTest(unittest.TestCase):
         self.assertGreaterEqual(icon[4], 4)
         setup = (deploy / "mac" / "setup-pakan.command").read_text(encoding="utf-8")
         self.assertIn("Daftarchi-Pakan", setup)
+        self.assertNotIn("DAFTARCHI_UNLOCK", setup)
+
+    def test_atr_package_is_unlimited_and_not_studio(self):
+        deploy = Path(__file__).resolve().parents[1] / "deploy"
+        expected = {
+            "Daftarchi-Atr.zip": "Daftarchi-Atr/Start-Daftarchi.bat",
+            "Daftarchi-Atr-Mac.zip": "Daftarchi-Atr/Start-Daftarchi.command",
+            "Daftarchi-Atr-Linux.zip": "Daftarchi-Atr/Start-Daftarchi.sh",
+        }
+        for filename, starter in expected.items():
+            zpath = deploy / filename
+            self.assertTrue(zpath.is_file(), zpath)
+            with zipfile.ZipFile(zpath) as archive:
+                names = archive.namelist()
+                script = archive.read(starter).decode()
+                preset = archive.read("Daftarchi-Atr/preset.json").decode()
+                app_text = archive.read("Daftarchi-Atr/app/app.py").decode()
+            self.assertIn("DAFTARCHI_CHANNEL=customer", script)
+            self.assertIn("DAFTARCHI_PRESET", script)
+            self.assertNotIn("DAFTARCHI_UNLOCK", script)
+            self.assertIn('"unlimited": true', preset)
+            self.assertIn("عطر فروشی", preset)
+            self.assertIn('"shop_mode": "offline"', preset)
+            self.assertNotIn("studio_unlock", preset)
+            self.assertIn('APP_VERSION = "1.1.17"', app_text)
+            self.assertFalse(any("studio-unlock" in name for name in names))
+        setup_exe = (deploy / "Daftarchi-Atr-setup.exe").read_bytes()
+        self.assertEqual(setup_exe[:2], b"MZ")
+        self.assertGreater(len(setup_exe), 8_000_000)
+        self.assertIn("دفترچی عطر فروشی".encode("utf-16le"), setup_exe)
+        setup = (deploy / "mac" / "setup-atr.command").read_text(encoding="utf-8")
+        self.assertIn("Daftarchi-Atr", setup)
         self.assertNotIn("DAFTARCHI_UNLOCK", setup)
 
     def test_source_zip_is_the_program(self):
