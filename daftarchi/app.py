@@ -3192,13 +3192,46 @@ def download_update_zip(url: str) -> bytes:
 
 def schedule_restart() -> None:
     root = panel_root()
-    cmd = [os.environ.get("DAFTARCHI_PYTHON", "").strip() or __import__("sys").executable, str(root / "app.py")]
-    kwargs = {"cwd": str(root), "env": os.environ.copy(), "close_fds": True}
+    parent = root.parent
+    env = os.environ.copy()
+    if os.name == "nt":
+        bat = parent / "Start-Daftarchi.bat"
+        if bat.is_file():
+            helper = parent / "data" / "restart-daftarchi.cmd"
+            helper.parent.mkdir(parents=True, exist_ok=True)
+            helper.write_text(
+                f'@echo off\r\nping 127.0.0.1 -n 3 >nul\r\nstart "" "{bat}"\r\n',
+                encoding="utf-8",
+            )
+            subprocess.Popen(
+                ["cmd", "/c", str(helper)],
+                cwd=str(parent),
+                env=env,
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                close_fds=True,
+            )
+            threading.Timer(0.6, lambda: os._exit(0)).start()
+            return
+    else:
+        for name in ("Start-Daftarchi.command", "Start-Daftarchi.sh"):
+            script = parent / name
+            if script.is_file():
+                subprocess.Popen(
+                    ["/bin/sh", str(script)],
+                    cwd=str(parent),
+                    env=env,
+                    start_new_session=True,
+                    close_fds=True,
+                )
+                threading.Timer(0.6, lambda: os._exit(0)).start()
+                return
+    python = env.get("DAFTARCHI_PYTHON", "").strip() or __import__("sys").executable
+    kwargs = {"cwd": str(root), "env": env, "close_fds": True}
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True
-    subprocess.Popen(cmd, **kwargs)
+    subprocess.Popen([python, str(root / "app.py")], **kwargs)
     threading.Timer(0.8, lambda: os._exit(0)).start()
 
 
@@ -5860,20 +5893,29 @@ init_db()
 
 
 def main():
+    import time
+
     port = int(os.environ.get("PORT", "8080"))
     print(f"دفترچی روی http://127.0.0.1:{port}")
     if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
         def _open_browser():
-            import time
-            import webbrowser
             time.sleep(0.8)
+            import webbrowser
             webbrowser.open(f"http://127.0.0.1:{port}")
         threading.Thread(target=_open_browser, daemon=True).start()
-    try:
-        from waitress import serve
-        serve(app, host="0.0.0.0", port=port)
-    except ImportError:
-        app.run(host="0.0.0.0", port=port, debug=False)
+    deadline = time.time() + 20
+    while True:
+        try:
+            from waitress import serve
+            serve(app, host="0.0.0.0", port=port)
+            return
+        except ImportError:
+            app.run(host="0.0.0.0", port=port, debug=False)
+            return
+        except OSError:
+            if time.time() > deadline:
+                raise
+            time.sleep(0.4)
 
 
 if __name__ == "__main__":
