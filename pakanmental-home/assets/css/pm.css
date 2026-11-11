@@ -1671,7 +1671,7 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr minmax(100px, 140px);
+  grid-template-columns: 1.4fr 1fr 1fr minmax(148px, 168px);
   gap: 2rem 1.5rem;
   margin-bottom: 1.75rem;
 }
@@ -1730,16 +1730,21 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   filter: brightness(1.08);
 }
 
+.pm-footer__enamad {
+  text-align: center;
+}
+
 .pm-footer__enamad-slot {
-  min-height: 120px;
+  min-height: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   width: fit-content;
-  max-width: min(100%, 200px);
-  padding: 0.65rem 0.85rem;
+  max-width: min(100%, 168px);
+  margin-inline: auto;
+  padding: 0.4rem;
   background: #fff;
-  border-radius: var(--pm-radius-lg, var(--pm-radius));
+  border-radius: 18px;
   box-shadow: 0 4px 20px rgba(8, 28, 24, 0.28);
 }
 
@@ -1748,6 +1753,11 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
 .pm-footer__enamad-slot iframe {
   max-width: 100%;
   display: block;
+}
+
+.pm-footer__enamad-slot img {
+  width: 112px;
+  height: auto;
 }
 
 .pm-footer__enamad-slot a {
