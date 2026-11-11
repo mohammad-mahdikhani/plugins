@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('MOON_SKIN_VERSION', '1.0.0');
+define('MOON_SKIN_VERSION', '1.1.0');
 
 require get_template_directory() . '/inc/template-tags.php';
 require get_template_directory() . '/inc/customizer.php';
@@ -84,12 +84,19 @@ function moon_skin_assets() {
 		'cart'  => $cart,
 		'home'  => esc_url_raw(home_url('/')),
 		'ajax'  => esc_url_raw(add_query_arg('wc-ajax', '%%endpoint%%', home_url('/'))),
+		'steps' => moon_skin_on('moon_skin_checkout_steps') ? 1 : 0,
 		'i18n'  => array(
-			'night' => __('حالت شب', 'moon-skin'),
-			'day'   => __('حالت روز', 'moon-skin'),
-			'empty' => __('سبد خرید خالی است.', 'moon-skin'),
-			'pay'   => __('تسویه حساب', 'moon-skin'),
-			'cart'  => __('سبد خرید', 'moon-skin'),
+			'night' => moon_skin_mod('moon_skin_night_label'),
+			'day'   => moon_skin_mod('moon_skin_day_label'),
+			'empty' => moon_skin_mod('moon_skin_cart_empty'),
+			'pay'   => moon_skin_mod('moon_skin_pay_label'),
+			'cart'  => moon_skin_mod('moon_skin_cart_title'),
+			'step1' => moon_skin_mod('moon_skin_step_1'),
+			'step2' => moon_skin_mod('moon_skin_step_2'),
+			'step3' => moon_skin_mod('moon_skin_step_3'),
+			'back'  => moon_skin_mod('moon_skin_back'),
+			'next'  => moon_skin_mod('moon_skin_next'),
+			'ship'  => moon_skin_mod('moon_skin_ship_label'),
 		),
 	));
 }
@@ -100,7 +107,21 @@ add_action('wp_head', 'moon_skin_night_boot', 0);
  * حالت شب قبل از رنگ‌شدن صفحه.
  */
 function moon_skin_night_boot() {
-	echo "<script>try{if(localStorage.getItem('moon_night')==='1')document.documentElement.classList.add('is-night')}catch(e){}</script>\n";
+	echo "<script>try{var root=document.documentElement;var s=localStorage.getItem('moon_night');var preset=root.getAttribute('data-night');var allow=root.getAttribute('data-night-toggle');if(allow==='1'){if(s==='1'||(s===null&&preset==='1'))root.classList.add('is-night')}else if(preset==='1'){root.classList.add('is-night')}}catch(e){}</script>\n";
+}
+
+add_filter('language_attributes', 'moon_skin_html_attrs');
+
+/**
+ * حالت شب پیش‌فرض را قبل از رسم صفحه می‌گذارد.
+ *
+ * @param string $output Language attributes.
+ * @return string
+ */
+function moon_skin_html_attrs($output) {
+	$output .= ' data-night="' . (moon_skin_on('moon_skin_night_default') ? '1' : '0') . '"';
+	$output .= ' data-night-toggle="' . (moon_skin_on('moon_skin_show_night') ? '1' : '0') . '"';
+	return $output;
 }
 
 add_action('wp_head', 'moon_skin_accent_css', 20);
@@ -109,11 +130,38 @@ add_action('wp_head', 'moon_skin_accent_css', 20);
  * رنگ اصلی از سفارشی‌سازی.
  */
 function moon_skin_accent_css() {
-	$accent = sanitize_hex_color(get_theme_mod('moon_skin_accent', '#4c1d95'));
-	if (!$accent) {
-		$accent = '#4c1d95';
+	$vars = array(
+		'--moon'         => moon_skin_color('moon_skin_accent'),
+		'--moon-2'       => moon_skin_color('moon_skin_accent'),
+		'--on'           => moon_skin_color('moon_skin_on'),
+		'--ink'          => moon_skin_color('moon_skin_ink'),
+		'--muted'        => moon_skin_color('moon_skin_muted'),
+		'--bg'           => moon_skin_color('moon_skin_bg'),
+		'--card'         => moon_skin_color('moon_skin_card'),
+		'--soft'         => moon_skin_color('moon_skin_soft'),
+		'--line'         => moon_skin_color('moon_skin_line'),
+		'--bar'          => moon_skin_color('moon_skin_bar'),
+		'--footer'       => moon_skin_color('moon_skin_footer_bg'),
+		'--footer-ink'   => moon_skin_color('moon_skin_footer_ink'),
+		'--night-bg'     => moon_skin_color('moon_skin_night_bg'),
+		'--night-card'   => moon_skin_color('moon_skin_night_card'),
+		'--night-ink'    => moon_skin_color('moon_skin_night_ink'),
+		'--night-soft'   => moon_skin_color('moon_skin_night_soft'),
+		'--moon-width'   => (int) moon_skin_mod('moon_skin_width') . 'px',
+		'--radius'       => (int) moon_skin_mod('moon_skin_radius') . 'px',
+		'--btn-radius'   => (int) moon_skin_mod('moon_skin_button_radius') . 'px',
+		'--shop-cols'    => (int) moon_skin_mod('moon_skin_shop_columns'),
+		'--blog-cols'    => (int) moon_skin_mod('moon_skin_blog_columns'),
+	);
+	$rules = array();
+	foreach ($vars as $name => $value) {
+		$rules[] = $name . ':' . $value;
 	}
-	echo '<style>:root{--moon:' . esc_attr($accent) . ';--moon-2:' . esc_attr($accent) . '}</style>';
+	$css = ':root{' . implode(';', $rules) . '}';
+	if ('system' === moon_skin_mod('moon_skin_font')) {
+		$css .= 'body{--font:Tahoma,sans-serif}';
+	}
+	echo '<style id="moon-skin-custom">' . $css . '</style>';
 }
 
 add_filter('body_class', 'moon_skin_body_class');
@@ -126,6 +174,27 @@ add_filter('body_class', 'moon_skin_body_class');
  */
 function moon_skin_body_class($classes) {
 	$classes[] = 'moon-skin';
+	if (!moon_skin_on('moon_skin_show_search')) {
+		$classes[] = 'moon-no-search';
+	}
+	if (!moon_skin_on('moon_skin_show_account')) {
+		$classes[] = 'moon-no-account';
+	}
+	if (!moon_skin_on('moon_skin_show_cart')) {
+		$classes[] = 'moon-no-cart';
+	}
+	if (!moon_skin_on('moon_skin_show_night')) {
+		$classes[] = 'moon-no-night';
+	}
+	if (!moon_skin_on('moon_skin_show_mega')) {
+		$classes[] = 'moon-no-mega';
+	}
+	if (!moon_skin_on('moon_skin_show_dock')) {
+		$classes[] = 'moon-no-dock';
+	}
+	if (moon_skin_on('moon_skin_checkout_steps')) {
+		$classes[] = 'moon-steps-on';
+	}
 	return $classes;
 }
 

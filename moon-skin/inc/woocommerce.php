@@ -140,6 +140,9 @@ function moon_skin_shipping_labels($product = null) {
  * جعبه ارسال روی محصول.
  */
 function moon_skin_shipping_box() {
+	if (!moon_skin_on('moon_skin_show_shipping')) {
+		return;
+	}
 	if (!function_exists('wc_get_product')) {
 		return;
 	}
@@ -151,7 +154,7 @@ function moon_skin_shipping_box() {
 	if (!$labels) {
 		return;
 	}
-	echo '<div class="moon-ship"><div><b>' . esc_html__('ارسال', 'moon-skin') . '</b><ul>';
+	echo '<div class="moon-ship"><div><b>' . esc_html(moon_skin_mod('moon_skin_shipping_title')) . '</b><ul>';
 	foreach ($labels as $label) {
 		echo '<li>' . esc_html($label) . '</li>';
 	}

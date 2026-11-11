@@ -162,10 +162,21 @@
     }, true);
 
     var form = document.querySelector("form.checkout");
-    if (form && document.getElementById("customer_details")) {
+    var texts = cfg.i18n || {};
+    if (String(cfg.steps) !== "0" && form && document.getElementById("customer_details")) {
       var bar = document.createElement("ol");
       bar.className = "moon-steps";
-      bar.innerHTML = '<li data-go="1"><b>۱</b><span>مشخصات</span></li><li data-go="2"><b>۲</b><span>ارسال</span></li><li data-go="3"><b>۳</b><span>پرداخت</span></li>';
+      [["1", texts.step1 || "مشخصات"], ["2", texts.step2 || "ارسال"], ["3", texts.step3 || "پرداخت"]].forEach(function (pair) {
+        var li = document.createElement("li");
+        li.setAttribute("data-go", pair[0]);
+        var b = document.createElement("b");
+        b.textContent = pair[0];
+        var s = document.createElement("span");
+        s.textContent = pair[1];
+        li.appendChild(b);
+        li.appendChild(s);
+        bar.appendChild(li);
+      });
       form.insertBefore(bar, form.firstChild);
       var lead = document.createElement("div");
       lead.className = "moon-ship-lead";
@@ -174,7 +185,13 @@
         var label = input ? document.querySelector('label[for="' + input.id + '"]') : null;
         if (!label) label = document.querySelector("#order_review tr.shipping td");
         var text = label ? (label.textContent || "").replace(/\s+/g, " ").trim() : "";
-        lead.innerHTML = "<b>روش ارسال</b><span>" + text + "</span>";
+        lead.replaceChildren();
+        var title = document.createElement("b");
+        title.textContent = texts.ship || "روش ارسال";
+        var span = document.createElement("span");
+        span.textContent = text;
+        lead.appendChild(title);
+        lead.appendChild(span);
       }
       syncLead();
       var review = document.getElementById("order_review");
@@ -183,7 +200,16 @@
       if (review && review.parentNode) review.parentNode.insertBefore(lead, review);
       var nav = document.createElement("div");
       nav.className = "moon-step-nav";
-      nav.innerHTML = '<button type="button" class="moon-back">بازگشت</button><button type="button" class="moon-next">ادامه</button>';
+      var back = document.createElement("button");
+      back.type = "button";
+      back.className = "moon-back";
+      back.textContent = texts.back || "بازگشت";
+      var next = document.createElement("button");
+      next.type = "button";
+      next.className = "moon-next";
+      next.textContent = texts.next || "ادامه";
+      nav.appendChild(back);
+      nav.appendChild(next);
       form.appendChild(nav);
       var step = 1;
       function show(n) {
