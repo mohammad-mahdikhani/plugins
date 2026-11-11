@@ -133,10 +133,15 @@
     for (var i = 0; i < n; i++) h += "<b class=\"" + (i <= step ? "on" : "") + "\"></b>";
     return h + "</div>";
   }
-  function render(root) {
+  function chrome(root, kicker) {
     var modal = root.getAttribute("data-as-advisor") === "modal";
+    var close = modal
+      ? '<button type="button" class="as-adv-close" data-close>بستن</button>'
+      : "";
+    return '<div class="as-adv-head"><p class="as-adv-kicker">' + (kicker || "دستیار انتخاب محصول") + "</p>" + close + "</div>";
+  }
+  function render(root) {
     var c = card(root);
-    var close = modal ? '<button type="button" class="as-adv-close" data-close aria-label="بستن">×</button>' : "";
     if (!answers.path) {
       var qs = boot.questions || {};
       var title = qs.start_title || "محصول مناسب شما کدام است؟";
@@ -150,8 +155,8 @@
       var pathBtns = paths.map(function (p) {
         return '<button type="button" class="as-adv-opt" data-set="path" data-val="' + p.id + '">' + p.label + "</button>";
       }).join("");
-      c.innerHTML = close +
-        '<p class="as-adv-kicker">دستیار انتخاب محصول</p><h2>' + title + "</h2>" +
+      c.innerHTML = chrome(root) +
+        "<h2>" + title + "</h2>" +
         '<p class="as-adv-lead">' + lead + "</p>" + pathBtns;
       bind(root);
       return;
@@ -162,7 +167,7 @@
       return;
     }
     var s = steps[step];
-    var html = close + progressHtml() + "<h2>" + s.q + "</h2>";
+    var html = chrome(root) + progressHtml() + "<h2>" + s.q + "</h2>";
     if (s.note) html += '<p class="as-adv-muted">' + s.note + "</p>";
     if (s.id === "model_pick") {
       html += '<label class="as-adv-muted" for="as-model">جست‌وجوی برند یا مدل</label>' +
@@ -249,7 +254,8 @@
   }
   function recommend(root) {
     var c = card(root);
-    c.innerHTML = '<p class="as-adv-lead">در حال پیدا کردن گزینه‌های مناسب…</p>';
+    c.innerHTML = chrome(root) + '<p class="as-adv-lead">در حال پیدا کردن گزینه‌های مناسب…</p>';
+    bind(root);
     fetch((window.asAdvisor && asAdvisor.rest) + "recommend", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-WP-Nonce": (window.asAdvisor && asAdvisor.nonce) || "" },
@@ -260,7 +266,7 @@
       if (data.compat_status === "unknown") track("compat_unknown");
       showResults(root, data);
     }).catch(function () {
-      c.innerHTML = '<p class="as-adv-empty">دریافت پیشنهادها ممکن نشد. اتصال را بررسی کنید یا بعداً دوباره تلاش کنید.</p><button type="button" class="as-adv-btn ghost" data-back>بازگشت</button>';
+      c.innerHTML = chrome(root) + '<p class="as-adv-empty">دریافت پیشنهادها ممکن نشد. اتصال را بررسی کنید یا بعداً دوباره تلاش کنید.</p><button type="button" class="as-adv-btn ghost" data-back>بازگشت</button>';
       bind(root);
     });
   }
@@ -271,7 +277,7 @@
   }
   function showResults(root, data) {
     var c = card(root);
-    var html = '<p class="as-adv-kicker">نتیجه دستیار</p><h2>پیشنهادهای متناسب با پاسخ‌های شما</h2>';
+    var html = chrome(root, "نتیجه دستیار") + "<h2>پیشنهادهای متناسب با پاسخ‌های شما</h2>";
     html += '<p class="as-adv-muted">' + (data.need_summary || "") + "</p>";
     (data.warnings || []).forEach(function (w) { html += '<div class="as-adv-warn">' + w + "</div>"; });
     if (!data.items || !data.items.length) {
@@ -283,6 +289,7 @@
       html += "</div>";
       html += '<p class="as-adv-muted">پشتیبانی: <a href="tel:09373211344">09373211344</a></p>';
       c.innerHTML = html;
+      bind(root);
       bindResults(root);
       return;
     }
@@ -290,10 +297,9 @@
       var p = it.product || it;
       html += '<article class="as-adv-result"><img alt="" src="' + (p.image || "") + '"><div>';
       html += "<h3>" + (p.name || "") + "</h3>";
-      html += '<div>' + money(p.price) + (p.in_stock ? " — موجود" : " — ناموجود") + "</div>";
+      html += '<p class="as-adv-price">' + (p.price_html || money(p.price)) + (p.in_stock ? " — موجود" : " — ناموجود") + "</p>";
       html += "<ul>" + (it.reasons || []).map(function (r) { return "<li>" + r + "</li>"; }).join("") + "</ul>";
       if (it.limitation) html += '<p class="as-adv-muted">' + it.limitation + "</p>";
-      if (p.specs && p.specs.length) html += '<p class="as-adv-muted">' + p.specs.join(" · ") + "</p>";
       if (it.yearly_cost && it.yearly_cost.amount) {
         html += '<p class="as-adv-muted">هزینه تقریبی نگهداری سالانه: ' + money(it.yearly_cost.amount) + " (" + it.yearly_cost.basis + ")</p>";
       }
@@ -322,6 +328,7 @@
     html += '<button type="button" class="as-adv-btn ghost" data-share>کپی لینک نتیجه</button></div>';
     html += '<p class="as-adv-muted">پشتیبانی: <a href="tel:09373211344">09373211344</a></p>';
     c.innerHTML = html;
+    bind(root);
     bindResults(root);
   }
   function bindResults(root) {
@@ -378,6 +385,9 @@
     modal.removeAttribute("hidden");
     modal.style.display = "flex";
     modal.classList.add("is-open");
+    modal.onclick = function (e) {
+      if (e.target === modal) closeModal(modal);
+    };
     mount(modal);
     return modal;
   }
