@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.14"
+APP_VERSION = "1.1.15"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2894,7 +2894,9 @@ def launched_as_desktop() -> bool:
 
 
 def desktop_icon_available() -> bool:
-    """Installed Windows/Mac/Linux copies already have a launcher. The web edition gets the icon button."""
+    """Windows can put the Daftarchi icon on the desktop. Other installed copies already have a launcher."""
+    if os.name == "nt":
+        return True
     return not launched_as_desktop()
 
 
@@ -2936,6 +2938,26 @@ def place_windows_desktop_icon() -> str:
     if done.returncode != 0:
         raise AppError("ویندوز میانبر دسکتاپ را نساخت.")
     return "آیکون دفترچی روی دسکتاپ قرار گرفت."
+
+
+def ensure_windows_desktop_icon() -> None:
+    if os.name != "nt":
+        return
+    flag = DATA / "desktop-icon.ok"
+    if flag.is_file():
+        return
+    try:
+        place_windows_desktop_icon()
+    except AppError:
+        log.warning("desktop icon was not created")
+        return
+    except Exception:
+        log.exception("desktop icon")
+        return
+    try:
+        flag.write_text("1", encoding="utf-8")
+    except OSError:
+        log.warning("desktop icon flag was not saved")
 
 
 def _gzip_response(resp):
@@ -5945,6 +5967,7 @@ def main():
 
     port = int(os.environ.get("PORT", "8080"))
     print(f"دفترچی روی http://127.0.0.1:{port}")
+    threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
     if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
         def _open_browser():
             time.sleep(0.8)
