@@ -1,11 +1,11 @@
 {
-  "version": "1.1.20",
+  "version": "1.1.21",
   "channel": "customer",
-  "notes": "دکمه بررسی آپدیت اضافه شد. آپدیت در پس‌زمینه انجام می‌شود و ترمینال باز نمی‌شود. فروش‌ها می‌مانند.",
+  "notes": "اصلاح فاکتور ثبت‌شده اضافه شد. موجودی و سند حسابداری با همان فاکتور عوض می‌شود. فروش‌ها می‌مانند.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.20-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.21-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-11T16:16:34+00:00"
+  "published_at": "2026-11-11T16:25:39+00:00"
 }

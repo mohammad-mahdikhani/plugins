@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.20"
+APP_VERSION = "1.1.21"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -1071,6 +1071,159 @@ def ensure_line_stock(conn, item):
         raise AppError(f"موجودی «{item['name']}» کافی نیست")
 
 
+def restore_line_stock(conn, item, user_id: int, sale_id: int) -> None:
+    row = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
+    if not row:
+        raise AppError(f"کالای «{item['name']}» دیگر در سیستم نیست")
+    if is_payment_product(row):
+        return
+    variation_id = int(item["variation_id"] or 0) if item["variation_id"] is not None else 0
+    qty = int(item["qty"])
+    if variation_id:
+        var = conn.execute(
+            "SELECT * FROM product_variations WHERE id=? AND product_id=?",
+            (variation_id, item["product_id"]),
+        ).fetchone()
+        if not var:
+            raise AppError(f"متغیر «{item['name']}» دیگر در سیستم نیست")
+        if var["stock"] is None:
+            return
+        new_stock = int(var["stock"]) + qty
+        conn.execute(
+            "UPDATE product_variations SET stock=?, in_stock=? WHERE id=?",
+            (new_stock, 1 if new_stock else 0, var["id"]),
+        )
+        variable_parent_stock(conn, row["id"])
+        log_stock(conn, row["id"], "revise", qty, int(var["stock"]), new_stock, f"برگشت فاکتور {sale_id} · {var['label']}", user_id)
+        return
+    new_stock = int(row["stock"]) + qty
+    conn.execute("UPDATE products SET stock=?, updated_at=? WHERE id=?", (new_stock, iso(), row["id"]))
+    log_stock(conn, row["id"], "revise", qty, int(row["stock"]), new_stock, f"برگشت فاکتور {sale_id}", user_id)
+
+
+def sale_book_lines(conn, sale, items) -> list[tuple[int, int, int]]:
+    if sale["payment_method"] == "credit":
+        if not sale["customer_id"]:
+            raise AppError("خریدار نسیه مشخص نیست")
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (sale["customer_id"],)).fetchone()
+        debit_id = customer["account_id"] if customer else None
+        if not debit_id:
+            raise AppError("حساب بدهکار خریدار پیدا نشد")
+    else:
+        code = {"cash": "1000", "card": "1010", "gateway": "1020"}.get(sale["payment_method"])
+        if not code:
+            raise AppError("روش پرداخت نامعتبر است")
+        debit_id = acc(conn, code)["id"]
+    cogs = sum(int(item["unit_cost"]) * int(item["qty"]) for item in items)
+    lines = []
+    if sale["payable"]:
+        lines.append((debit_id, int(sale["payable"]), 0))
+    if sale["discount"]:
+        lines.append((acc(conn, "4100")["id"], int(sale["discount"]), 0))
+    if sale["payable"] or sale["discount"]:
+        lines.append((acc(conn, "4000")["id"], 0, int(sale["subtotal"])))
+    if cogs:
+        lines.append((acc(conn, "5000")["id"], cogs, 0))
+        lines.append((acc(conn, "1200")["id"], 0, cogs))
+    return lines
+
+
+def commit_sale_effects(conn, sale_id: int, user_id: int, memo: str) -> list[str]:
+    sale = conn.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
+    items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale_id,)).fetchall()
+    settings = get_settings(conn)
+    threshold = setting_int(settings, "low_stock")
+    alerts = []
+    for item in items:
+        ensure_line_stock(conn, item)
+    for item in items:
+        alerts.extend(take_line_stock(conn, item, user_id, sale_id, threshold))
+    post_entry(conn, memo, sale_book_lines(conn, sale, items), "sale", sale_id, user_id)
+    for item in items:
+        vid = int(item["variation_id"] or 0) or None
+        maybe_queue_woo_sync(conn, int(item["product_id"]), vid)
+    return alerts
+
+
+def load_edit_cart(conn, items, old_items) -> tuple[list[dict], int]:
+    if not isinstance(items, list) or not items:
+        raise AppError("سبد خالی است")
+    old_products = {int(row["product_id"]) for row in old_items}
+    old_variations = {int(row["variation_id"]) for row in old_items if row["variation_id"]}
+    merged: dict[tuple[int, int], dict] = {}
+    for raw in items:
+        if not isinstance(raw, dict):
+            raise AppError("قلم کالا نامعتبر است")
+        try:
+            pid = int(raw.get("product_id") or 0)
+            variation_id = int(raw.get("variation_id") or 0)
+        except (TypeError, ValueError):
+            raise AppError("کالا نامعتبر است")
+        key = (pid, variation_id)
+        slot = merged.setdefault(key, {"qty": 0, "unit_price": None})
+        slot["qty"] += parse_qty(raw.get("qty"))
+        if raw.get("unit_price") not in (None, ""):
+            slot["unit_price"] = parse_money(raw.get("unit_price"), "فی", allow_empty=True)
+    result = []
+    subtotal = 0
+    for (pid, variation_id), slot in merged.items():
+        qty = slot["qty"]
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+        if not row and pid in old_products:
+            row = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+        if not row:
+            raise AppError("کالا پیدا نشد")
+        if is_payment_product(row):
+            raise AppError("این کالا فقط برای لینک پرداخت است")
+        if product_kind(row) == "variable":
+            if not variation_id:
+                raise AppError(f"برای «{row['name']}» نوع متغیر را انتخاب کنید")
+            var = conn.execute(
+                "SELECT * FROM product_variations WHERE id=? AND product_id=? AND active=1",
+                (variation_id, pid),
+            ).fetchone()
+            if not var and variation_id in old_variations:
+                var = conn.execute(
+                    "SELECT * FROM product_variations WHERE id=? AND product_id=?",
+                    (variation_id, pid),
+                ).fetchone()
+            if not var:
+                raise AppError("این متغیر پیدا نشد")
+            if var["stock"] is None:
+                if not var["in_stock"]:
+                    raise AppError(f"«{row['name']} — {var['label']}» ناموجود است")
+            elif qty > int(var["stock"]):
+                raise AppError(f"موجودی «{row['name']} — {var['label']}» کافی نیست")
+            catalog = int(var["price"])
+            name = f"{row['name']} — {var['label']}"
+        else:
+            if variation_id:
+                raise AppError("این کالا متغیر نیست")
+            if qty > row["stock"]:
+                raise AppError(f"موجودی «{row['name']}» کافی نیست")
+            catalog = int(row["price"])
+            name = row["name"]
+        unit_price = catalog if slot["unit_price"] is None else int(slot["unit_price"])
+        line_total = unit_price * qty
+        subtotal += line_total
+        old_cost = next(
+            (int(old["unit_cost"]) for old in old_items if int(old["product_id"]) == pid and int(old["variation_id"] or 0) == variation_id),
+            int(row["cost"]),
+        )
+        result.append({
+            "product_id": pid,
+            "variation_id": variation_id or None,
+            "name": name,
+            "qty": qty,
+            "unit_price": unit_price,
+            "unit_cost": old_cost,
+            "line_total": line_total,
+        })
+    if subtotal > 10**13:
+        raise AppError("مبلغ فاکتور خیلی بزرگ است")
+    return result, subtotal
+
+
 def take_line_stock(conn, item, user_id: int, sale_id: int, threshold: int) -> list[str]:
     row = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
     if is_payment_product(row):
@@ -1104,26 +1257,6 @@ def finalize_sale(conn, sale_id: int, user_id: int) -> list[str]:
         return []
     if sale["status"] != "pending":
         raise AppError("این فاکتور قابل تأیید نیست")
-    items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale_id,)).fetchall()
-    settings = get_settings(conn)
-    threshold = setting_int(settings, "low_stock")
-    alerts = []
-    for item in items:
-        ensure_line_stock(conn, item)
-    for item in items:
-        alerts.extend(take_line_stock(conn, item, user_id, sale_id, threshold))
-    if sale["payment_method"] == "credit":
-        if not sale["customer_id"]:
-            raise AppError("خریدار نسیه مشخص نیست")
-        customer = conn.execute("SELECT * FROM customers WHERE id=?", (sale["customer_id"],)).fetchone()
-        debit_id = customer["account_id"] if customer else None
-        if not debit_id:
-            raise AppError("حساب بدهکار خریدار پیدا نشد")
-    else:
-        code = {"cash": "1000", "card": "1010", "gateway": "1020"}.get(sale["payment_method"])
-        if not code:
-            raise AppError("روش پرداخت نامعتبر است")
-        debit_id = acc(conn, code)["id"]
     if sale["payment_method"] == "gateway":
         sess = open_session(conn)
         conn.execute(
@@ -1132,22 +1265,8 @@ def finalize_sale(conn, sale_id: int, user_id: int) -> list[str]:
         )
     elif not sale["session_id"]:
         raise AppError("صندوق بسته است. از صفحه صندوق آن را باز کنید.")
-    cogs = sum(int(item["unit_cost"]) * int(item["qty"]) for item in items)
-    lines = []
-    if sale["payable"]:
-        lines.append((debit_id, int(sale["payable"]), 0))
-    if sale["discount"]:
-        lines.append((acc(conn, "4100")["id"], int(sale["discount"]), 0))
-    if sale["payable"] or sale["discount"]:
-        lines.append((acc(conn, "4000")["id"], 0, int(sale["subtotal"])))
-    if cogs:
-        lines.append((acc(conn, "5000")["id"], cogs, 0))
-        lines.append((acc(conn, "1200")["id"], 0, cogs))
-    post_entry(conn, f"فاکتور {sale_id}", lines, "sale", sale_id, user_id)
+    alerts = commit_sale_effects(conn, sale_id, user_id, f"فاکتور {sale_id}")
     conn.execute("UPDATE sales SET status='paid' WHERE id=?", (sale_id,))
-    for item in items:
-        vid = int(item["variation_id"] or 0) or None
-        maybe_queue_woo_sync(conn, int(item["product_id"]), vid)
     return alerts
 
 
@@ -2916,6 +3035,8 @@ def init_db():
             for row in conn.execute("SELECT id FROM sales"):
                 conn.execute("UPDATE sales SET invoice_code=? WHERE id=?", (f"D{int(row['id']):08d}", row["id"]))
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_invoice_code ON sales(invoice_code)")
+        if "revised_at" not in sale_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN revised_at TEXT")
         note_cols = {row["name"] for row in conn.execute("PRAGMA table_info(notifications)")}
         if "cost" not in note_cols:
             conn.execute("ALTER TABLE notifications ADD COLUMN cost INTEGER NOT NULL DEFAULT 0")
@@ -5189,6 +5310,78 @@ def confirm_sale(sale_id: int):
         result = sale_payload(conn, sale_id)
     result["sms"] = notify_buyer(result["sale"])
     attach_club(result, settings)
+    return jsonify(**result)
+
+
+@app.get("/api/sales/<int:sale_id>")
+def get_sale(sale_id: int):
+    require_user()
+    with connect() as conn:
+        sale = conn.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
+        if not sale:
+            raise AppError("فاکتور پیدا نشد", 404)
+        return jsonify(**sale_payload(conn, sale_id))
+
+
+@app.put("/api/sales/<int:sale_id>")
+def revise_sale(sale_id: int):
+    user = require_user()
+    if user["role"] == "stock":
+        raise AppError("اصلاح فاکتور با صندوق‌دار یا مدیر است", 403)
+    payload = body_json()
+    method = payload.get("payment_method") or "cash"
+    if method not in {"cash", "card", "credit"}:
+        raise AppError("روش پرداخت را نقد، کارت یا نسیه بگذارید")
+    dtype = payload.get("discount_type") or "amount"
+    pos_ref = clean_text(payload.get("pos_ref"), "پیگیری", 64)
+    with connect() as conn:
+        require_access(conn)
+        sale = conn.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
+        if not sale:
+            raise AppError("فاکتور پیدا نشد", 404)
+        if sale["status"] != "paid":
+            raise AppError("فقط فاکتور ثبت‌شده را می‌شود اصلاح کرد")
+        if sale["payment_method"] == "gateway":
+            raise AppError("فاکتور درگاه را از اینجا عوض نکنید")
+        if (sale["moadian_status"] or "") in {"sent", "success", "pending"}:
+            raise AppError("این فاکتور به سامانه مودیان رفته و از اینجا قابل اصلاح نیست")
+        old_items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale_id,)).fetchall()
+        for item in old_items:
+            product = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
+            if is_payment_product(product):
+                raise AppError("این فاکتور لینک پرداخت است و قابل اصلاح نیست")
+            restore_line_stock(conn, item, user["id"], sale_id)
+        flipped = [(account_id, credit, debit) for account_id, debit, credit in sale_book_lines(conn, sale, old_items)]
+        post_entry(conn, f"برگشت فاکتور {sale_id}", flipped, "sale-revise", sale_id, user["id"])
+        new_items, subtotal = load_edit_cart(conn, payload.get("items"), old_items)
+        discount = calc_discount(subtotal, dtype, payload.get("discount_value"))
+        customer = walk_in_customer(conn, payload, method == "credit")
+        payable = subtotal - discount
+        conn.execute("DELETE FROM sale_items WHERE sale_id=?", (sale_id,))
+        for item in new_items:
+            conn.execute(
+                """INSERT INTO sale_items (sale_id, product_id, variation_id, name, qty, unit_price, unit_cost, line_total)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    sale_id, item["product_id"], item.get("variation_id"), item["name"], item["qty"],
+                    item["unit_price"], item["unit_cost"], item["line_total"],
+                ),
+            )
+        touched = {int(item["product_id"]) for item in old_items}
+        conn.execute(
+            """UPDATE sales SET customer_id=?, customer_name=?, customer_phone=?, subtotal=?, discount=?, payable=?,
+               payment_method=?, pos_ref=?, revised_at=?, moadian_uid=NULL, moadian_taxid=NULL,
+               moadian_reference=NULL, moadian_status=NULL, moadian_error=NULL WHERE id=?""",
+            (
+                customer["id"], customer["name"], customer["phone"], subtotal, discount, payable,
+                method, pos_ref or None, iso(), sale_id,
+            ),
+        )
+        alerts = commit_sale_effects(conn, sale_id, user["id"], f"اصلاح فاکتور {sale_id}")
+        for product_id in touched:
+            maybe_queue_woo_sync(conn, product_id, None)
+        result = sale_payload(conn, sale_id)
+    result["alerts"] = alerts
     return jsonify(**result)
 
 

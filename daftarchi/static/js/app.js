@@ -8,6 +8,7 @@ const MORE = [
   ["inventory", "انبار", "stock"],
   ["checks", "چک", "admin"],
   ["accounts", "حسابداری", "admin"],
+  ["invoices", "فاکتورها"],
   ["customers", "مشتریان"],
   ["licenses", "لایسنس", "admin"],
   ["sms", "پیامک", "admin"],
@@ -58,6 +59,8 @@ const state = {
   productLimit: PAGE_SIZE,
   inventoryLimit: PAGE_SIZE,
   inventoryQuery: "",
+  invoiceQuery: "",
+  invoices: [],
   cart: [],
   discountType: "amount",
   discountValue: "",
@@ -309,6 +312,11 @@ const loaders = {
   },
   async updates() {
     state.panelUpdate = await api("/api/panel/update");
+  },
+  async invoices() {
+    const [sales, products] = await Promise.all([api("/api/sales?limit=80"), api("/api/products")]);
+    state.invoices = sales.sales;
+    state.products = stampProducts(products.products);
   },
 };
 
@@ -632,8 +640,8 @@ function homePage() {
 function modeAllows(page) {
   if (page === "licenses") return true;
   const allow = {
-    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "customers", "settings", "updates"],
-    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "customers", "settings", "updates"],
+    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "settings", "updates"],
+    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "settings", "updates"],
     online: ["products", "settings", "updates"],
   }[state.shopMode];
   if (!allow) return true;
@@ -862,11 +870,76 @@ function bars(summary) {
     return `<div class="bar" title="${esc(money(point.total))}"><i style="height:${height}%"></i><span>${label}</span></div>`;
   }).join("")}</div>`;
 }
-function salesTable(rows) {
+function canEditSale(sale) {
+  return state.user && state.user.role !== "stock" && (!sale || (sale.status === "paid" && sale.payment_method !== "gateway"));
+}
+function salesTable(rows, actions) {
   if (!rows.length) return `<p class="empty">هنوز فروشی ثبت نشده.</p>`;
-  return `<table><thead><tr><th>فاکتور</th><th>زمان</th><th>خریدار</th><th>روش</th><th>مبلغ</th></tr></thead><tbody>
-    ${rows.map((sale) => `<tr><td class="num">${num(sale.id)}</td><td>${esc(sale.at_jalali)}</td><td>${esc(sale.customer_name || "—")}</td><td>${PAY[sale.payment_method] || ""}</td><td class="num">${money(sale.payable)}</td></tr>`).join("")}
+  return `<table><thead><tr><th>فاکتور</th><th>زمان</th><th>خریدار</th><th>روش</th><th>مبلغ</th>${actions ? "<th></th>" : ""}</tr></thead><tbody>
+    ${rows.map((sale) => `<tr><td class="num">${num(sale.id)}</td><td>${esc(sale.at_jalali)}</td><td>${esc(sale.customer_name || "—")}</td><td>${PAY[sale.payment_method] || ""}</td><td class="num">${money(sale.payable)}</td>${actions && canEditSale(sale) ? `<td><button type="button" class="btn" data-act="edit-sale" data-id="${sale.id}">اصلاح</button></td>` : (actions ? "<td></td>" : "")}</tr>`).join("")}
   </tbody></table>`;
+}
+function invoicesHtml() {
+  const query = state.invoiceQuery.trim();
+  const rows = (state.invoices || []).filter((sale) => {
+    if (!query) return true;
+    return `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`.includes(query);
+  });
+  return `<div class="stack"><section class="card"><h2 class="section-title">فاکتورهای ثبت‌شده</h2>
+    <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. موجودی و سند حسابداری با همین فاکتور عوض می‌شود.</p>
+    <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
+    <div id="invoice-table">${salesTable(rows, true)}</div></section></div>`;
+}
+function editTotals() {
+  const modal = state.modal;
+  const subtotal = (modal?.lines || []).reduce((sum, line) => sum + asInt(line.unit_price) * asInt(line.qty), 0);
+  const discount = Math.min(subtotal, Math.max(0, asInt(modal?.discount)));
+  return { subtotal, discount, payable: subtotal - discount };
+}
+function readSaleEdit() {
+  const modal = state.modal;
+  if (!modal || modal.type !== "sale-edit") return;
+  modal.lines.forEach((line, index) => {
+    const qty = document.querySelector(`[name="edit-qty-${index}"]`);
+    const price = document.querySelector(`[name="edit-price-${index}"]`);
+    if (qty) line.qty = Math.max(1, asInt(qty.value) || 1);
+    if (price) line.unit_price = Math.max(0, asInt(price.value));
+  });
+  const take = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) modal[key] = el.value;
+  };
+  take("edit-discount", "discount");
+  take("edit-method", "method");
+  take("edit-first", "first");
+  take("edit-last", "last");
+  take("edit-phone", "phone");
+  take("edit-pos", "posRef");
+}
+function saleEditHtml() {
+  const modal = state.modal;
+  const totals = editTotals();
+  const lines = modal.lines.map((line, index) => `<div class="line"><div><strong>${esc(line.name)}</strong></div>
+    <div class="grid-2"><div class="field"><label>تعداد</label><input name="edit-qty-${index}" inputmode="numeric" value="${esc(line.qty)}"></div>
+    <div class="field"><label>فی</label><input name="edit-price-${index}" inputmode="numeric" value="${esc(line.unit_price)}"></div></div>
+    <button type="button" class="btn danger" data-act="edit-sale-remove" data-index="${index}">حذف این قلم</button></div>`).join("");
+  return `<form data-act="save-sale"><h2 class="section-title">اصلاح فاکتور ${num(modal.sale.id)}</h2>
+    <p class="hint">شماره فاکتور همان می‌ماند. اگر به سامانه مودیان رفته باشد، اصلاح بسته است.</p>
+    ${lines || `<p class="empty">حداقل یک کالا لازم است.</p>`}
+    <div class="field"><label>افزودن کالا</label><div class="row-actions"><select id="edit-add">${stockChoices(state.products || [])}</select><button type="button" class="btn" data-act="edit-sale-add">اضافه</button></div></div>
+    <div class="grid-2">
+      <div class="field"><label>تخفیف، تومان</label><input id="edit-discount" inputmode="numeric" value="${esc(modal.discount || "")}"></div>
+      <div class="field"><label>روش پرداخت</label><select id="edit-method"><option value="cash" ${modal.method === "cash" ? "selected" : ""}>نقد</option><option value="card" ${modal.method === "card" ? "selected" : ""}>کارت</option><option value="credit" ${modal.method === "credit" ? "selected" : ""}>نسیه</option></select></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>نام</label><input id="edit-first" value="${esc(modal.first || "")}"></div>
+      <div class="field"><label>نام خانوادگی</label><input id="edit-last" value="${esc(modal.last || "")}"></div>
+    </div>
+    <div class="field"><label>موبایل</label><input id="edit-phone" class="ltr" value="${esc(modal.phone || "")}" inputmode="tel" placeholder="برای نسیه لازم است"></div>
+    <div class="field"><label>پیگیری کارت</label><input id="edit-pos" class="ltr" value="${esc(modal.posRef || "")}"></div>
+    <p>جمع <strong class="num" id="edit-sub">${money(totals.subtotal)}</strong></p>
+    <p>قابل پرداخت <strong class="num" id="edit-due">${money(totals.payable)}</strong></p>
+    <button class="btn primary" type="submit">ذخیره اصلاح</button></form>`;
 }
 function dashboardHtml() {
   const data = state.dashboard;
@@ -880,7 +953,7 @@ function dashboardHtml() {
     : `<p class="empty">در این بازه فروشی نیست.</p>`;
   return `<div class="stack"><div class="stats">${cards}</div>
     <section class="card"><h2 class="section-title">${esc(summary.label)}</h2>${bars(summary)}<h3 class="section-title">کالاهای پرفروش</h3>${top}</section>
-    <section class="card"><h2 class="section-title">آخرین فروش‌ها</h2>${salesTable(state.sales)}</section></div>`;
+    <section class="card"><h2 class="section-title">آخرین فروش‌ها</h2>${salesTable(state.sales, true)}</section></div>`;
 }
 
 function productHaystack(product) {
@@ -1343,10 +1416,11 @@ function modalHtml() {
         <button type="button" class="btn" data-act="close-modal">انصراف</button>
       </div>`;
   }
+  if (modal.type === "sale-edit") inner = saleEditHtml();
   if (modal.type === "password") inner = `<form data-act="change-password"><h2 class="section-title">تغییر رمز</h2><div class="field"><label>رمز فعلی</label><input type="password" name="current" required></div><div class="field"><label>رمز جدید</label><input type="password" name="password" minlength="6" required></div><button class="btn primary" type="submit">ذخیره</button></form>
     <form data-act="attach-email"><h2 class="section-title">ورود با جیمیل</h2><p class="hint">همین جیمیل را ذخیره کنید و بعد با آن وارد شوید.</p><div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" value="${esc(state.user.email || "")}" required placeholder="name@gmail.com"></div><button class="btn primary" type="submit">ذخیره جیمیل</button></form>
     <form data-act="verify-email"><div class="field"><label>کد ۶ رقمی جیمیل</label><input class="ltr" name="code" inputmode="numeric" required></div><button class="btn" type="submit">تأیید جیمیل</button></form>`;
-  const wide = modal.type === "receipt" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
+  const wide = modal.type === "receipt" || modal.type === "sale-edit" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
   return `<div class="modal-back" data-act="close-modal"><div class="modal card ${wide}" data-act="stop"><div class="row-actions"><button type="button" class="btn" data-act="close-modal">بستن</button></div>${inner}</div></div>`;
 }
 
@@ -1355,7 +1429,7 @@ function pageHtml() {
     return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید لایسنس بسته است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">خرید لایسنس</button></section>`;
   }
   const pages = {
-    dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml,
+    dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml, invoices: invoicesHtml,
     accounts: accountsHtml, register: registerHtml, licenses: licensesHtml, customers: customersHtml,
     sms: smsHtml, settings: settingsHtml, updates: updatesHtml,
   };
@@ -1515,6 +1589,37 @@ async function onSubmit(event) {
         hideToast();
         await navigate("dashboard");
       }
+    } else if (act === "save-sale") {
+      readSaleEdit();
+      const modal = state.modal;
+      if (!modal?.lines?.length) return toast("حداقل یک کالا لازم است");
+      const phone = String(modal.phone || "")
+        .replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
+        .replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit))
+        .replace(/\D/g, "");
+      if (modal.method === "credit" && !/^09\d{9}$/.test(phone)) return toast("برای نسیه شماره موبایل لازم است");
+      const result = await api(`/api/sales/${modal.sale.id}`, {
+        method: "PUT",
+        body: {
+          items: modal.lines.map((line) => ({
+            product_id: line.product_id,
+            variation_id: line.variation_id || 0,
+            qty: line.qty,
+            unit_price: line.unit_price,
+          })),
+          discount_type: "amount",
+          discount_value: asInt(modal.discount),
+          payment_method: modal.method,
+          customer_first: modal.first,
+          customer_last: modal.last,
+          customer_phone: phone,
+          pos_ref: modal.posRef || "",
+        },
+      });
+      state.modal = { type: "receipt", sale: result.sale, items: result.items };
+      if (loaders[state.page]) await loaders[state.page]();
+      toast("فاکتور اصلاح شد");
+      render();
     } else if (act === "send-support") {
       const result = await api("/api/support/messages", { method: "POST", body: {
         kind: data.kind === "bug" ? "bug" : "chat",
@@ -1729,6 +1834,33 @@ function buyerFields() {
   }
   return { first, last, phone };
 }
+async function openSaleEdit(id) {
+  const detail = await api(`/api/sales/${id}`);
+  if (detail.sale.payment_method === "gateway") {
+    toast("فاکتور درگاه را از اینجا عوض نکنید", { error: true });
+    return;
+  }
+  if (!state.products?.length) state.products = stampProducts((await api("/api/products")).products);
+  const parts = String(detail.sale.customer_name || "").trim().split(/\s+/).filter(Boolean);
+  state.modal = {
+    type: "sale-edit",
+    sale: detail.sale,
+    lines: detail.items.map((item) => ({
+      product_id: item.product_id,
+      variation_id: item.variation_id || 0,
+      name: item.name,
+      qty: item.qty,
+      unit_price: item.unit_price,
+    })),
+    discount: detail.sale.discount ? String(detail.sale.discount) : "",
+    method: detail.sale.payment_method === "credit" ? "credit" : (detail.sale.payment_method === "card" ? "card" : "cash"),
+    first: parts[0] || "",
+    last: parts.slice(1).join(" "),
+    phone: detail.sale.customer_phone || "",
+    posRef: detail.sale.pos_ref || "",
+  };
+  render();
+}
 async function submitSale(method, posRef, popup) {
   const buyer = buyerFields();
   if (!buyer || !state.cart.length) {
@@ -1785,6 +1917,33 @@ async function onClick(event) {
   if (el.dataset.act === "stop") { event.stopPropagation(); return; }
   const act = el.dataset.act;
   if (act === "close-modal") { state.modal = null; render(); return; }
+  if (act === "edit-sale") {
+    await guard(() => openSaleEdit(el.dataset.id));
+    return;
+  }
+  if (act === "edit-sale-add") {
+    readSaleEdit();
+    const picked = document.getElementById("edit-add")?.value || "";
+    const [pid, vid] = picked.split(":").map((part) => Number(part || 0));
+    const product = (state.products || []).find((row) => row.id === pid);
+    if (!product || !state.modal) return;
+    const variation = vid ? (product.variations || []).find((row) => row.id === vid) : null;
+    if (product.type === "variable" && !variation) return toast("نوع کالا را انتخاب کنید");
+    const name = variation ? `${product.name} — ${variation.label}` : product.name;
+    const price = variation ? variation.price : product.price;
+    const found = state.modal.lines.find((line) => line.product_id === pid && Number(line.variation_id || 0) === (vid || 0));
+    if (found) found.qty += 1;
+    else state.modal.lines.push({ product_id: pid, variation_id: vid || 0, name, qty: 1, unit_price: price });
+    render();
+    return;
+  }
+  if (act === "edit-sale-remove") {
+    readSaleEdit();
+    const index = Number(el.dataset.index);
+    if (state.modal?.lines) state.modal.lines.splice(index, 1);
+    render();
+    return;
+  }
   if (act === "desktop-icon") { createDesktopIcon(); return; }
   if (act === "show-forgot") { state.authView = "forgot"; state.authError = ""; render(); return; }
   if (act === "show-register") { state.authView = "register"; state.authError = ""; render(); return; }
@@ -2087,6 +2246,23 @@ function onInput(event) {
     state.productLimit = PAGE_SIZE;
     const box = document.getElementById("product-table");
     if (box) box.innerHTML = productRows();
+  }
+  if (event.target.id === "invoice-query") {
+    state.invoiceQuery = event.target.value;
+    const box = document.getElementById("invoice-table");
+    if (box) {
+      const query = state.invoiceQuery.trim();
+      const rows = (state.invoices || []).filter((sale) => !query || `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`.includes(query));
+      box.innerHTML = salesTable(rows, true);
+    }
+  }
+  if (String(event.target.name || "").startsWith("edit-") || event.target.id === "edit-discount") {
+    readSaleEdit();
+    const totals = editTotals();
+    const sub = document.getElementById("edit-sub");
+    const due = document.getElementById("edit-due");
+    if (sub) sub.textContent = money(totals.subtotal);
+    if (due) due.textContent = money(totals.payable);
   }
   if (event.target.id === "inventory-query") {
     state.inventoryQuery = event.target.value;

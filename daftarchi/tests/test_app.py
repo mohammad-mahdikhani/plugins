@@ -81,14 +81,14 @@ class DaftarchiTest(unittest.TestCase):
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.20", page)
-        self.assertIn("/static/js/app.js?v=1.1.20", page)
+        self.assertIn("/static/css/app.css?v=1.1.21", page)
+        self.assertIn("/static/js/app.js?v=1.1.21", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.20")
+        css = self.client.get("/static/css/app.css?v=1.1.21")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.20", css.get_data(as_text=True))
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.21", css.get_data(as_text=True))
         health = self.client.get("/api/health")
         self.assertIn("no-store", health.headers["Cache-Control"])
         me = self.client.get("/api/auth/me").get_json()
@@ -104,10 +104,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.20", worker)
+        self.assertIn("daftarchi-1.1.21", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.20", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.20", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.21", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.21", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 119483)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
@@ -1468,7 +1468,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.20", seen["text"])
+        self.assertIn("1.1.21", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -2184,7 +2184,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.20")
+        self.assertEqual(appmod.APP_VERSION, "1.1.21")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -2249,7 +2249,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.20")
+        self.assertEqual(boot["version"], "1.1.21")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -2258,7 +2258,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.20", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.21", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)
@@ -2475,6 +2475,68 @@ class DaftarchiTest(unittest.TestCase):
             self.assertEqual(wallet["messages"][0]["recipient"], "09123334455")
         finally:
             appmod.http_request = original
+
+    def test_paid_invoice_can_be_corrected(self):
+        self.open_register(0)
+        product = self.add_product(name="قند", price=10000, cost=4000, stock=5, barcode="edit-1")
+        other = self.add_product(name="چای", price=3000, cost=1000, stock=2, barcode="edit-2")
+        sold = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 2}],
+            "payment_method": "cash",
+            "customer_first": "مریم",
+            "customer_last": "احمدی",
+        })
+        self.assertEqual(sold.status_code, 200, sold.get_json())
+        sale = sold.get_json()["sale"]
+        code = sale["invoice_code"]
+        self.assertEqual(next(row for row in self.client.get("/api/products").get_json()["products"] if row["id"] == product["id"])["stock"], 3)
+        revised = self.client.put(f"/api/sales/{sale['id']}", json={
+            "items": [
+                {"product_id": product["id"], "qty": 1, "unit_price": 10000},
+                {"product_id": other["id"], "qty": 1, "unit_price": 3000},
+            ],
+            "discount_type": "amount",
+            "discount_value": 1000,
+            "payment_method": "credit",
+            "customer_first": "مریم",
+            "customer_last": "احمدی",
+            "customer_phone": "09123334444",
+        })
+        self.assertEqual(revised.status_code, 200, revised.get_json())
+        body = revised.get_json()
+        self.assertEqual(body["sale"]["id"], sale["id"])
+        self.assertEqual(body["sale"]["invoice_code"], code)
+        self.assertEqual(body["sale"]["payable"], 12000)
+        self.assertEqual(body["sale"]["payment_method"], "credit")
+        self.assertEqual(body["sale"]["status"], "paid")
+        self.assertTrue(body["sale"]["revised_at"])
+        products = {row["id"]: row for row in self.client.get("/api/products").get_json()["products"]}
+        self.assertEqual(products[product["id"]]["stock"], 4)
+        self.assertEqual(products[other["id"]]["stock"], 1)
+        books = self.accounts()
+        self.assertEqual(books["1000"]["amount"], 0)
+        buyer = next(row for row in self.client.get("/api/customers").get_json()["customers"] if row["phone"] == "09123334444")
+        self.assertEqual(buyer["balance"], 12000)
+        short = self.client.put(f"/api/sales/{sale['id']}", json={
+            "items": [{"product_id": product["id"], "qty": 9, "unit_price": 10000}],
+            "payment_method": "cash",
+        })
+        self.assertEqual(short.status_code, 400, short.get_json())
+        self.assertIn("موجودی", short.get_json()["error"])
+        self.assertEqual(self.client.get(f"/api/sales/{sale['id']}").get_json()["sale"]["payable"], 12000)
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE sales SET moadian_status='success' WHERE id=?", (sale["id"],))
+        db.commit()
+        db.close()
+        locked = self.client.put(f"/api/sales/{sale['id']}", json={
+            "items": [{"product_id": product["id"], "qty": 1, "unit_price": 10000}],
+            "payment_method": "cash",
+        })
+        self.assertEqual(locked.status_code, 400, locked.get_json())
+        self.assertIn("مودیان", locked.get_json()["error"])
+        script = Path(__file__).resolve().parents[1].joinpath("static/js/app.js").read_text(encoding="utf-8")
+        self.assertIn("اصلاح فاکتور", script)
+        self.assertIn('data-act="edit-sale"', script)
 
 
 if __name__ == "__main__":
