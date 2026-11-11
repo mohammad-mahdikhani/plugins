@@ -1,0 +1,1653 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- محتوای نمونه قالب مون‌اسکین. اول ووکامرس، بعد قالب، بعد این فایل از ابزارها > درون‌ریزی > وردپرس. -->
+<rss version="2.0"
+	xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:wp="http://wordpress.org/export/1.2/">
+<channel>
+	<title>دمو مون‌اسکین</title>
+	<link>https://demo.moon-skin.local</link>
+	<description>محصول، دسته، نوشته و برگه نمونه برای قالب مون‌اسکین</description>
+	<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+	<language>fa-IR</language>
+	<wp:wxr_version>1.2</wp:wxr_version>
+	<wp:base_site_url>https://demo.moon-skin.local</wp:base_site_url>
+	<wp:base_blog_url>https://demo.moon-skin.local</wp:base_blog_url>
+	<wp:author>
+		<wp:author_id>1</wp:author_id>
+		<wp:author_login>moon-demo</wp:author_login>
+		<wp:author_email>demo@example.com</wp:author_email>
+		<wp:author_display_name><![CDATA[مون‌اسکین]]></wp:author_display_name>
+		<wp:author_first_name><![CDATA[]]></wp:author_first_name>
+		<wp:author_last_name><![CDATA[]]></wp:author_last_name>
+	</wp:author>
+	<wp:category>
+		<wp:term_id>70</wp:term_id>
+		<wp:category_nicename>skin-notes</wp:category_nicename>
+		<wp:category_parent></wp:category_parent>
+		<wp:cat_name><![CDATA[مراقبت پوست]]></wp:cat_name>
+	</wp:category>
+	<wp:term>
+		<wp:term_id>1</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>skin-care</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[مراقبت پوست]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>2</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>hydrating</wp:term_slug>
+		<wp:term_parent>skin-care</wp:term_parent>
+		<wp:term_name><![CDATA[آبرسان]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>3</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>brightening</wp:term_slug>
+		<wp:term_parent>skin-care</wp:term_parent>
+		<wp:term_name><![CDATA[روشن‌کننده]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>4</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>cleanser</wp:term_slug>
+		<wp:term_parent>skin-care</wp:term_parent>
+		<wp:term_name><![CDATA[شوینده]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>5</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>hair-care</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[مراقبت مو]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>6</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>shampoo</wp:term_slug>
+		<wp:term_parent>hair-care</wp:term_parent>
+		<wp:term_name><![CDATA[شامپو]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>7</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>hair-oil</wp:term_slug>
+		<wp:term_parent>hair-care</wp:term_parent>
+		<wp:term_name><![CDATA[روغن مو]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>8</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>makeup</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[آرایش]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>9</wp:term_id>
+		<wp:term_taxonomy>product_cat</wp:term_taxonomy>
+		<wp:term_slug>perfume</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[عطر]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>50</wp:term_id>
+		<wp:term_taxonomy>product_type</wp:term_taxonomy>
+		<wp:term_slug>simple</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[simple]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>60</wp:term_id>
+		<wp:term_taxonomy>nav_menu</wp:term_taxonomy>
+		<wp:term_slug>moon-primary</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[منوی اصلی]]></wp:term_name>
+	</wp:term>
+	<wp:term>
+		<wp:term_id>61</wp:term_id>
+		<wp:term_taxonomy>nav_menu</wp:term_taxonomy>
+		<wp:term_slug>moon-footer</wp:term_slug>
+		<wp:term_parent></wp:term_parent>
+		<wp:term_name><![CDATA[منوی پاصفحه]]></wp:term_name>
+	</wp:term>
+
+	<item>
+		<title><![CDATA[خانه]]></title>
+		<link>https://demo.moon-skin.local/moon-home/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=100</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>100</wp:post_id>
+		<wp:post_date>2026-11-11 00:10:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:10:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-home</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>page</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[مجله]]></title>
+		<link>https://demo.moon-skin.local/moon-magazine/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=101</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>101</wp:post_id>
+		<wp:post_date>2026-11-11 00:11:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:11:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-magazine</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>page</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[درباره ما]]></title>
+		<link>https://demo.moon-skin.local/darbare-ma/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=102</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>این متن نمونه است. نام فروشگاه، آدرس و داستان برند را با متن خودتان عوض کنید.</p><p>قالب مون‌اسکین روش ارسال را از تنظیمات حمل‌ونقل ووکامرس می‌خواند.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>102</wp:post_id>
+		<wp:post_date>2026-11-11 00:12:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:12:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>darbare-ma</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>page</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[تماس]]></title>
+		<link>https://demo.moon-skin.local/tamas/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=103</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>تلفن و نشانی را از سفارشی‌سازی، بخش مون‌اسکین، و از متن همین برگه بگذارید.</p><p>نمونه تلفن: ۰۲۱۰۰۰۰</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>103</wp:post_id>
+		<wp:post_date>2026-11-11 00:13:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:13:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>tamas</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>page</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[راه‌اندازی دمو]]></title>
+		<link>https://demo.moon-skin.local/rah-andazi/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=104</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>این برگه راهنمای محتوای نمونه است. بعد از دیدن فروشگاه می‌توانید حذفش کنید.</p>
+<ol>
+<li>اول ووکامرس را نصب کنید، بعد قالب مون‌اسکین را فعال کنید، بعد همین فایل دمو را وارد کنید.</li>
+<li>اگر صفحه نخست خالی بود، قالب برگه «خانه» را خودش صفحه نخست می‌گذارد. اگر از قبل صفحه نخست داشتید، از تنظیمات، خواندن، برگه خانه را انتخاب کنید و برگه مجله را برای نوشته‌ها بگذارید.</li>
+<li>فهرست «منوی اصلی» و «منوی پاصفحه» اگر جایگاهشان خالی باشد وصل می‌شوند. فروشگاه در فهرست به نشانی /shop/ می‌رود. اگر برگه فروشگاه ووکامرس نام دیگری دارد، آن را در نمایش، فهرست‌ها اصلاح کنید.</li>
+<li>محصول‌ها، دسته‌ها و دو نوشته مجله متن نمونه هستند. قیمت‌ها نمونه است. روش ارسال را در ووکامرس، پیکربندی، حمل‌ونقل تنظیم کنید.</li>
+<li>لوگو، تلفن و رنگ از سفارشی‌سازی عوض می‌شود. پیام بالای سایت از منوی آپدیت مشتریان ساخته می‌شود.</li>
+</ol>]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>104</wp:post_id>
+		<wp:post_date>2026-11-11 00:14:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:14:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>rah-andazi</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>page</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+
+	<item>
+		<title><![CDATA[یک روتین کوتاه برای شب]]></title>
+		<link>https://demo.moon-skin.local/routine-shab/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=200</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>این نوشته نمونه مجله است. متن فروشگاه خودتان را جای آن بگذارید.</p><p>قدم اول شوینده ملایم است. قدم دوم آبرسان است. قدم سوم، اگر روز است، ضدآفتاب است.</p><p>تصویر شاخص را از ویرایش نوشته بگذارید تا بالای مقاله، مستطیلی و با نسبت اصلی، دیده شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[سه قدم ساده برای شستن، آبرسانی و محافظت. این نوشته نمونه است.]]></excerpt:encoded>
+		<wp:post_id>200</wp:post_id>
+		<wp:post_date>2026-11-11 00:20:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:20:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>routine-shab</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>post</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="category" nicename="skin-notes"><![CDATA[مراقبت پوست]]></category>
+	</item>
+	<item>
+		<title><![CDATA[مو در هوای خشک]]></title>
+		<link>https://demo.moon-skin.local/moo-hava-khoshk/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=201</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>این نوشته دوم نمونه است.</p><p>شستن ملایم و یک روغن سبک، نمونه روتینی است که می‌توانید با محصولات خودتان عوض کنید.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[یک یادداشت کوتاه نمونه درباره شست‌وشو و روغن سبک.]]></excerpt:encoded>
+		<wp:post_id>201</wp:post_id>
+		<wp:post_date>2026-11-11 00:21:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:21:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moo-hava-khoshk</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>post</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="category" nicename="skin-notes"><![CDATA[مراقبت پوست]]></category>
+	</item>
+
+	<item>
+		<title><![CDATA[سرم نمونه آبرسان]]></title>
+		<link>https://demo.moon-skin.local/serum-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=301</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>سرم سبک نمونه برای نمایش کارت محصول.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[سرم سبک نمونه برای نمایش کارت محصول.]]></excerpt:encoded>
+		<wp:post_id>301</wp:post_id>
+		<wp:post_date>2026-11-11 00:31:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:31:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>serum-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="hydrating"><![CDATA[آبرسان]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-01]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[320000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[320000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[کرم نمونه دست]]></title>
+		<link>https://demo.moon-skin.local/kerem-dast-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=302</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>کرم دست نمونه. قیمت و متن را عوض کنید.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[کرم دست نمونه. قیمت و متن را عوض کنید.]]></excerpt:encoded>
+		<wp:post_id>302</wp:post_id>
+		<wp:post_date>2026-11-11 00:32:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:32:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>kerem-dast-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="brightening"><![CDATA[روشن‌کننده]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-02]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[482000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[482000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[ژل شوینده نمونه]]></title>
+		<link>https://demo.moon-skin.local/shooyande-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=303</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>شوینده ملایم نمونه.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[شوینده ملایم نمونه.]]></excerpt:encoded>
+		<wp:post_id>303</wp:post_id>
+		<wp:post_date>2026-11-11 00:33:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:33:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>shooyande-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="cleanser"><![CDATA[شوینده]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-03]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[185000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[185000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[ماسک شب نمونه]]></title>
+		<link>https://demo.moon-skin.local/mask-shab-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=304</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>ماسک شب نمونه.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[ماسک شب نمونه.]]></excerpt:encoded>
+		<wp:post_id>304</wp:post_id>
+		<wp:post_date>2026-11-11 00:34:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:34:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>mask-shab-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="hydrating"><![CDATA[آبرسان]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-04]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[260000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[260000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[شامپو نمونه]]></title>
+		<link>https://demo.moon-skin.local/shampoo-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=305</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>شامپو نمونه برای دسته مراقبت مو.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[شامپو نمونه برای دسته مراقبت مو.]]></excerpt:encoded>
+		<wp:post_id>305</wp:post_id>
+		<wp:post_date>2026-11-11 00:35:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:35:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>shampoo-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="shampoo"><![CDATA[شامپو]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-05]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[210000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[210000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[روغن موی نمونه]]></title>
+		<link>https://demo.moon-skin.local/roghan-moo-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=306</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>روغن سبک نمونه.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[روغن سبک نمونه.]]></excerpt:encoded>
+		<wp:post_id>306</wp:post_id>
+		<wp:post_date>2026-11-11 00:36:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:36:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>roghan-moo-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="hair-oil"><![CDATA[روغن مو]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-06]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[240000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[240000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[رژگونه نمونه]]></title>
+		<link>https://demo.moon-skin.local/roozhgoone-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=307</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>یک محصول نمونه در دسته آرایش.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[یک محصول نمونه در دسته آرایش.]]></excerpt:encoded>
+		<wp:post_id>307</wp:post_id>
+		<wp:post_date>2026-11-11 00:37:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:37:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>roozhgoone-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="makeup"><![CDATA[آرایش]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-07]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[175000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[175000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[عطر نمونه]]></title>
+		<link>https://demo.moon-skin.local/atr-nemoone/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=308</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>عطر نمونه برای پر شدن ویترین.</p><p>این محصول فقط برای دیدن چیدمان قالب ساخته شده است. نام، قیمت، موجودی و عکس را با کالای خودتان عوض کنید. هزینه ارسال روی این کالا از روش‌های حمل‌ونقل ووکامرس حساب می‌شود.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[عطر نمونه برای پر شدن ویترین.]]></excerpt:encoded>
+		<wp:post_id>308</wp:post_id>
+		<wp:post_date>2026-11-11 00:38:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:38:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>atr-nemoone</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type>product</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="product_cat" nicename="perfume"><![CDATA[عطر]]></category>
+		<category domain="product_type" nicename="simple"><![CDATA[simple]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sku]]></wp:meta_key>
+			<wp:meta_value><![CDATA[MS-DEMO-08]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_regular_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[540000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_sale_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_price]]></wp:meta_key>
+			<wp:meta_value><![CDATA[540000]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[instock]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_manage_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_stock]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_virtual]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_downloadable]]></wp:meta_key>
+			<wp:meta_value><![CDATA[no]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_status]]></wp:meta_key>
+			<wp:meta_value><![CDATA[taxable]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_tax_class]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_weight]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_length]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_width]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_height]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[total_sales]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_product_version]]></wp:meta_key>
+			<wp:meta_value><![CDATA[9.0.0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_visibility]]></wp:meta_key>
+			<wp:meta_value><![CDATA[visible]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+	<item>
+		<title><![CDATA[خانه]]></title>
+		<link>https://demo.moon-skin.local/moon-menu-home/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=401</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>401</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-menu-home</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>1</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-primary"><![CDATA[منوی اصلی]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[100]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[فروشگاه]]></title>
+		<link>https://demo.moon-skin.local/moon-menu-shop/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=402</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>402</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-menu-shop</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>2</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-primary"><![CDATA[منوی اصلی]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[custom]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[custom]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[/shop/]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[مجله]]></title>
+		<link>https://demo.moon-skin.local/moon-menu-blog/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=403</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>403</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-menu-blog</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>3</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-primary"><![CDATA[منوی اصلی]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[101]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[درباره ما]]></title>
+		<link>https://demo.moon-skin.local/moon-menu-about/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=404</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>404</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-menu-about</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>4</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-primary"><![CDATA[منوی اصلی]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[102]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[تماس]]></title>
+		<link>https://demo.moon-skin.local/moon-menu-contact/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=405</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>405</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-menu-contact</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>5</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-primary"><![CDATA[منوی اصلی]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[103]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[خانه]]></title>
+		<link>https://demo.moon-skin.local/moon-foot-home/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=411</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>411</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-foot-home</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>1</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-footer"><![CDATA[منوی پاصفحه]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[100]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[فروشگاه]]></title>
+		<link>https://demo.moon-skin.local/moon-foot-shop/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=412</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>412</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-foot-shop</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>2</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-footer"><![CDATA[منوی پاصفحه]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[custom]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[custom]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[/shop/]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[مجله]]></title>
+		<link>https://demo.moon-skin.local/moon-foot-blog/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=413</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>413</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-foot-blog</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>3</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-footer"><![CDATA[منوی پاصفحه]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[101]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[درباره ما]]></title>
+		<link>https://demo.moon-skin.local/moon-foot-about/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=414</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>414</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-foot-about</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>4</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-footer"><![CDATA[منوی پاصفحه]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[102]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[راه‌اندازی دمو]]></title>
+		<link>https://demo.moon-skin.local/moon-foot-setup/</link>
+		<pubDate>Wed, 11 Nov 2026 00:40:00 +0000</pubDate>
+		<dc:creator><![CDATA[moon-demo]]></dc:creator>
+		<guid isPermaLink="false">https://demo.moon-skin.local/?p=415</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>415</wp:post_id>
+		<wp:post_date>2026-11-11 00:40:00</wp:post_date>
+		<wp:post_date_gmt>2026-11-11 00:40:00</wp:post_date_gmt>
+		<wp:post_modified>2026-11-11 00:40:00</wp:post_modified>
+		<wp:post_modified_gmt>2026-11-11 00:40:00</wp:post_modified_gmt>
+		<wp:comment_status>closed</wp:comment_status>
+		<wp:ping_status>closed</wp:ping_status>
+		<wp:post_name>moon-foot-setup</wp:post_name>
+		<wp:status>publish</wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>5</wp:menu_order>
+		<wp:post_type>nav_menu_item</wp:post_type>
+		<wp:post_password></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="nav_menu" nicename="moon-footer"><![CDATA[منوی پاصفحه]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[post_type]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_menu_item_parent]]></wp:meta_key>
+			<wp:meta_value><![CDATA[0]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[104]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_object]]></wp:meta_key>
+			<wp:meta_value><![CDATA[page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_target]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_classes]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{i:0;s:0:"";}]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_xfn]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_menu_item_url]]></wp:meta_key>
+			<wp:meta_value><![CDATA[]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+</channel>
+</rss>
