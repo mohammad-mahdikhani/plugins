@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.16"
+APP_VERSION = "1.1.17"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -153,6 +153,9 @@ HOST_ACCOUNT_URLS = (
 )
 HOST_SIGNUP_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/signup",
+)
+HOST_LICENSE_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/license",
 )
 HOST_MAIL_KEY = "daftarchi-webakery-mail"
 HOST_TELEGRAM_URLS = (
@@ -1985,34 +1988,49 @@ def license_host_item(conn, row) -> dict:
     }
 
 
-def store_license_on_host(conn, row) -> bool:
+def push_license_to_site(item: dict) -> bool:
+    if not item:
+        return False
+    payload = {"key": HOST_MAIL_KEY, "action": "license", **item}
+    payload.pop("password", None)
+    for url in HOST_LICENSE_URLS:
+        try:
+            status, body = http_request("POST", url, payload=payload, timeout=8)
+        except AppError as exc:
+            log.warning("license site %s: %s", url, exc)
+            continue
+        except Exception:
+            log.exception("license site %s", url)
+            continue
+        if status < 400 and isinstance(body, dict) and body.get("ok"):
+            return True
+    return False
+
+
+def accounts_saved_license(conn, row) -> bool:
     try:
         body = host_account("save", {"items": [license_host_item(conn, row)]})
     except AppError:
-        conn.execute("UPDATE licenses SET host_saved=0 WHERE id=?", (row["id"],))
         return False
     saved_ids = {int(item) for item in (body.get("ids") or []) if str(item).isdigit()}
-    if saved_ids and int(row["id"]) not in saved_ids:
-        conn.execute("UPDATE licenses SET host_saved=0 WHERE id=?", (row["id"],))
-        return False
-    conn.execute("UPDATE licenses SET host_saved=1 WHERE id=?", (row["id"],))
-    return True
+    return not saved_ids or int(row["id"]) in saved_ids
+
+
+def store_license_on_host(conn, row) -> bool:
+    item = license_host_item(conn, row)
+    site_ok = push_license_to_site(item)
+    accounts_ok = accounts_saved_license(conn, row)
+    saved = site_ok or accounts_ok
+    conn.execute("UPDATE licenses SET host_saved=? WHERE id=?", (1 if saved else 0, row["id"]))
+    return saved
 
 
 def sync_licenses_to_host(conn) -> None:
     rows = conn.execute(
         "SELECT * FROM licenses WHERE COALESCE(host_saved,0)=0 ORDER BY id DESC LIMIT 20"
     ).fetchall()
-    if not rows:
-        return
-    try:
-        body = host_account("save", {"items": [license_host_item(conn, row) for row in rows]})
-    except AppError:
-        return
-    saved_ids = {int(item) for item in (body.get("ids") or []) if str(item).isdigit()}
     for row in rows:
-        if int(row["id"]) in saved_ids:
-            conn.execute("UPDATE licenses SET host_saved=1 WHERE id=?", (row["id"],))
+        store_license_on_host(conn, row)
 
 
 def host_pay(action: str, fields: dict) -> dict:
