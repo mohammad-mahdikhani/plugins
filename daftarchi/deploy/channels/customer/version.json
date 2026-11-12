@@ -1,11 +1,11 @@
 {
-  "version": "1.1.29",
+  "version": "1.1.30",
   "channel": "customer",
-  "notes": "کاربر اضافه‌شده حذف می‌شود. پیامک آزمایش می‌شود. بعد از آپدیت، دکمه ریست برنامه کنار آپدیت می‌آید.",
+  "notes": "شارژ پنل پیامک مستقیم به زیبال می‌رود و بعد از پرداخت فاکتور به نام مدیر فروشگاه صادر می‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.29-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.30-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-12T11:55:08+00:00"
+  "published_at": "2026-11-12T12:10:03+00:00"
 }

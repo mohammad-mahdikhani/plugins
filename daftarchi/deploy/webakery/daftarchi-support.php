@@ -8,7 +8,7 @@ add_action('admin_menu', 'daftarchi_support_menu');
 add_action('admin_notices', 'daftarchi_support_notice');
 add_action('wp_dashboard_setup', 'daftarchi_support_dashboard');
 add_action('rest_api_init', 'daftarchi_support_route');
-add_action('load-toplevel_page_daftarchi-support', 'daftarchi_support_mark_seen');
+add_action('load-daftarchi_page_daftarchi-support', 'daftarchi_support_mark_seen');
 
 function daftarchi_support_rows() {
     $rows = get_option('daftarchi_support', array());
@@ -34,19 +34,27 @@ function daftarchi_support_unread_counts() {
 function daftarchi_support_menu() {
     list($chat, $bug) = daftarchi_support_unread_counts();
     $waiting = $chat + $bug;
-    $title = 'پیام دفترچی';
+    $title = 'پیام‌ها';
     if ($waiting) {
         $title .= ' <span class="awaiting-mod">' . (int) $waiting . '</span>';
     }
-    add_menu_page(
+    add_submenu_page(
+        'daftarchi',
         'پیام دفترچی',
         $title,
         'manage_options',
         'daftarchi-support',
-        'daftarchi_support_page',
-        'dashicons-format-chat',
-        58
+        'daftarchi_support_page'
     );
+    if ($waiting) {
+        global $menu;
+        foreach ((array) $menu as $index => $item) {
+            if (isset($item[2]) && $item[2] === 'daftarchi') {
+                $menu[$index][0] = 'دفترچی <span class="awaiting-mod">' . (int) $waiting . '</span>';
+                break;
+            }
+        }
+    }
 }
 
 function daftarchi_support_notice() {
@@ -54,7 +62,7 @@ function daftarchi_support_notice() {
         return;
     }
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    if ($screen && $screen->id === 'toplevel_page_daftarchi-support') {
+    if ($screen && $screen->id === 'daftarchi_page_daftarchi-support') {
         return;
     }
     list($chat, $bug) = daftarchi_support_unread_counts();

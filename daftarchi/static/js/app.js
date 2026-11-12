@@ -703,9 +703,9 @@ function homePage() {
 function modeAllows(page) {
   if (page === "licenses") return true;
   const allow = {
-    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "settings", "updates"],
-    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "settings", "updates"],
-    online: ["products", "settings", "updates"],
+    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "sms", "settings", "updates"],
+    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "sms", "settings", "updates"],
+    online: ["products", "sms", "settings", "updates"],
   }[state.shopMode];
   if (!allow) return true;
   return allow.includes(page);
@@ -1299,24 +1299,48 @@ function customersHtml() {
     </tbody></table></section></div>`;
 }
 
+function smsInvoiceHtml(topup) {
+  const shop = topup.shop || state.settings?.shop_name || "";
+  return `<div id="print-area" class="invoice thermal">
+    <div class="invoice-sheet">
+      <header class="invoice-head">
+        <div class="invoice-brand"><span class="seal big">${logo()}</span><div><strong>دفترچی</strong><div>شارژ پنل پیامک</div></div></div>
+        <div class="invoice-meta"><b class="ltr">${esc(topup.invoice_code || "")}</b><span>فاکتور شارژ</span><span>${esc(topup.paid_jalali || topup.at_jalali || "")}</span></div>
+      </header>
+      <p class="invoice-buyer">${esc(topup.buyer_name || "")} <span class="ltr">${esc(topup.buyer_phone || "")}</span>${shop ? ` · ${esc(shop)}` : ""}</p>
+      <table><thead><tr><th>شرح</th><th>مبلغ</th></tr></thead><tbody>
+        <tr><td>شارژ پنل پیامک</td><td class="num">${money(topup.credit)}</td></tr>
+        <tr><td>کارمزد ۳ درصد</td><td class="num">${money(topup.fee)}</td></tr>
+      </tbody></table>
+      <p class="invoice-total"><span>پرداخت‌شده</span><span class="num">${money(topup.payable)}</span></p>
+      <p class="invoice-pay">زیبال${topup.paid_ref ? ` · <span class="ltr">${esc(topup.paid_ref)}</span>` : ""}</p>
+      <p class="invoice-thanks">این فاکتور برای مدیر فروشگاه صادر شد</p>
+    </div>
+  </div>
+  <div class="row-actions"><button type="button" class="btn" data-act="print">چاپ</button></div>`;
+}
 function smsHtml() {
   const wallet = state.smsWallet || {};
   const packs = [100000, 250000, 500000, 1000000];
   const buyers = (state.customers || []).filter((row) => /^09\d{9}$/.test(String(row.phone || "")));
   const pending = (wallet.topups || []).filter((row) => row.status === "pending" && row.pay_url);
+  const paid = (wallet.topups || []).filter((row) => row.status === "paid");
   const feeLine = (amount) => {
     const fee = Math.floor(amount * 3 / 100);
-    return `${money(amount)} شارژ، کارمزد ${money(fee)}، پرداخت ${money(amount + fee)}`;
+    return `پرداخت ${money(amount + fee)}`;
   };
   return `<div class="stack">
     <section class="card">
-      <h2 class="section-title">پنل پیامک</h2>
+      <h2 class="section-title">شارژ پنل پیامک</h2>
       <p>موجودی: <strong class="num">${money(wallet.balance || 0)}</strong></p>
-      <p class="hint">شارژ از ۱۰۰ هزار تا ۱ میلیون تومان است. از هر تراکنش ۳ درصد کارمزد جدا گرفته می‌شود و به موجودی اضافه نمی‌شود. هر ۷۰ حرف ${money(wallet.unit_price || 200)} از موجودی کم می‌شود.</p>
+      <p class="hint">با زدن مبلغ، صفحه زیبال باز می‌شود. بعد از پرداخت، فاکتور به نام مدیر فروشگاه صادر می‌شود. شارژ از ۱۰۰ هزار تا ۱ میلیون تومان است و کارمزد ۳ درصد جدا گرفته می‌شود. هر ۷۰ حرف ${money(wallet.unit_price || 200)} از موجودی کم می‌شود.</p>
       <div class="row-actions">${packs.map((amount) => `<button type="button" class="btn primary" data-act="sms-topup" data-amount="${amount}">${feeLine(amount)}</button>`).join("")}</div>
-      <form data-act="sms-topup-custom"><div class="field"><label>مبلغ دیگر، تومان</label><input name="amount" inputmode="numeric" required placeholder="مثلاً ۱۵۰۰۰۰"></div><button class="btn" type="submit">شارژ همین مبلغ</button></form>
+      <form data-act="sms-topup-custom"><div class="field"><label>مبلغ دیگر، تومان</label><input name="amount" inputmode="numeric" required placeholder="مثلاً ۱۵۰۰۰۰"></div><button class="btn primary" type="submit">پرداخت همین مبلغ</button></form>
       ${pending.map((row) => `<p><a href="${esc(row.pay_url)}" target="_blank" rel="noopener">ادامه پرداخت ${money(row.payable)}</a> <button type="button" class="btn" data-act="confirm-sms" data-id="${row.id}">استعلام تأیید</button></p>`).join("")}
     </section>
+    <section class="card"><h2 class="section-title">فاکتورهای شارژ</h2><table><thead><tr><th>فاکتور</th><th>مدیر</th><th>شارژ</th><th>پرداخت</th><th></th></tr></thead><tbody>
+      ${paid.map((row) => `<tr><td class="ltr">${esc(row.invoice_code || "")}</td><td>${esc(row.buyer_name || "")} <span class="ltr">${esc(row.buyer_phone || "")}</span></td><td class="num">${money(row.credit)}</td><td class="num">${money(row.payable)}</td><td><button type="button" class="btn" data-act="open-sms-invoice" data-id="${row.id}">چاپ فاکتور</button></td></tr>`).join("") || `<tr><td colspan="5">هنوز فاکتور شارژی نیست.</td></tr>`}
+    </tbody></table></section>
     <section class="card">
       <h2 class="section-title">پیامک به مشتریان فروشگاه</h2>
       <div class="field"><label>متن</label><textarea id="sms-body" rows="3" required placeholder="متن پیام برای مشتریان"></textarea></div>
@@ -1387,6 +1411,8 @@ function settingsHtml() {
       ${field("manager_phone", "موبایل مدیر")}
       <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>بعد از هر فروش، الگوی مدیر فرستاده شود</label>
       <button type="button" class="btn" data-act="test-setting" data-kind="sms">آزمایش پیامک</button>
+      <p class="hint">شارژ پنل مستقیم به زیبال می‌رود و فاکتور به نام مدیر فروشگاه صادر می‌شود.</p>
+      <button type="button" class="btn primary" data-act="nav" data-page="sms">شارژ پنل پیامک</button>
       <h2 class="section-title">سامانه مودیان</h2>
       ${field("moadian_fiscal_id", "شناسه حافظه مالیاتی")}
       <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>ارسال فاکتور به سامانه</label>
@@ -1488,6 +1514,7 @@ function modalHtml() {
     inner = `<h2 class="section-title">پرداخت لایسنس در زیبال</h2><p>${esc(lic.title)} · ${esc(lic.buyer_name)} · ${money(lic.payable)}</p>${lic.pay_url ? `<p><a href="${esc(lic.pay_url)}" target="_blank" rel="noopener">باز کردن صفحه زیبال</a></p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-license" data-id="${lic.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-license" data-id="${lic.id}">لغو</button></div><form data-act="manual-license"><input type="hidden" name="id" value="${lic.id}"><div class="field"><label>اگر در پنل زیبال پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
   }
   if (modal.type === "receipt") inner = receiptHtml(modal);
+  if (modal.type === "sms-invoice") inner = smsInvoiceHtml(modal.topup || {});
   if (modal.type === "import") {
     const preview = modal.preview;
     const rows = preview?.preview || [];
@@ -1511,7 +1538,7 @@ function modalHtml() {
   if (modal.type === "password") inner = `<form data-act="change-password"><h2 class="section-title">تغییر رمز</h2><div class="field"><label>رمز فعلی</label><input type="password" name="current" required></div><div class="field"><label>رمز جدید</label><input type="password" name="password" minlength="6" required></div><button class="btn primary" type="submit">ذخیره</button></form>
     <form data-act="attach-email"><h2 class="section-title">ورود با جیمیل</h2><p class="hint">همین جیمیل را ذخیره کنید و بعد با آن وارد شوید.</p><div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" value="${esc(state.user.email || "")}" required placeholder="name@gmail.com"></div><button class="btn primary" type="submit">ذخیره جیمیل</button></form>
     <form data-act="verify-email"><div class="field"><label>کد ۶ رقمی جیمیل</label><input class="ltr" name="code" inputmode="numeric" required></div><button class="btn" type="submit">تأیید جیمیل</button></form>`;
-  const wide = modal.type === "receipt" || modal.type === "sale-edit" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
+  const wide = modal.type === "receipt" || modal.type === "sale-edit" || modal.type === "sms-invoice" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
   return `<div class="modal-back" data-act="close-modal"><div class="modal card ${wide}" data-act="stop"><div class="row-actions"><button type="button" class="btn" data-act="close-modal">بستن</button></div>${inner}</div></div>`;
 }
 
@@ -1584,6 +1611,7 @@ function watchSms(id) {
       clearInterval(timer);
       toast(`موجودی پیامک ${money(result.balance)} شد`);
       await loaders.sms();
+      if (result.topup?.invoice_code) state.modal = { type: "sms-invoice", topup: result.topup };
       render();
     }).catch((err) => {
       if (err.status === 409) return;
@@ -2154,6 +2182,14 @@ async function onClick(event) {
     return;
   }
   if (act === "sms-topup") { await guard(() => startSmsTopup(el.dataset.amount)); return; }
+  if (act === "open-sms-invoice") {
+    const topup = (state.smsWallet?.topups || []).find((row) => String(row.id) === String(el.dataset.id));
+    if (topup) {
+      state.modal = { type: "sms-invoice", topup };
+      render();
+    }
+    return;
+  }
   if (act === "send-customer-sms") {
     await guard(async () => {
       const body = document.getElementById("sms-body")?.value || "";
@@ -2170,6 +2206,7 @@ async function onClick(event) {
       const result = await api(`/api/sms/topup/${el.dataset.id}/confirm`, { method: "POST", body: {} });
       toast(`موجودی پیامک ${money(result.balance)} شد`);
       await loaders.sms();
+      if (result.topup?.invoice_code) state.modal = { type: "sms-invoice", topup: result.topup };
       render();
     });
     return;

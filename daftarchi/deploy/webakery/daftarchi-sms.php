@@ -8,14 +8,13 @@ add_action('admin_menu', 'daftarchi_sms_menu');
 add_action('rest_api_init', 'daftarchi_sms_route');
 
 function daftarchi_sms_menu() {
-    add_menu_page(
+    add_submenu_page(
+        'daftarchi',
         'پیامک دفترچی',
-        'پیامک دفترچی',
+        'پیامک',
         'manage_options',
         'daftarchi-sms',
-        'daftarchi_sms_page',
-        'dashicons-email-alt',
-        61
+        'daftarchi_sms_page'
     );
 }
 
@@ -281,6 +280,9 @@ function daftarchi_sms_rest_save($request) {
         'status' => 'paid',
         'gateway_ref' => mb_substr(sanitize_text_field((string) ($params['gateway_ref'] ?? '')), 0, 80),
         'paid_at' => mb_substr(sanitize_text_field((string) ($params['paid_at'] ?? '')), 0, 40),
+        'buyer_name' => mb_substr(sanitize_text_field((string) ($params['buyer_name'] ?? '')), 0, 80),
+        'buyer_phone' => daftarchi_sms_phone($params['buyer_phone'] ?? ''),
+        'invoice_code' => mb_substr(sanitize_text_field((string) ($params['invoice_code'] ?? '')), 0, 40),
         'received_at' => gmdate('c'),
     );
     if ($row['credit'] < 100000 || $row['credit'] > 1000000) {
@@ -354,7 +356,7 @@ function daftarchi_sms_page() {
     echo '<p>فروشگاه پنل پیامک خودش را شارژ می‌کند. کارمزد هر تراکنش ۳ درصد است و جدا از مبلغ شارژ گرفته می‌شود.</p>';
     echo '<p>جمع شارژ: <strong>' . esc_html(number_format($credit)) . '</strong> تومان · جمع کارمزد شما: <strong>' . esc_html(number_format($fee)) . '</strong> تومان</p>';
     echo '<table class="widefat striped"><thead><tr>';
-    echo '<th>فروشگاه</th><th>موبایل فروشگاه</th><th>شارژ</th><th>کارمزد ۳٪</th><th>پرداخت</th><th>پیگیری</th><th>زمان</th>';
+    echo '<th>فاکتور</th><th>مدیر فروشگاه</th><th>فروشگاه</th><th>موبایل فروشگاه</th><th>شارژ</th><th>کارمزد ۳٪</th><th>پرداخت</th><th>پیگیری</th><th>زمان</th>';
     echo '</tr></thead><tbody>';
     $shown = 0;
     foreach ($rows as $row) {
@@ -363,6 +365,8 @@ function daftarchi_sms_page() {
         }
         $shown++;
         echo '<tr>';
+        echo '<td>' . esc_html((string) ($row['invoice_code'] ?? '')) . '</td>';
+        echo '<td>' . esc_html(trim((string) ($row['buyer_name'] ?? '') . ' ' . (string) ($row['buyer_phone'] ?? ''))) . '</td>';
         echo '<td>' . esc_html((string) ($row['shop'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['shop_phone'] ?? '')) . '</td>';
         echo '<td>' . esc_html(number_format((int) ($row['credit'] ?? 0))) . '</td>';
@@ -373,7 +377,7 @@ function daftarchi_sms_page() {
         echo '</tr>';
     }
     if (!$shown) {
-        echo '<tr><td colspan="7">هنوز شارژی پرداخت نشده است.</td></tr>';
+        echo '<tr><td colspan="9">هنوز شارژی پرداخت نشده است.</td></tr>';
     }
     echo '</tbody></table></div>';
 }

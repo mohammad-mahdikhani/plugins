@@ -8,14 +8,13 @@ add_action('admin_menu', 'daftarchi_licenses_menu');
 add_action('rest_api_init', 'daftarchi_licenses_route');
 
 function daftarchi_licenses_menu() {
-    add_menu_page(
+    add_submenu_page(
+        'daftarchi',
         'لایسنس دفترچی',
-        'لایسنس دفترچی',
+        'لایسنس',
         'manage_options',
         'daftarchi-licenses',
-        'daftarchi_licenses_page',
-        'dashicons-tickets-alt',
-        60
+        'daftarchi_licenses_page'
     );
 }
 

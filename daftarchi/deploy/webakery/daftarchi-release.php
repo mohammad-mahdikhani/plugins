@@ -1,3 +1,55 @@
+if (!function_exists('daftarchi_admin_parent')) {
+    function daftarchi_admin_menu_order($menu_order) {
+        $slug = 'daftarchi';
+        $menu_order = array_values(array_diff((array) $menu_order, array($slug)));
+        array_unshift($menu_order, $slug);
+        return $menu_order;
+    }
+
+    function daftarchi_admin_home() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        $links = array(
+            'daftarchi-release' => 'آپدیت',
+            'daftarchi-support' => 'پیام‌ها',
+            'daftarchi-signups' => 'ثبت‌نام‌ها',
+            'daftarchi-licenses' => 'لایسنس‌ها',
+            'daftarchi-sms' => 'پیامک',
+        );
+        echo '<div class="wrap"><h1>دفترچی</h1>';
+        echo '<p>آپدیت، پیام‌ها، ثبت‌نام، لایسنس و پیامک این‌جا یک‌جا هستند.</p><ul>';
+        foreach ($links as $slug => $label) {
+            echo '<li><a href="' . esc_url(admin_url('admin.php?page=' . $slug)) . '">' . esc_html($label) . '</a></li>';
+        }
+        echo '</ul></div>';
+    }
+
+    function daftarchi_admin_parent() {
+        add_menu_page(
+            'دفترچی',
+            'دفترچی',
+            'manage_options',
+            'daftarchi',
+            'daftarchi_admin_home',
+            'dashicons-store',
+            3
+        );
+        add_submenu_page(
+            'daftarchi',
+            'دفترچی',
+            'نمای کلی',
+            'manage_options',
+            'daftarchi',
+            'daftarchi_admin_home'
+        );
+    }
+
+    add_action('admin_menu', 'daftarchi_admin_parent', 5);
+    add_filter('custom_menu_order', '__return_true');
+    add_filter('menu_order', 'daftarchi_admin_menu_order');
+}
+
 add_action('admin_menu', 'daftarchi_release_menu');
 add_action('wp_dashboard_setup', 'daftarchi_release_dashboard');
 add_action('admin_post_daftarchi_release_save', 'daftarchi_release_save');
@@ -44,14 +96,13 @@ function daftarchi_release_read($channel) {
 }
 
 function daftarchi_release_menu() {
-    add_menu_page(
+    add_submenu_page(
+        'daftarchi',
         'آپدیت دفترچی',
-        'آپدیت دفترچی',
+        'آپدیت',
         'manage_options',
         'daftarchi-release',
-        'daftarchi_release_page',
-        'dashicons-update',
-        58
+        'daftarchi_release_page'
     );
 }
 

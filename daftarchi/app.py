@@ -117,7 +117,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.29"
+APP_VERSION = "1.1.30"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2276,6 +2276,9 @@ def sms_host_item(conn, row) -> dict:
         "status": row["status"] or "paid",
         "gateway_ref": row["paid_ref"] or row["gateway_ref"] or "",
         "paid_at": row["paid_at"] or "",
+        "buyer_name": row["buyer_name"] or "",
+        "buyer_phone": row["buyer_phone"] or "",
+        "invoice_code": row["invoice_code"] or "",
     }
 
 
@@ -3047,7 +3050,10 @@ def init_db():
               user_id INTEGER,
               created_at TEXT NOT NULL,
               paid_at TEXT,
-              host_saved INTEGER NOT NULL DEFAULT 0
+              host_saved INTEGER NOT NULL DEFAULT 0,
+              invoice_code TEXT,
+              buyer_name TEXT,
+              buyer_phone TEXT
             );
             CREATE TABLE IF NOT EXISTS password_resets (
               id INTEGER PRIMARY KEY,
@@ -3163,6 +3169,10 @@ def init_db():
         note_cols = {row["name"] for row in conn.execute("PRAGMA table_info(notifications)")}
         if "cost" not in note_cols:
             conn.execute("ALTER TABLE notifications ADD COLUMN cost INTEGER NOT NULL DEFAULT 0")
+        topup_cols = {row["name"] for row in conn.execute("PRAGMA table_info(sms_topups)")}
+        for column in ("invoice_code", "buyer_name", "buyer_phone"):
+            if column not in topup_cols:
+                conn.execute(f"ALTER TABLE sms_topups ADD COLUMN {column} TEXT")
         relax_customer_phone(conn)
         apply_site_preset(conn)
 
@@ -6240,8 +6250,9 @@ def pay_return():
         if topup:
             ref = host_zibal_verify(topup["gateway_ref"] or "")
             with connect() as conn:
-                mark_sms_paid(conn, topup["id"], ref)
-            return pay_page("شارژ پیامک پرداخت شد و به موجودی پنل اضافه شد.", True)
+                saved = mark_sms_paid(conn, topup["id"], ref)
+                shop = get_settings(conn).get("shop_name") or ""
+            return sms_invoice_page(saved, shop)
         if sale:
             ref = gateway_verify(settings, sale)
             with connect() as conn:
@@ -6263,6 +6274,46 @@ def pay_return():
     return pay_page("پرداختی با این شناسه در انتظار تأیید نیست.", False), 404
 
 
+def present_topup(row, shop: str = "") -> dict:
+    item = dict(row)
+    item["at_jalali"] = to_jalali(row["created_at"])
+    item["paid_jalali"] = to_jalali(row["paid_at"]) if row["paid_at"] else ""
+    item["shop"] = shop
+    return item
+
+
+def sms_invoice_page(row, shop: str) -> str:
+    code = html.escape(row["invoice_code"] or f"S{int(row['id']):08d}")
+    buyer = html.escape(row["buyer_name"] or "")
+    phone = html.escape(row["buyer_phone"] or "")
+    shop_name = html.escape(shop or "")
+    when = html.escape(to_jalali(row["paid_at"]) if row["paid_at"] else "")
+    ref = html.escape(row["paid_ref"] or "")
+    credit = f"{int(row['credit']):,}"
+    fee = f"{int(row['fee']):,}"
+    payable = f"{int(row['payable']):,}"
+    return (
+        "<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>فاکتور شارژ پیامک</title>"
+        "<body style='font-family:tahoma,sans-serif;background:#f6f4ef;color:#1c1a17;padding:24px'>"
+        "<main style='max-width:420px;margin:auto;background:#fff;border:1px solid #e4ddd2;border-radius:16px;padding:24px'>"
+        "<h1 style='font-size:20px;margin:0 0 8px'>دفترچی</h1>"
+        "<p style='margin:0 0 12px'>فاکتور شارژ پنل پیامک</p>"
+        f"<p>شماره فاکتور: <b dir='ltr'>{code}</b></p>"
+        f"<p>مدیر فروشگاه: {buyer} <span dir='ltr'>{phone}</span></p>"
+        f"<p>فروشگاه: {shop_name}</p>"
+        f"<p>زمان: {when}</p>"
+        f"<p>شارژ پنل پیامک: {credit} تومان</p>"
+        f"<p>کارمزد ۳ درصد: {fee} تومان</p>"
+        f"<p><b>پرداخت‌شده: {payable} تومان</b></p>"
+        f"<p>زیبال · <span dir='ltr'>{ref}</span></p>"
+        "<p>این فاکتور برای مدیر فروشگاه صادر شد.</p>"
+        "<p><button onclick='print()'>چاپ</button> · <a href='/'>برگشت به دفترچی</a></p>"
+        "</main></body></html>"
+    )
+
+
 def pay_page(message: str, ok: bool):
     tone = "#1f7a4d" if ok else "#9b3a3a"
     safe = html.escape(message)
@@ -6278,12 +6329,9 @@ def pay_page(message: str, ok: bool):
 
 
 def sms_wallet(conn) -> dict:
+    shop = get_settings(conn).get("shop_name") or ""
     rows = conn.execute("SELECT * FROM sms_topups ORDER BY id DESC LIMIT 20").fetchall()
-    topups = []
-    for row in rows:
-        item = dict(row)
-        item["at_jalali"] = to_jalali(row["created_at"])
-        topups.append(item)
+    topups = [present_topup(row, shop) for row in rows]
     return {
         "balance": sms_balance(conn),
         "fee_percent": SMS_FEE_PERCENT,
@@ -6337,9 +6385,10 @@ def mark_sms_paid(conn, topup_id: int, ref: str):
         return row
     if row["status"] != "pending":
         raise AppError("این شارژ قابل تأیید نیست")
+    code = row["invoice_code"] or f"S{int(row['id']):08d}"
     updated = conn.execute(
-        "UPDATE sms_topups SET status='paid', paid_ref=?, paid_at=? WHERE id=? AND status='pending'",
-        (ref, iso(), topup_id),
+        "UPDATE sms_topups SET status='paid', paid_ref=?, paid_at=?, invoice_code=? WHERE id=? AND status='pending'",
+        (ref, iso(), code, topup_id),
     )
     if updated.rowcount != 1:
         return conn.execute("SELECT * FROM sms_topups WHERE id=?", (topup_id,)).fetchone()
@@ -6417,9 +6466,9 @@ def sms_topup():
     with connect() as conn:
         settings = get_settings(conn)
         cur = conn.execute(
-            """INSERT INTO sms_topups (credit, fee, payable, status, user_id, created_at)
-               VALUES (?,?,?,'pending',?,?)""",
-            (credit, fee, payable, user["id"], iso()),
+            """INSERT INTO sms_topups (credit, fee, payable, status, user_id, created_at, buyer_name, buyer_phone)
+               VALUES (?,?,?,'pending',?,?,?,?)""",
+            (credit, fee, payable, user["id"], iso(), user["name"], user["phone"]),
         )
         topup_id = cur.lastrowid
     try:
@@ -6462,7 +6511,15 @@ def confirm_sms_topup(topup_id: int):
     with connect() as conn:
         saved = mark_sms_paid(conn, topup_id, ref)
         balance = sms_balance(conn)
-    return jsonify(ok=True, balance=balance, credit=saved["credit"], fee=saved["fee"], payable=saved["payable"])
+        shop = get_settings(conn).get("shop_name") or ""
+    return jsonify(
+        ok=True,
+        balance=balance,
+        credit=saved["credit"],
+        fee=saved["fee"],
+        payable=saved["payable"],
+        topup=present_topup(saved, shop),
+    )
 
 
 def public_settings(data: dict) -> dict:

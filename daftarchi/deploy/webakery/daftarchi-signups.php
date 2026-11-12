@@ -8,14 +8,13 @@ add_action('admin_menu', 'daftarchi_signups_menu');
 add_action('rest_api_init', 'daftarchi_signups_route');
 
 function daftarchi_signups_menu() {
-    add_menu_page(
+    add_submenu_page(
+        'daftarchi',
         'ثبت‌نام دفترچی',
-        'ثبت‌نام دفترچی',
+        'ثبت‌نام',
         'manage_options',
         'daftarchi-signups',
-        'daftarchi_signups_page',
-        'dashicons-groups',
-        59
+        'daftarchi_signups_page'
     );
 }
 
