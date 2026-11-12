@@ -1365,7 +1365,6 @@ function smsHtml() {
     <section class="card">
       <h2 class="section-title">شارژ پنل پیامک</h2>
       <p>موجودی: <strong class="num">${money(wallet.balance || 0)}</strong></p>
-      <p class="hint">با زدن مبلغ، صفحه زیبال باز می‌شود. بعد از پرداخت، فاکتور به نام مدیر فروشگاه صادر می‌شود. شارژ از ۱۰۰ هزار تا ۱ میلیون تومان است و کارمزد ۳ درصد جدا گرفته می‌شود. هر ۷۰ حرف ${money(wallet.unit_price || 200)} از موجودی کم می‌شود.</p>
       <div class="row-actions">${packs.map((amount) => `<button type="button" class="btn primary" data-act="sms-topup" data-amount="${amount}">${feeLine(amount)}</button>`).join("")}</div>
       <form data-act="sms-topup-custom"><div class="field"><label>مبلغ دیگر، تومان</label><input name="amount" inputmode="numeric" required placeholder="مثلاً ۱۵۰۰۰۰"></div><button class="btn primary" type="submit">پرداخت همین مبلغ</button></form>
       ${pending.map((row) => `<p><a href="${esc(row.pay_url)}" target="_blank" rel="noopener">ادامه پرداخت ${money(row.payable)}</a> <button type="button" class="btn" data-act="confirm-sms" data-id="${row.id}">استعلام تأیید</button></p>`).join("")}
