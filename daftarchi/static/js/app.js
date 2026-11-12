@@ -1362,7 +1362,7 @@ function productForm() {
     <div class="field"><label>نام کالا</label><input name="name" value="${esc(product.name || "")}" required></div>
     <div class="field"><label>قیمت فروش، تومان</label><input name="price" inputmode="decimal" required autocomplete="off" value="${price}" ${product.type === "variable" ? "readonly" : ""}></div>
     ${product.type === "variable" ? `<p class="hint">موجودی و قیمت این کالا از متغیرهای ووکامرس می‌آید و با ویرایش اینجا عوض نمی‌شود.</p>${variationLines(product)}` : `<div class="field"><label>موجودی</label><input name="stock" inputmode="numeric" autocomplete="off" value="${product.id ? product.stock : ""}"></div>`}
-    <div class="field"><label>بارکد</label><input class="ltr" name="barcode" autocomplete="off" value="${esc(product.barcode || "")}"></div>
+    <div class="field"><label>بارکد</label><input class="ltr" name="barcode" data-barcode="product" autocomplete="off" placeholder="بارکد را با بارکدخوان بگیرید" value="${esc(product.barcode || "")}"><button type="button" class="btn" data-act="make-barcode">ساخت بارکد</button><p class="hint">بارکدخوان را روی همین کادر بگیرید. اگر بارکد ندارد یا خوانده نمی‌شود، ساخت بارکد را بزنید یا خالی ذخیره کنید تا دفترچی یکی بسازد.</p></div>
     <div class="field"><label>شناسه کالا/خدمت مودیان</label><input class="ltr" name="tax_code" inputmode="numeric" autocomplete="off" placeholder="۱۳ رقم، اختیاری" value="${esc(product.tax_code || "")}"></div>
     <details ${product.id ? "open" : ""}>
       <summary>کد، قیمت خرید و تصویر</summary>
@@ -1771,18 +1771,20 @@ async function saveProduct(form, data) {
     data.image = uploaded.url;
   }
   delete data.file;
+  if (!String(data.barcode || "").trim()) data.assign_barcode = "1";
   const id = data.id;
   delete data.id;
+  let result;
   if (id) {
-    const result = await api(`/api/products/${id}`, { method: "PATCH", body: data });
-    if (result.woo_sync_note) toast(result.woo_sync_note);
+    result = await api(`/api/products/${id}`, { method: "PATCH", body: data });
   } else {
-    const result = await api("/api/products", { method: "POST", body: data });
-    if (result.woo_sync_note) toast(result.woo_sync_note);
+    result = await api("/api/products", { method: "POST", body: data });
   }
+  if (result.woo_sync_note) toast(result.woo_sync_note);
   state.modal = null;
   await loaders.products();
-  toast("کالا ذخیره شد");
+  const made = result.product?.barcode;
+  toast(data.assign_barcode && made ? `کالا ذخیره شد. بارکد ${made}` : "کالا ذخیره شد");
   render();
 }
 async function saveSettings(form) {
@@ -2136,6 +2138,12 @@ async function onClick(event) {
       toast("چک وصول شد و از صندوق برداشت شد");
       render();
     } else if (act === "new-product") { state.modal = { type: "product", product: null }; render(); }
+    else if (act === "make-barcode") {
+      const result = await api("/api/products/barcode", { method: "POST", body: {} });
+      const input = document.querySelector('form[data-act="save-product"] input[name="barcode"]');
+      if (input) input.value = result.barcode;
+      toast(`بارکد ${result.barcode} ساخته شد`);
+    }
     else if (act === "edit-product") {
       state.modal = { type: "product", product: state.products.find((item) => item.id === Number(el.dataset.id)) };
       render();
@@ -2292,6 +2300,10 @@ function onChange(event) {
 let scanBuffer = "";
 let scanAt = 0;
 document.addEventListener("keydown", (event) => {
+  if (event.target?.dataset?.barcode === "product" && event.key === "Enter") {
+    event.preventDefault();
+    return;
+  }
   if (!state.user || state.page !== "pos" || state.modal) return;
   const inField = event.target.matches("input, textarea, select");
   if (inField && event.target.dataset.barcode !== "1") return;

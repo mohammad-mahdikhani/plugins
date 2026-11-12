@@ -1,11 +1,11 @@
 {
-  "version": "1.1.23",
+  "version": "1.1.24",
   "channel": "customer",
-  "notes": "گزارش خطا و چت فروشگاه در پیشخوان وب‌بیکری می‌آید و به تلگرام نمی‌رود.",
+  "notes": "در کالای جدید بارکد را با بارکدخوان بگیرید. اگر خوانده نشد، دفترچی خودش بارکد می‌سازد.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.23-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.24-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-12T08:57:02+00:00"
+  "published_at": "2026-11-12T10:07:03+00:00"
 }

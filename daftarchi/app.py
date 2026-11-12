@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.23"
+APP_VERSION = "1.1.24"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -334,6 +334,28 @@ def clean_code(value, label: str) -> str | None:
         value = int(value)
     text = clean_text(value, label, 64)
     return text or None
+
+
+def ean13_check(body: str) -> str:
+    digits = [int(char) for char in body]
+    total = sum(digit * (1 if index % 2 == 0 else 3) for index, digit in enumerate(digits))
+    return str((10 - (total % 10)) % 10)
+
+
+def barcode_taken(conn, code: str, except_id: int | None = None) -> bool:
+    row = conn.execute("SELECT id FROM products WHERE barcode=?", (code,)).fetchone()
+    if row and (except_id is None or int(row["id"]) != except_id):
+        return True
+    return conn.execute("SELECT 1 FROM product_variations WHERE barcode=?", (code,)).fetchone() is not None
+
+
+def mint_store_barcode(conn, except_id: int | None = None) -> str:
+    for _ in range(30):
+        body = "200" + f"{secrets.randbelow(1_000_000_000):09d}"
+        code = body + ean13_check(body)
+        if not barcode_taken(conn, code, except_id):
+            return code
+    raise AppError("بارکد یکتا ساخته نشد")
 
 
 def name_key(value: str) -> str:
@@ -4065,6 +4087,14 @@ def scan_product():
     )
 
 
+@app.post("/api/products/barcode")
+def make_product_barcode():
+    require_admin()
+    with connect() as conn:
+        code = mint_store_barcode(conn)
+    return jsonify(barcode=code)
+
+
 @app.post("/api/products")
 def create_product():
     user = require_admin()
@@ -4077,7 +4107,10 @@ def create_product():
     barcode = clean_code(payload.get("barcode"), "بارکد")
     tax_code = clean_tax_code(payload.get("tax_code"))
     image = clean_image(payload.get("image"))
+    assign_barcode = str(payload.get("assign_barcode") or "") in {"1", "true", "True"}
     with connect() as conn:
+        if not barcode and assign_barcode:
+            barcode = mint_store_barcode(conn)
         existing = match_product(conn, barcode, sku)
         if existing and existing["active"]:
             raise AppError("این بارکد یا کد قبلاً برای کالای دیگری ثبت شده")
@@ -4122,6 +4155,8 @@ def update_product(pid: int):
         stock = parse_money(payload["stock"], "موجودی", allow_empty=True) if "stock" in payload else row["stock"]
         sku = clean_code(payload["sku"], "کد") if "sku" in payload else row["sku"]
         barcode = clean_code(payload["barcode"], "بارکد") if "barcode" in payload else row["barcode"]
+        if not barcode and str(payload.get("assign_barcode") or "") in {"1", "true", "True"}:
+            barcode = mint_store_barcode(conn, pid)
         tax_code = clean_tax_code(payload["tax_code"]) if "tax_code" in payload else row["tax_code"]
         image = clean_image(payload["image"]) if "image" in payload else row["image"]
         variable = product_kind(row) == "variable"
