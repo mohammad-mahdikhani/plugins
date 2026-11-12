@@ -1,11 +1,11 @@
-const CACHE = "daftarchi-1.1.28";
+const CACHE = "daftarchi-1.1.29";
 const SHELL = [
-  "/static/css/app.css?v=1.1.28",
-  "/static/js/app.js?v=1.1.28",
-  "/static/fonts/Vazirmatn-Regular.woff2?v=1.1.28",
-  "/static/fonts/Vazirmatn-SemiBold.woff2?v=1.1.28",
-  "/static/icon-192.png?v=1.1.28",
-  "/static/icon-512.png?v=1.1.28",
+  "/static/css/app.css?v=1.1.29",
+  "/static/js/app.js?v=1.1.29",
+  "/static/fonts/Vazirmatn-Regular.woff2?v=1.1.29",
+  "/static/fonts/Vazirmatn-SemiBold.woff2?v=1.1.29",
+  "/static/icon-192.png?v=1.1.29",
+  "/static/icon-512.png?v=1.1.29",
 ];
 
 self.addEventListener("install", (event) => {

@@ -117,7 +117,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.28"
+APP_VERSION = "1.1.29"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -1824,9 +1824,11 @@ def push_sms_patterns(conn) -> None:
             log.warning("sms pattern was not stored on webakery")
 
 
-def send_shop_pattern(conn, pattern_id: str, recipient: str, values: dict) -> tuple[str, str]:
+def send_shop_pattern(conn, pattern_id: str, recipient: str, values: dict, template: str | None = None) -> tuple[str, str]:
     settings = get_settings(conn)
-    template = (settings.get(f"sms_pattern_{pattern_id}") or "").strip()
+    if template is None:
+        template = settings.get(f"sms_pattern_{pattern_id}") or ""
+    template = template.strip()
     recipient = norm_phone(recipient)
     if not template or not re.fullmatch(r"09\d{9}", recipient):
         return "skipped", ""
@@ -3729,6 +3731,13 @@ def panel_update_apply():
     return jsonify(ok=True, files=len(written), message="آپدیت شد. دفترچی چند ثانیه دیگر دوباره باز می‌شود. فروش‌ها ماند.")
 
 
+@app.post("/api/system/restart")
+def restart_app():
+    require_admin()
+    schedule_restart()
+    return jsonify(ok=True, message="برنامه دوباره باز می‌شود")
+
+
 def telegram_text(user, kind: str, body: str, page: str, error: str, settings: dict) -> str:
     shop = settings.get("shop_name") or "دفترچی"
     lines = [
@@ -4277,6 +4286,26 @@ def create_user():
         row = conn.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
         push_signup(conn, row)
     return jsonify(user=public_user(row))
+
+
+@app.delete("/api/users/<int:uid>")
+def delete_user(uid: int):
+    admin = require_admin()
+    if int(admin["id"]) == uid:
+        raise AppError("کاربر واردشده را نمی‌توان حذف کرد")
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise AppError("کاربر پیدا نشد", 404)
+        if row["role"] == "admin":
+            others = conn.execute(
+                "SELECT COUNT(*) AS c FROM users WHERE role='admin' AND id<>?",
+                (uid,),
+            ).fetchone()["c"]
+            if others < 1:
+                raise AppError("آخرین مدیر را نمی‌توان حذف کرد")
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    return jsonify(ok=True)
 
 
 @app.get("/api/products")
@@ -6770,11 +6799,20 @@ def test_setting(kind: str):
                 raise AppError(f"کارت‌خوان پاسخ نداد: {exc}", 502)
             message = f"ارتباط با {host}:{port} برقرار شد"
         elif kind == "sms":
-            phone = manager_phone(settings)
+            phone = mobile_number(posted.get("manager_phone") or settings.get("manager_phone") or "", required=False)
             if not phone:
-                raise AppError("شماره موبایل مدیر را وارد کنید")
-            status, detail = deliver_sms(conn, settings, phone, "پیام آزمایشی دفترچی")
-            message = "پیامک ارسال شد" if status == "sent" else detail
+                raise AppError("موبایل مدیر را بنویسید")
+            pattern = str(posted.get("sms_pattern_manager") or settings.get("sms_pattern_manager") or "").strip()
+            status, detail = send_shop_pattern(
+                conn,
+                "manager",
+                phone,
+                {"نام": "آزمایش", "مبلغ": "1000", "فاکتور": "تست"},
+                template=pattern,
+            )
+            if status == "skipped":
+                raise AppError("اول الگوی پیامک مدیر را بنویسید")
+            message = "پیامک آزمایشی ارسال شد" if status == "sent" else detail
         elif kind == "email":
             if not host_mail_ready():
                 raise AppError(explain_host_mail("تنظیم نشده"), 502)

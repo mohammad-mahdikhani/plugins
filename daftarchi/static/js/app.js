@@ -93,6 +93,7 @@ const state = {
   importFile: null,
   support: false,
   updating: false,
+  justUpdated: false,
   supportTab: "chat",
   supportLog: [],
   lastError: "",
@@ -145,15 +146,27 @@ function remedyFor(message) {
   return "اگر دوباره پیش آمد، گزارش خطا را بزنید تا در پیشخوان وب‌بیکری بیاید.";
 }
 function markUpdated() {
-  try { sessionStorage.setItem("daftarchi-updated", "1"); } catch { /* private window */ }
+  try {
+    sessionStorage.setItem("daftarchi-updated", "1");
+    sessionStorage.setItem("daftarchi-show-reset", "1");
+  } catch { /* private window */ }
+  state.justUpdated = true;
   toast("آپدیت شدی", { ok: true });
 }
 function showUpdated() {
   let flag = "";
-  try { flag = sessionStorage.getItem("daftarchi-updated") || ""; } catch { flag = ""; }
-  if (!flag) return;
-  try { sessionStorage.removeItem("daftarchi-updated"); } catch { /* ignore */ }
-  toast("آپدیت شدی", { ok: true });
+  let reset = "";
+  try {
+    flag = sessionStorage.getItem("daftarchi-updated") || "";
+    reset = sessionStorage.getItem("daftarchi-show-reset") || "";
+    if (flag) sessionStorage.removeItem("daftarchi-updated");
+  } catch { flag = ""; }
+  state.justUpdated = reset === "1";
+  if (flag) toast("آپدیت شدی", { ok: true });
+}
+function resetProgramButton() {
+  if (!state.justUpdated) return "";
+  return `<button type="button" class="btn primary" data-act="restart-app">ریست برنامه</button>`;
 }
 function shotData(file) {
   return new Promise((resolve, reject) => {
@@ -475,7 +488,7 @@ function supportHtml() {
   const panel = state.supportTab === "bug"
     ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><div class="field"><label>اسکرین خطا</label><input type="file" name="shot" accept="image/*"></div><p class="hint">از هر صفحه، دکمه «ارسال اسکرین خطا» همین فرم را باز می‌کند. تصویر همان صفحه را انتخاب کنید.</p><button class="btn primary" type="submit">ارسال اسکرین و خطا</button></form>`
     : state.supportTab === "update"
-      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. با آپدیت، همین دفترچی عوض می‌شود و فروش‌ها می‌مانند.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>`
+      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. با آپدیت، همین دفترچی عوض می‌شود و فروش‌ها می‌مانند.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${state.justUpdated ? `<p class="hint">آپدیت شد. ریست برنامه را بزنید تا نسخه جدید را ببینید.</p>` : ""}${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>${resetProgramButton()}</div>`
       : `<div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="field"><label>پیام</label><textarea name="body" required rows="3" placeholder="برای پشتیبانی بنویسید"></textarea></div><button class="btn primary" type="submit">ارسال به پشتیبانی</button></form>`;
   const sheet = state.support ? `<section class="support-sheet" data-act="stop"><div class="row-actions"><strong>پشتیبانی دفترچی</strong><button type="button" class="btn" data-act="toggle-support">بستن</button></div><div class="seg">${[["chat", "چت"], ["bug", "گزارش خطا"], ["update", "به‌روزرسانی"]].map(([id, label]) => `<button type="button" class="${state.supportTab === id ? "on" : ""}" data-act="support-tab" data-tab="${id}">${label}</button>`).join("")}</div>${panel}</section>` : "";
   return `${sheet}<button type="button" class="dock" data-act="toggle-support">${state.support ? "بستن پشتیبانی" : "پشتیبانی"}</button>`;
@@ -1373,6 +1386,7 @@ function settingsHtml() {
       <div class="field"><label>الگوی پیامک مدیر</label><textarea name="sms_pattern_manager" rows="3">${esc(s.sms_pattern_manager || "")}</textarea></div>
       ${field("manager_phone", "موبایل مدیر")}
       <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>بعد از هر فروش، الگوی مدیر فرستاده شود</label>
+      <button type="button" class="btn" data-act="test-setting" data-kind="sms">آزمایش پیامک</button>
       <h2 class="section-title">سامانه مودیان</h2>
       ${field("moadian_fiscal_id", "شناسه حافظه مالیاتی")}
       <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>ارسال فاکتور به سامانه</label>
@@ -1392,7 +1406,11 @@ function settingsHtml() {
   </form>
   <section class="card" style="margin-top:14px"><h2 class="section-title">ساخت اکانت</h2>
     <p class="hint">نام، موبایل و جیمیل ثبت‌نام، بدون رمز، در وب‌بیکری ذخیره می‌شود.</p>
-    <table><thead><tr><th>نام</th><th>موبایل</th><th>جیمیل</th><th>نقش</th></tr></thead><tbody>${state.users.map((user) => `<tr><td>${esc(user.name)}</td><td class="ltr">${esc(user.phone)}</td><td class="ltr">${esc(user.email || "—")}${user.email && !user.email_verified ? " · تأیید نشده" : ""}</td><td>${user.role === "admin" ? "مدیر" : "صندوقدار"}</td></tr>`).join("")}</tbody></table>
+    <table><thead><tr><th>نام</th><th>موبایل</th><th>جیمیل</th><th>نقش</th><th></th></tr></thead><tbody>${state.users.map((user) => {
+      const roleName = user.role === "admin" ? "مدیر" : user.role === "stock" ? "مسئول موجودی" : "صندوقدار";
+      const mine = Number(user.id) === Number(state.user?.id);
+      return `<tr><td>${esc(user.name)}</td><td class="ltr">${esc(user.phone)}</td><td class="ltr">${esc(user.email || "—")}${user.email && !user.email_verified ? " · تأیید نشده" : ""}</td><td>${roleName}</td><td>${mine ? "" : `<button type="button" class="btn danger" data-act="delete-user" data-id="${user.id}">حذف</button>`}</td></tr>`;
+    }).join("")}</tbody></table>
     <form data-act="create-user"><div class="grid-2"><div class="field"><label>نام</label><input name="name" required></div><div class="field"><label>موبایل</label><input class="ltr" name="phone" required></div></div><div class="grid-2"><div class="field"><label>جیمیل</label><input class="ltr" name="email"></div><div class="field"><label>رمز</label><input type="password" name="password" required></div></div><div class="field"><label>نقش</label><select name="role"><option value="cashier">صندوقدار</option><option value="stock">مسئول موجودی</option><option value="admin">مدیر</option></select></div><button class="btn primary" type="submit">ساخت کاربر</button></form>
   </section>`;
 }
@@ -1413,6 +1431,7 @@ function updatesHtml() {
       <div class="row-actions">
         <button type="button" class="btn" data-act="check-panel-update" ${state.updating ? "disabled" : ""}>بررسی آپدیت</button>
         <button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>
+        ${resetProgramButton()}
       </div>
     </section>
     <section class="card"><h2 class="section-title">نصب از فایل</h2>
@@ -2081,6 +2100,16 @@ async function onClick(event) {
     return;
   }
   if (act === "desktop-icon") { createDesktopIcon(); return; }
+  if (act === "delete-user") {
+    if (!window.confirm("این کاربر حذف شود؟")) return;
+    await guard(async () => {
+      await api(`/api/users/${el.dataset.id}`, { method: "DELETE" });
+      await loaders.settings();
+      toast("کاربر حذف شد");
+      render();
+    });
+    return;
+  }
   if (act === "show-forgot") { state.authView = "forgot"; state.authError = ""; render(); return; }
   if (act === "show-phone-login") { state.authView = "phone-login"; state.authError = ""; render(); return; }
   if (act === "show-register") { state.authView = "register"; state.authError = ""; render(); return; }
@@ -2252,6 +2281,7 @@ async function onClick(event) {
         const result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
         installed = true;
         markUpdated();
+        render();
         setTimeout(() => location.reload(), 2500);
       } finally {
         if (!installed) {
@@ -2259,6 +2289,11 @@ async function onClick(event) {
           render();
         }
       }
+    } else if (act === "restart-app") {
+      await api("/api/system/restart", { method: "POST", body: {} });
+      try { sessionStorage.removeItem("daftarchi-show-reset"); } catch { /* ignore */ }
+      state.justUpdated = false;
+      toast("برنامه دوباره باز می‌شود", { ok: true });
     } else if (act === "install-remote" || act === "install-file") {
       let result;
       if (act === "install-file") {
@@ -2382,12 +2417,18 @@ async function onClick(event) {
         toast("آدرس یا IP کارت‌خوان را بنویسید، بعد آزمایش اتصال را بزنید.");
         return;
       }
+      if (el.dataset.kind === "sms" && !String(data.manager_phone || "").trim()) {
+        toast("موبایل مدیر را بنویسید، بعد آزمایش پیامک را بزنید.");
+        return;
+      }
       const result = await api(`/api/settings/test/${el.dataset.kind}`, { method: "POST", body: {
         wp_url: data.wp_url || "",
         woo_key: data.woo_key || "",
         woo_secret: data.woo_secret || "",
         pos_host: data.pos_host || "",
         pos_port: data.pos_port || "",
+        manager_phone: data.manager_phone || "",
+        sms_pattern_manager: data.sms_pattern_manager || "",
       } });
       toast(result.message);
     }
@@ -2533,6 +2574,7 @@ api("/api/auth/me").then(async (me) => {
   state.access = me.access || null;
   state.shop = me.shop || null;
   readSetup(me.setup);
+  showUpdated();
   const opened = location.hash.replace("#", "");
   await navigate(opened && allowed(opened) ? opened : homePage());
   showUpdated();
