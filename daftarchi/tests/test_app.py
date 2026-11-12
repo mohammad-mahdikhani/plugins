@@ -378,6 +378,8 @@ class DaftarchiTest(unittest.TestCase):
         builder = (deploy / "windows" / "build_ashrafi_setup.py").read_text(encoding="utf-8")
         shortcuts = [line for line in builder.splitlines() if "CreateShortcut" in line]
         self.assertTrue(shortcuts)
+        self.assertIn("MUI_PAGE_DIRECTORY", builder)
+        self.assertIn("محل نصب", builder)
         self.assertTrue(all("دفترچی اشرافی.lnk" in line and "Start-Daftarchi.vbs" in line for line in shortcuts))
         self.assertTrue(all("Start-Daftarchi.bat" not in line for line in shortcuts))
 

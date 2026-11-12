@@ -52,13 +52,16 @@ VIAddVersionKey "ProductVersion" "1.1.22"
 
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "نصب دفترچی اشرافی"
-!define MUI_WELCOMEPAGE_TEXT "دفترچی اشرافی روی این ویندوز نصب می‌شود.$\\r$\\nمیانبر روی دسکتاپ ساخته می‌شود و برنامه بدون پنجرهٔ سیاه باز می‌شود.$\\r$\\n$\\r$\\nورود اولیه: 09120000000 / daftarchi"
+!define MUI_WELCOMEPAGE_TEXT "دفترچی اشرافی روی این ویندوز نصب می‌شود.$\\r$\\nدر صفحهٔ بعد محل نصب را خودتان انتخاب می‌کنید.$\\r$\\nمیانبر روی دسکتاپ ساخته می‌شود و برنامه بدون پنجرهٔ سیاه باز می‌شود.$\\r$\\n$\\r$\\nورود اولیه: 09120000000 / daftarchi"
+!define MUI_DIRECTORYPAGE_TEXT_TOP "پوشهٔ نصب دفترچی اشرافی را انتخاب کنید. فروش‌ها در همین پوشه می‌مانند."
+!define MUI_DIRECTORYPAGE_TEXT_DESTINATION "محل نصب"
 !define MUI_FINISHPAGE_TITLE "دفترچی اشرافی آماده است"
 !define MUI_FINISHPAGE_TEXT "نصب تمام شد. آیکون دفترچی اشرافی روی دسکتاپ است."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "الان دفترچی را باز کن"
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchShop
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_LANGUAGE "Farsi"
