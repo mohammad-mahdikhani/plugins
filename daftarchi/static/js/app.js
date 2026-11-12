@@ -1489,7 +1489,7 @@ function settingsHtml() {
       <div class="row-actions"><button type="button" class="btn" data-act="test-setting" data-kind="woo" data-tour="woo-test">آزمایش ووکامرس</button></div>
     </section>`;
   const pos = `<section class="card" data-tour="pos-card"><h2 class="section-title">کارت‌خوان</h2>
-      <div class="field"><label>شرکت</label><select name="pos_provider">${options([["manual", "دستی"], ["saman", "سامان کیش"], ["behpardakht", "به‌پرداخت ملت"], ["parsian", "پارسیان"], ["irankish", "ایران‌کیش"], ["sepehr", "سپهر"], ["asanpardakht", "آسان‌پرداخت"]], s.pos_provider)}</select></div>
+      <div class="field"><label>شرکت</label><select name="pos_provider">${options([["manual", "دستی"], ["saman", "سامان کیش"], ["behpardakht", "به‌پرداخت ملت"], ["parsian", "پارسیان"], ["irankish", "ایران‌کیش"], ["sepehr", "سپهر"], ["asanpardakht", "آسان‌پرداخت"], ["pardakhtnovin", "پرداخت نوین"]], s.pos_provider)}</select></div>
       <div class="grid-2">${field("pos_host", "آدرس یا IP")}${field("pos_port", "پورت")}</div>
       ${field("pos_terminal", "شماره پایانه")}
       <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش اتصال</button>

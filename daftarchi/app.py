@@ -114,12 +114,12 @@ DEFAULT_SETTINGS = {
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
 WOO_SYNC_URGENT = 0.12
-POS_PROVIDERS = {"manual", "saman", "behpardakht", "parsian", "irankish", "sepehr", "asanpardakht"}
+POS_PROVIDERS = {"manual", "saman", "behpardakht", "parsian", "irankish", "sepehr", "asanpardakht", "pardakhtnovin"}
 GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.37"
+APP_VERSION = "1.1.38"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -5961,6 +5961,43 @@ def cancel_sale(sale_id: int):
     return jsonify(ok=True)
 
 
+def card_reader_target(host: str, port_text: str) -> tuple[str, int]:
+    host = str(host or "").strip().translate(DIGITS)
+    for prefix in ("https://", "http://"):
+        if host.lower().startswith(prefix):
+            host = host[len(prefix):]
+    host = host.split("/")[0].strip()
+    port = int(str(port_text or "0").translate(DIGITS) or "0")
+    if not 1 <= port <= 65535:
+        raise AppError("پورت نامعتبر است")
+    if not host:
+        raise AppError("آدرس کارت‌خوان را وارد کنید")
+    parts = host.split(".")
+    if len(parts) == 4 and all(part.isascii() and part.isdigit() for part in parts):
+        try:
+            numbers = [int(part) for part in parts]
+        except ValueError as exc:
+            raise AppError("آدرس کارت‌خوان درست نیست. IP را مثل 192.168.1.2 بنویسید.") from exc
+        if any(number > 255 for number in numbers):
+            raise AppError("آدرس کارت‌خوان درست نیست. IP را مثل 192.168.1.2 بنویسید.")
+        return ".".join(str(number) for number in numbers), port
+    if not re.fullmatch(r"[A-Za-z0-9.-]+", host) or ".." in host or host.startswith(".") or host.endswith("."):
+        raise AppError("آدرس کارت‌خوان درست نیست. IP را مثل 192.168.1.2 بنویسید.")
+    return host, port
+
+
+def probe_card_reader(host: str, port_text: str) -> tuple[str, int]:
+    host, port = card_reader_target(host, port_text)
+    try:
+        with socket.create_connection((host, port), timeout=4):
+            pass
+    except socket.gaierror as exc:
+        raise AppError("آدرس کارت‌خوان پیدا نشد. IP را مثل 192.168.1.2 بنویسید.") from exc
+    except OSError as exc:
+        raise AppError(f"کارت‌خوان در {host}:{port} پاسخ نداد") from exc
+    return host, port
+
+
 @app.post("/api/pos/prepare")
 def pos_prepare():
     require_user()
@@ -5970,13 +6007,11 @@ def pos_prepare():
     if not host:
         return jsonify(ok=True, mode="manual", message="کارت‌خوان تنظیم نشده؛ پرداخت کارت به‌صورت دستی و با شماره پیگیری ثبت می‌شود.")
     try:
-        port = int(str(settings.get("pos_port") or "0").translate(DIGITS))
-        with socket.create_connection((host, port), timeout=4):
-            pass
-    except Exception as exc:
-        return jsonify(ok=False, mode="network", message=f"کارت‌خوان پاسخ نداد: {exc}")
+        host, _port = probe_card_reader(host, settings.get("pos_port") or "0")
+    except AppError as exc:
+        return jsonify(ok=False, mode="network", message=str(exc))
     provider = settings.get("pos_provider") or "manual"
-    return jsonify(ok=True, mode="network", message=f"ارتباط با کارت‌خوان ({provider}) برقرار شد. شماره پیگیری رسید را وارد کنید.")
+    return jsonify(ok=True, mode="network", message=f"ارتباط با {host} برقرار شد. شماره پیگیری رسید را وارد کنید.")
 
 
 @app.get("/api/reports/summary")
@@ -7053,17 +7088,7 @@ def test_setting(kind: str):
                 raise AppError("ووکامرس فهرست کالا نداد", 502)
             message = "اتصال ووکامرس برقرار است"
         elif kind == "pos":
-            host = (settings.get("pos_host") or "").strip()
-            if not host:
-                raise AppError("آدرس کارت‌خوان را وارد کنید")
-            port = int(str(settings.get("pos_port") or "0").translate(DIGITS) or "0")
-            if not 1 <= port <= 65535:
-                raise AppError("پورت نامعتبر است")
-            try:
-                with socket.create_connection((host, port), timeout=4):
-                    pass
-            except OSError as exc:
-                raise AppError(f"کارت‌خوان پاسخ نداد: {exc}", 502)
+            host, port = probe_card_reader(settings.get("pos_host") or "", settings.get("pos_port") or "0")
             message = f"ارتباط با {host}:{port} برقرار شد"
         elif kind == "sms":
             phone = mobile_number(posted.get("manager_phone") or settings.get("manager_phone") or "", required=False)
