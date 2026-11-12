@@ -212,7 +212,15 @@ function daftarchi_licenses_page() {
         echo '<td>' . esc_html((string) ($row['buyer_name'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['phone'] ?? '')) . '</td>';
         $title = (string) ($row['title'] ?? $row['plan'] ?? '');
-        if (($row['plan'] ?? '') === '50y') {
+        $buyer = (string) ($row['buyer_name'] ?? '') . ' ' . (string) ($row['shop'] ?? '');
+        $vip = false;
+        foreach (array('پاکان', 'اشرافی', 'جزایری') as $token) {
+            if (mb_strpos($buyer, $token) !== false) {
+                $vip = true;
+                break;
+            }
+        }
+        if ($vip) {
             $title .= ' VIP';
         }
         echo '<td>' . esc_html($title) . '</td>';

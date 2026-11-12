@@ -119,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.36"
+APP_VERSION = "1.1.37"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2541,6 +2541,17 @@ def studio_unlock_active(settings: dict | None = None) -> bool:
     return str(settings.get("studio_unlock") or "").strip().lower() in ("1", "true", "yes", "on")
 
 
+VIP_SHOPS = ("پاکان", "اشرافی", "جزایری")
+VIP_SITE_IDS = {"pakan", "ashrafi", "jazayeri"}
+
+
+def is_vip_shop(*names, site_id: str = "") -> bool:
+    if str(site_id or "").strip().lower() in VIP_SITE_IDS:
+        return True
+    blob = " ".join(str(name or "") for name in names)
+    return any(token in blob for token in VIP_SHOPS)
+
+
 def seed_paid_license(conn, buyer_name: str, plan: str = "50y") -> None:
     if plan not in PLANS:
         return
@@ -2600,7 +2611,7 @@ def ensure_access(conn) -> dict:
         return {
             "mode": "paid",
             "active": True,
-            "vip": paid["plan"] == "50y",
+            "vip": is_vip_shop(settings.get("shop_name"), paid["buyer_name"], site_id=settings.get("site_id")),
             "title": title,
             "days_left": days_left(end),
             "ends_at": paid["ends_at"],
@@ -6239,7 +6250,7 @@ def license_out(row) -> dict:
     item["starts_jalali"] = to_jalali(row["starts_at"]) if row["starts_at"] else ""
     item["ends_jalali"] = to_jalali(row["ends_at"]) if row["ends_at"] else ""
     item["title"] = PLANS.get(row["plan"], (row["plan"], 0, ""))[0]
-    item["vip"] = row["plan"] == "50y"
+    item["vip"] = is_vip_shop(row["buyer_name"])
     item["status"] = row["status"] or "paid"
     item["host_saved"] = bool(row["host_saved"]) if "host_saved" in row.keys() else False
     return item
@@ -6277,7 +6288,7 @@ def list_licenses():
         access = ensure_access(conn)
     plans = []
     for key, (title, months, price_key) in PLANS.items():
-        item = {"id": key, "title": title, "months": months, "price": setting_int(settings, price_key), "vip": key == "50y"}
+        item = {"id": key, "title": title, "months": months, "price": setting_int(settings, price_key), "vip": False}
         if key == "50y":
             item["cap"] = cap
             item["remaining"] = max(0, cap - sold)
