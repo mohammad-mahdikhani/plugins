@@ -92,7 +92,7 @@ function daftarchi_support_widget() {
         }
         $label = (($row['kind'] ?? '') === 'bug') ? 'گزارش خطا' : 'چت';
         $fresh = empty($row['seen_at']) ? ' · تازه' : '';
-        echo '<li><strong>' . esc_html($label . $fresh) . '</strong> — ' . esc_html((string) ($row['shop'] ?? '')) . ' — ' . esc_html(mb_substr((string) ($row['body'] ?? ''), 0, 120)) . '</li>';
+        echo '<li><strong>' . esc_html($label . $fresh) . '</strong> — ' . esc_html((string) ($row['shop'] ?? '')) . ' — ' . esc_html((string) ($row['phone'] ?? '')) . ' — ' . esc_html(mb_substr((string) ($row['body'] ?? ''), 0, 120)) . '</li>';
         $shown++;
         if ($shown >= 8) {
             break;
@@ -172,6 +172,7 @@ function daftarchi_support_rest_save($request) {
         'shop' => mb_substr(sanitize_text_field((string) $request->get_param('shop')), 0, 80),
         'user' => mb_substr(sanitize_text_field((string) $request->get_param('user')), 0, 80),
         'phone' => mb_substr(preg_replace('/\D+/', '', (string) $request->get_param('phone')), 0, 20),
+        'image' => daftarchi_support_store_image((string) $request->get_param('image')),
         'version' => mb_substr(sanitize_text_field((string) $request->get_param('version')), 0, 20),
         'channel' => sanitize_key((string) $request->get_param('channel')),
         'received_at' => gmdate('c'),
@@ -210,6 +211,23 @@ function daftarchi_support_rest_delete($request) {
     return new WP_REST_Response(array('ok' => true, 'count' => count($rows)), 200);
 }
 
+function daftarchi_support_store_image($raw) {
+    $raw = (string) $raw;
+    $comma = strpos($raw, ',');
+    if (strpos($raw, 'data:image/') !== 0 || $comma === false) {
+        return '';
+    }
+    $bytes = base64_decode(substr($raw, $comma + 1), true);
+    if (!$bytes || strlen($bytes) > 500000 || !function_exists('wp_upload_bits')) {
+        return '';
+    }
+    $upload = wp_upload_bits('daftarchi-support-' . gmdate('Ymd-His') . '.jpg', null, $bytes);
+    if (!empty($upload['error']) || empty($upload['url'])) {
+        return '';
+    }
+    return (string) $upload['url'];
+}
+
 function daftarchi_support_page() {
     if (!current_user_can('manage_options')) {
         return;
@@ -219,21 +237,28 @@ function daftarchi_support_page() {
     echo '<h1>پیام دفترچی</h1>';
     echo '<p>گزارش خطا و چت فروشگاه‌ها این‌جا فهرست می‌شود. به تلگرام فرستاده نمی‌شود. با باز کردن این صفحه، نوتیف تازه‌ها خوانده‌شده می‌شود.</p>';
     echo '<table class="widefat striped"><thead><tr>';
-    echo '<th>نوع</th><th>فروشگاه</th><th>کاربر</th><th>متن</th><th>صفحه</th><th>خطا</th><th>نسخه</th><th>زمان</th>';
+    echo '<th>نوع</th><th>فروشگاه</th><th>شماره اکانت</th><th>کاربر</th><th>متن</th><th>اسکرین</th><th>صفحه</th><th>خطا</th><th>نسخه</th><th>زمان</th>';
     echo '</tr></thead><tbody>';
     if (!$rows) {
-        echo '<tr><td colspan="8">هنوز پیامی نرسیده است.</td></tr>';
+        echo '<tr><td colspan="10">هنوز پیامی نرسیده است.</td></tr>';
     }
     foreach ($rows as $row) {
         if (!is_array($row)) {
             continue;
         }
         $label = (($row['kind'] ?? '') === 'bug') ? 'گزارش خطا' : 'چت';
+        $image = (string) ($row['image'] ?? '');
+        $shot = '';
+        if ($image !== '' && strpos($image, 'http') === 0) {
+            $shot = '<a href="' . esc_url($image) . '" target="_blank" rel="noopener"><img src="' . esc_url($image) . '" alt="" style="max-width:140px;height:auto"></a>';
+        }
         echo '<tr>';
         echo '<td>' . esc_html($label) . '</td>';
         echo '<td>' . esc_html((string) ($row['shop'] ?? '')) . '</td>';
+        echo '<td class="ltr">' . esc_html((string) ($row['phone'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['user'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['body'] ?? '')) . '</td>';
+        echo '<td>' . $shot . '</td>';
         echo '<td>' . esc_html((string) ($row['page'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['error'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['version'] ?? '')) . '</td>';

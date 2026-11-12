@@ -80,6 +80,8 @@ DEFAULT_SETTINGS = {
     "sms_sender": "",
     "sms_username": "",
     "sms_password": "",
+    "sms_pattern_buyer": "{نام} عزیز\nخرید حضوری شما ثبت شد.\nمبلغ: {مبلغ} تومان\nفاکتور: {فاکتور}",
+    "sms_pattern_manager": "فروش {مبلغ} تومان. فاکتور {فاکتور}",
     "manager_phone": "",
     "sms_on_close": "1",
     "sms_on_sale": "0",
@@ -115,7 +117,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.27"
+APP_VERSION = "1.1.28"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -157,6 +159,9 @@ HOST_LICENSE_URLS = (
 )
 HOST_SMS_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/sms-credit",
+)
+HOST_SMS_PATTERN_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/sms-pattern",
 )
 HOST_SUPPORT_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/support",
@@ -1623,42 +1628,9 @@ def sms_balance(conn) -> int:
 
 
 def deliver_sms(conn, settings: dict, recipient: str, text: str, cost: int = 0) -> tuple[str, str]:
+    """Free text stays in the local outbox. Live SMS goes through a Melipayamak pattern."""
     recipient = norm_phone(recipient)
     status, detail = "internal", "در صندوق پیامک سیستم ثبت شد"
-    provider = settings.get("sms_provider") or "internal"
-    try:
-        if provider == "kavenegar" and settings.get("sms_api_key"):
-            sender = settings.get("sms_sender") or ""
-            if not sender:
-                raise AppError("شماره خط کاوه‌نگار خالی است")
-            url = f"https://api.kavenegar.com/v1/{settings['sms_api_key']}/sms/send.json"
-            code, body = http_request("POST", url, form={"receptor": recipient, "sender": sender, "message": text})
-            ret = body.get("return", {}) if isinstance(body, dict) else {}
-            if code >= 400 or str(ret.get("status", 200)) not in {"200", "OK"}:
-                raise AppError(str(body)[:220] if body else str(code))
-            status, detail = "sent", "کاوه‌نگار"
-        elif provider == "melipayamak" and settings.get("sms_username"):
-            sender = settings.get("sms_sender") or ""
-            if not sender:
-                raise AppError("شماره خط ملی‌پیامک خالی است")
-            code, body = http_request(
-                "POST",
-                "https://rest.payamak-panel.com/api/SendSMS/SendSMS",
-                payload={
-                    "username": settings["sms_username"],
-                    "password": settings.get("sms_password") or "",
-                    "to": recipient,
-                    "from": sender,
-                    "text": text,
-                    "isFlash": False,
-                },
-            )
-            ret = body.get("RetStatus") if isinstance(body, dict) else None
-            if code >= 400 or ret not in (1, "1"):
-                raise AppError(str(body)[:220] if body else str(code))
-            status, detail = "sent", "ملی‌پیامک"
-    except Exception as exc:
-        status, detail = "failed", str(exc)[:300]
     conn.execute(
         "INSERT INTO notifications (channel, recipient, body, status, detail, created_at, cost) VALUES ('sms',?,?,?,?,?,?)",
         (recipient, text, status, detail, iso(), cost if status != "failed" else 0),
@@ -1807,22 +1779,106 @@ def version_tuple(value: str) -> tuple[int, ...]:
     return tuple(parts) or (0,)
 
 
+def render_pattern(template: str, values: dict) -> tuple[str, list[str]]:
+    args = []
+
+    def replace(match: re.Match) -> str:
+        value = str(values.get(match.group(1), ""))
+        args.append(value)
+        return value
+
+    text = re.sub(r"\{([^{}]+)\}", replace, template)
+    return text, args
+
+
+def shop_sms_identity(conn) -> tuple[str, str]:
+    shop = conn.execute("SELECT phone FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    settings = get_settings(conn)
+    return (shop["phone"] if shop else ""), (settings.get("shop_name") or "")
+
+
+def push_sms_patterns(conn) -> None:
+    settings = get_settings(conn)
+    phone, shop = shop_sms_identity(conn)
+    patterns = []
+    for pattern_id, title, key in (
+        ("buyer", "پیامک خریدار", "sms_pattern_buyer"),
+        ("manager", "پیامک مدیر", "sms_pattern_manager"),
+    ):
+        text = (settings.get(key) or "").strip()
+        if text:
+            patterns.append({"id": pattern_id, "title": title, "text": text})
+    if not patterns:
+        return
+    payload = {
+        "key": HOST_MAIL_KEY,
+        "action": "patterns",
+        "shop_phone": phone,
+        "shop": shop,
+        "patterns": patterns,
+    }
+    for url in HOST_SMS_PATTERN_URLS:
+        try:
+            http_request("POST", url, payload=payload, timeout=8)
+        except Exception:
+            log.warning("sms pattern was not stored on webakery")
+
+
+def send_shop_pattern(conn, pattern_id: str, recipient: str, values: dict) -> tuple[str, str]:
+    settings = get_settings(conn)
+    template = (settings.get(f"sms_pattern_{pattern_id}") or "").strip()
+    recipient = norm_phone(recipient)
+    if not template or not re.fullmatch(r"09\d{9}", recipient):
+        return "skipped", ""
+    text, args = render_pattern(template, values)
+    status, detail = "internal", "در صندوق پیامک سیستم ثبت شد"
+    phone, shop = shop_sms_identity(conn)
+    payload = {
+        "key": HOST_MAIL_KEY,
+        "action": "send",
+        "shop_phone": phone,
+        "shop": shop,
+        "pattern": pattern_id,
+        "to": recipient,
+        "args": args,
+        "text": text,
+    }
+    payload.pop("password", None)
+    for url in HOST_SMS_PATTERN_URLS:
+        try:
+            code, body = http_request("POST", url, payload=payload, timeout=8)
+        except Exception as exc:
+            log.warning("sms pattern send: %s", exc)
+            continue
+        if code < 400 and isinstance(body, dict) and body.get("ok"):
+            if body.get("sent"):
+                status, detail = "sent", "ملی‌پیامک"
+            else:
+                status, detail = "internal", str(body.get("detail") or detail)[:300]
+            break
+    conn.execute(
+        "INSERT INTO notifications (channel, recipient, body, status, detail, created_at, cost) VALUES ('sms',?,?,?,?,?,0)",
+        (recipient, text, status, detail, iso()),
+    )
+    return status, detail
+
+
 def notify_buyer(sale: dict) -> dict:
     phone = norm_phone(sale.get("customer_phone") or "")
     if not re.fullmatch(r"09\d{9}", phone):
         return {"status": "skipped", "detail": ""}
     name = sale.get("customer_name") or "مشتری"
-    text = f"{name} عزیز\nخرید حضوری شما ثبت شد.\nمبلغ: {int(sale['payable']):,} تومان\nفاکتور: {sale['id']}"
+    values = {"نام": name, "مبلغ": f"{int(sale['payable']):,}", "فاکتور": str(sale["id"])}
     try:
         with connect() as conn:
-            status, detail = deliver_sms(conn, get_settings(conn), phone, text)
+            status, detail = send_shop_pattern(conn, "buyer", phone, values)
     except Exception:
         log.exception("buyer sms")
         return {"status": "failed", "detail": "پیامک خریدار ثبت نشد"}
     if status == "sent":
         note = "پیامک ثبت خرید به شماره خریدار رفت"
     elif status == "internal":
-        note = "پیامک در صندوق پیامک ثبت شد. برای رسیدن به گوشی خریدار، کاوه‌نگار یا ملی‌پیامک را در تنظیمات بگذارید."
+        note = "پیامک در صندوق پیامک ثبت شد. متن الگو در پنل ملی‌پیامک وب‌بیکری ثبت می‌شود."
     else:
         note = f"پیامک نرفت: {detail}"
     return {"status": status, "detail": note}
@@ -3701,7 +3757,7 @@ def push_support_to_host(item: dict) -> tuple[str, str]:
             last = str(exc)
             continue
         if status < 400 and isinstance(body, dict) and body.get("ok"):
-            return "host", "در پیشخوان وب‌بیکری ثبت شد"
+            return "host", "برای پشتیبان اپ ارسال شد. به زودی با شما تماس می‌گیریم."
         if isinstance(body, dict) and body.get("message"):
             last = str(body.get("message"))
         elif isinstance(body, dict) and body.get("error"):
@@ -3754,9 +3810,12 @@ def support_send():
     body = clean_text(payload.get("body"), "متن", 1000, required=True)
     page = clean_text(payload.get("page"), "صفحه", 40)
     error = clean_text(payload.get("error"), "خطا", 300)
+    image = str(payload.get("image") or "")
+    if not image.startswith("data:image/") or len(image) > 700_000 or ";base64," not in image:
+        image = ""
     with connect() as conn:
         settings = get_settings(conn)
-        delivery, detail = push_support_to_host({
+        item = {
             "kind": kind,
             "body": body,
             "page": page,
@@ -3766,7 +3825,10 @@ def support_send():
             "phone": user["phone"],
             "version": APP_VERSION,
             "channel": update_channel(),
-        })
+        }
+        if image:
+            item["image"] = image
+        delivery, detail = push_support_to_host(item)
         cur = conn.execute(
             """INSERT INTO support_messages (kind, body, page, app_version, error, delivery, detail, user_id, created_at)
                VALUES (?,?,?,?,?,?,?,?,?)""",
@@ -5486,7 +5548,12 @@ def create_sale():
             result = sale_payload(conn, sale_id)
         return jsonify(**result)
     if settings.get("sms_on_sale") == "1":
-        notify_manager(settings, f"دفترچی: فروش {payable:,} تومان، فاکتور {sale_id}")
+        with connect() as conn:
+            send_shop_pattern(conn, "manager", manager_phone(settings), {
+                "نام": result["sale"].get("customer_name") or "",
+                "مبلغ": f"{payable:,}",
+                "فاکتور": str(sale_id),
+            })
     if alerts and settings.get("sms_low_stock") == "1":
         notify_manager(settings, "دفترچی: موجودی کم شد: " + "، ".join(alerts))
     maybe_send_moadian(sale_id)
@@ -5551,7 +5618,12 @@ def confirm_sale(sale_id: int):
         result = sale_payload(conn, sale_id)
         settings = get_settings(conn)
     if settings.get("sms_on_sale") == "1":
-        notify_manager(settings, f"دفترچی: فروش درگاهی {result['sale']['payable']:,} تومان، فاکتور {sale_id}")
+        with connect() as conn:
+            send_shop_pattern(conn, "manager", manager_phone(settings), {
+                "نام": result["sale"].get("customer_name") or "",
+                "مبلغ": f"{result['sale']['payable']:,}",
+                "فاکتور": str(sale_id),
+            })
     if alerts and settings.get("sms_low_stock") == "1":
         notify_manager(settings, "دفترچی: موجودی کم شد: " + "، ".join(alerts))
     maybe_send_moadian(sale_id)
@@ -6387,6 +6459,7 @@ def put_settings():
     require_admin()
     with connect() as conn:
         save_settings(conn, body_json())
+        push_sms_patterns(conn)
         data = get_settings(conn)
     return jsonify(settings=public_settings(data))
 

@@ -72,6 +72,192 @@ function daftarchi_sms_route() {
         'permission_callback' => '__return_true',
         'callback' => 'daftarchi_sms_rest_save',
     ));
+    register_rest_route('daftarchi/v1', '/sms-pattern', array(
+        'methods' => 'POST',
+        'permission_callback' => '__return_true',
+        'callback' => 'daftarchi_sms_pattern_rest',
+    ));
+}
+
+function daftarchi_sms_panel() {
+    $panel = get_option('daftarchi_melipayamak', array());
+    return is_array($panel) ? $panel : array();
+}
+
+function daftarchi_sms_patterns() {
+    $rows = get_option('daftarchi_sms_patterns', array());
+    return is_array($rows) ? $rows : array();
+}
+
+function daftarchi_sms_pattern_key($shop_phone, $pattern) {
+    return daftarchi_sms_phone($shop_phone) . '__' . sanitize_key((string) $pattern);
+}
+
+function daftarchi_sms_pattern_vars($text) {
+    $index = 0;
+    return preg_replace_callback('/\{[^{}]+\}/u', function () use (&$index) {
+        $token = '{' . $index . '}';
+        $index++;
+        return $token;
+    }, (string) $text);
+}
+
+function daftarchi_sms_keep_pattern($row) {
+    $rows = daftarchi_sms_patterns();
+    $key = daftarchi_sms_pattern_key($row['shop_phone'], $row['id']);
+    $kept = false;
+    foreach ($rows as $index => $old) {
+        if (!is_array($old)) {
+            continue;
+        }
+        if (daftarchi_sms_pattern_key($old['shop_phone'] ?? '', $old['id'] ?? '') !== $key) {
+            continue;
+        }
+        $row['body_id'] = (string) ($old['body_id'] ?? '');
+        $rows[$index] = $row;
+        $kept = true;
+        break;
+    }
+    if (!$kept) {
+        $row['body_id'] = '';
+        $rows[] = $row;
+    }
+    if (count($rows) > 500) {
+        $rows = array_slice($rows, -500);
+    }
+    update_option('daftarchi_sms_patterns', $rows, false);
+}
+
+function daftarchi_sms_pattern_rest($request) {
+    if (!daftarchi_sms_key_ok($request)) {
+        return new WP_Error('forbidden', 'کلید نادرست است', array('status' => 403));
+    }
+    $params = $request->get_params();
+    if (!empty($params['password']) || !empty($params['password_hash']) || !empty($params['token'])) {
+        return new WP_Error('secret', 'رمز ذخیره نمی‌شود', array('status' => 400));
+    }
+    $action = sanitize_key((string) ($params['action'] ?? ''));
+    if ($action === 'patterns') {
+        $shop_phone = daftarchi_sms_phone($params['shop_phone'] ?? '');
+        $shop = mb_substr(sanitize_text_field((string) ($params['shop'] ?? '')), 0, 80);
+        $patterns = $params['patterns'] ?? array();
+        if (!is_array($patterns)) {
+            $patterns = array();
+        }
+        foreach ($patterns as $pattern) {
+            if (!is_array($pattern)) {
+                continue;
+            }
+            $text = trim(sanitize_textarea_field((string) ($pattern['text'] ?? '')));
+            $id = sanitize_key((string) ($pattern['id'] ?? ''));
+            if ($text === '' || $id === '') {
+                continue;
+            }
+            daftarchi_sms_keep_pattern(array(
+                'id' => $id,
+                'title' => mb_substr(sanitize_text_field((string) ($pattern['title'] ?? $id)), 0, 80),
+                'text' => mb_substr($text, 0, 400),
+                'shop' => $shop,
+                'shop_phone' => $shop_phone,
+                'updated_at' => gmdate('c'),
+            ));
+        }
+        return new WP_REST_Response(array('ok' => true, 'service' => 'daftarchi-sms-pattern'), 200);
+    }
+    if ($action !== 'send') {
+        return new WP_Error('action', 'درخواست پیامک نامعتبر است', array('status' => 400));
+    }
+    $shop_phone = daftarchi_sms_phone($params['shop_phone'] ?? '');
+    $pattern_id = sanitize_key((string) ($params['pattern'] ?? ''));
+    $to = daftarchi_sms_phone($params['to'] ?? '');
+    $body_id = '';
+    foreach (daftarchi_sms_patterns() as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        if (daftarchi_sms_pattern_key($row['shop_phone'] ?? '', $row['id'] ?? '') === daftarchi_sms_pattern_key($shop_phone, $pattern_id)) {
+            $body_id = preg_replace('/\D+/', '', (string) ($row['body_id'] ?? ''));
+            break;
+        }
+    }
+    $panel = daftarchi_sms_panel();
+    if ($body_id === '' || empty($panel['username']) || empty($panel['password'])) {
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'sent' => false,
+            'detail' => 'الگو هنوز در ملی‌پیامک ثبت نشده',
+        ), 200);
+    }
+    $args = array();
+    foreach ((array) ($params['args'] ?? array()) as $arg) {
+        $args[] = mb_substr(sanitize_text_field((string) $arg), 0, 80);
+    }
+    $response = wp_remote_post('https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber', array(
+        'timeout' => 12,
+        'headers' => array('Content-Type' => 'application/json; charset=utf-8'),
+        'body' => wp_json_encode(array(
+            'username' => (string) $panel['username'],
+            'password' => (string) $panel['password'],
+            'text' => implode(';', $args),
+            'to' => $to,
+            'bodyId' => (int) $body_id,
+        )),
+    ));
+    if (is_wp_error($response)) {
+        return new WP_REST_Response(array('ok' => true, 'sent' => false, 'detail' => 'ملی‌پیامک پاسخ نداد'), 200);
+    }
+    $decoded = json_decode(wp_remote_retrieve_body($response), true);
+    $ret = is_array($decoded) ? (string) ($decoded['RetStatus'] ?? '') : '';
+    if ((int) wp_remote_retrieve_response_code($response) < 400 && ($ret === '1' || $ret === 'Ok')) {
+        return new WP_REST_Response(array('ok' => true, 'sent' => true, 'detail' => 'ملی‌پیامک'), 200);
+    }
+    $message = is_array($decoded) ? (string) ($decoded['StrRetStatus'] ?? 'ارسال الگو ناموفق بود') : 'ارسال الگو ناموفق بود';
+    return new WP_REST_Response(array('ok' => true, 'sent' => false, 'detail' => mb_substr($message, 0, 180)), 200);
+}
+
+add_action('admin_post_daftarchi_sms_panel', 'daftarchi_sms_save_panel');
+add_action('admin_post_daftarchi_sms_bodies', 'daftarchi_sms_save_bodies');
+
+function daftarchi_sms_save_panel() {
+    if (!current_user_can('manage_options')) {
+        wp_die('دسترسی ندارید');
+    }
+    check_admin_referer('daftarchi_sms_panel');
+    $panel = daftarchi_sms_panel();
+    $panel['username'] = sanitize_text_field((string) ($_POST['username'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+    if ($password !== '') {
+        $panel['password'] = $password;
+    }
+    $panel['sender'] = preg_replace('/\D+/', '', (string) ($_POST['sender'] ?? ''));
+    update_option('daftarchi_melipayamak', $panel, false);
+    wp_safe_redirect(admin_url('admin.php?page=daftarchi-sms'));
+    exit;
+}
+
+function daftarchi_sms_save_bodies() {
+    if (!current_user_can('manage_options')) {
+        wp_die('دسترسی ندارید');
+    }
+    check_admin_referer('daftarchi_sms_bodies');
+    $posted = $_POST['body_id'] ?? array();
+    if (!is_array($posted)) {
+        $posted = array();
+    }
+    $rows = daftarchi_sms_patterns();
+    foreach ($rows as $index => $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $key = daftarchi_sms_pattern_key($row['shop_phone'] ?? '', $row['id'] ?? '');
+        if (!array_key_exists($key, $posted)) {
+            continue;
+        }
+        $rows[$index]['body_id'] = preg_replace('/\D+/', '', (string) $posted[$key]);
+    }
+    update_option('daftarchi_sms_patterns', $rows, false);
+    wp_safe_redirect(admin_url('admin.php?page=daftarchi-sms'));
+    exit;
 }
 
 function daftarchi_sms_rest_save($request) {
@@ -125,6 +311,46 @@ function daftarchi_sms_page() {
     }
     echo '<div class="wrap">';
     echo '<h1>پیامک دفترچی</h1>';
+    echo '<h2>اتصال ملی‌پیامک</h2>';
+    echo '<p>نام کاربری و خط مشترک اینجاست. فروشگاه فقط متن الگو را می‌نویسد و شما همان متن را در پنل ملی‌پیامک به صورت الگو می‌سازید، بعد کد الگو را همین‌جا می‌گذارید.</p>';
+    $panel = daftarchi_sms_panel();
+    echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+    wp_nonce_field('daftarchi_sms_panel');
+    echo '<input type="hidden" name="action" value="daftarchi_sms_panel">';
+    echo '<table class="form-table"><tr><th>نام کاربری</th><td><input class="regular-text" name="username" value="' . esc_attr((string) ($panel['username'] ?? '')) . '"></td></tr>';
+    echo '<tr><th>رمز</th><td><input class="regular-text" type="password" name="password" placeholder="' . (!empty($panel['password']) ? 'ذخیره شده؛ برای عوض کردن بنویسید' : '') . '" autocomplete="new-password"></td></tr>';
+    echo '<tr><th>شماره خط</th><td><input class="regular-text" name="sender" value="' . esc_attr((string) ($panel['sender'] ?? '')) . '"></td></tr></table>';
+    submit_button('ذخیره اتصال');
+    echo '</form>';
+    echo '<h2>الگوهای فروشگاه</h2>';
+    $patterns = array_reverse(daftarchi_sms_patterns());
+    echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+    wp_nonce_field('daftarchi_sms_bodies');
+    echo '<input type="hidden" name="action" value="daftarchi_sms_bodies">';
+    echo '<table class="widefat striped"><thead><tr>';
+    echo '<th>فروشگاه</th><th>موبایل</th><th>عنوان</th><th>متن فروشگاه</th><th>متن الگو برای ملی‌پیامک</th><th>کد الگو</th>';
+    echo '</tr></thead><tbody>';
+    if (!$patterns) {
+        echo '<tr><td colspan="6">هنوز الگویی از فروشگاه نرسیده است.</td></tr>';
+    }
+    foreach ($patterns as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $key = daftarchi_sms_pattern_key($row['shop_phone'] ?? '', $row['id'] ?? '');
+        echo '<tr>';
+        echo '<td>' . esc_html((string) ($row['shop'] ?? '')) . '</td>';
+        echo '<td>' . esc_html((string) ($row['shop_phone'] ?? '')) . '</td>';
+        echo '<td>' . esc_html((string) ($row['title'] ?? '')) . '</td>';
+        echo '<td>' . esc_html((string) ($row['text'] ?? '')) . '</td>';
+        echo '<td>' . esc_html(daftarchi_sms_pattern_vars((string) ($row['text'] ?? ''))) . '</td>';
+        echo '<td><input name="body_id[' . esc_attr($key) . ']" value="' . esc_attr((string) ($row['body_id'] ?? '')) . '"></td>';
+        echo '</tr>';
+    }
+    echo '</tbody></table>';
+    submit_button('ذخیره کد الگوها');
+    echo '</form>';
+    echo '<h2>شارژ فروشگاه‌ها</h2>';
     echo '<p>فروشگاه پنل پیامک خودش را شارژ می‌کند. کارمزد هر تراکنش ۳ درصد است و جدا از مبلغ شارژ گرفته می‌شود.</p>';
     echo '<p>جمع شارژ: <strong>' . esc_html(number_format($credit)) . '</strong> تومان · جمع کارمزد شما: <strong>' . esc_html(number_format($fee)) . '</strong> تومان</p>';
     echo '<table class="widefat striped"><thead><tr>';

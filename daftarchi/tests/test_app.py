@@ -26,6 +26,8 @@ class DaftarchiTest(unittest.TestCase):
         def offline_accounts(method, url, payload=None, headers=None, form=None, timeout=12):
             if "accounts.php" in str(url):
                 return 404, {"raw": "missing"}
+            if "/daftarchi/v1/sms-pattern" in str(url):
+                return 200, {"ok": True, "sent": False, "detail": "در صندوق پیامک سیستم ثبت شد"}
             return self._http(method, url, payload=payload, headers=headers, form=form, timeout=timeout)
 
         appmod.http_request = offline_accounts
@@ -108,20 +110,20 @@ class DaftarchiTest(unittest.TestCase):
         entered = self.client.post("/api/auth/phone/enter", json={"phone": "09125556677", "code": sent.get_json()["preview_code"]})
         self.assertEqual(entered.status_code, 200, entered.get_json())
         self.assertEqual(entered.get_json()["user"]["phone"], "09125556677")
-        page = self.client.get("/static/js/app.js?v=1.1.27").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.28").get_data(as_text=True)
         self.assertIn("ثبت شماره موبایل", page)
         self.assertIn("فقط شماره موبایل را بنویسید", page)
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.27", page)
-        self.assertIn("/static/js/app.js?v=1.1.27", page)
+        self.assertIn("/static/css/app.css?v=1.1.28", page)
+        self.assertIn("/static/js/app.js?v=1.1.28", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.27")
+        css = self.client.get("/static/css/app.css?v=1.1.28")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.27", css.get_data(as_text=True))
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.28", css.get_data(as_text=True))
         health = self.client.get("/api/health")
         self.assertIn("no-store", health.headers["Cache-Control"])
         me = self.client.get("/api/auth/me").get_json()
@@ -137,10 +139,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.27", worker)
+        self.assertIn("daftarchi-1.1.28", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.27", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.27", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.28", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.28", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 119483)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
@@ -400,7 +402,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("اشرافی", preset)
         self.assertIn('"shop_mode": "offline"', preset)
         self.assertNotIn("studio_unlock", preset)
-        self.assertIn('APP_VERSION = "1.1.27"', app_text)
+        self.assertIn('APP_VERSION = "1.1.28"', app_text)
         self.assertIn("def hide_console()", app_text)
         self.assertFalse(any("studio-unlock" in name for name in names))
         self.assertFalse(any(name.endswith(".dmg") for name in names))
@@ -521,6 +523,62 @@ class DaftarchiTest(unittest.TestCase):
         customers = self.client.get("/api/customers").get_json()["customers"]
         self.assertEqual(customers[0]["phone"], "09121111111")
         self.assertEqual(customers[0]["balance"], 0)
+
+    def test_shop_pattern_is_sent_through_melipayamak(self):
+        page = self.client.get("/static/js/app.js?v=1.1.28").get_data(as_text=True)
+        self.assertIn("الگوی پیامک خریدار", page)
+        self.assertIn("به صورت الگو", page)
+        self.assertNotIn("کلید کاوه‌نگار", page)
+        saved = self.client.put("/api/settings", json={
+            "sms_pattern_buyer": "سلام {نام} خرید حضوری {مبلغ}",
+            "sms_on_sale": "1",
+            "sms_pattern_manager": "فروش {مبلغ}",
+            "manager_phone": "09120000000",
+        })
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        seen = {}
+
+        def fake_http(method, url, payload=None, headers=None, form=None, timeout=12):
+            if "/sms-pattern" in str(url):
+                seen.setdefault("calls", []).append(payload or {})
+                if (payload or {}).get("action") == "send":
+                    return 200, {"ok": True, "sent": True, "detail": "ملی‌پیامک"}
+                return 200, {"ok": True}
+            return 200, []
+
+        original = appmod.http_request
+        appmod.http_request = fake_http
+        try:
+            self.open_register(0)
+            product = self.add_product(barcode="6260001234001")
+            response = self.client.post("/api/sales", json={
+                "items": [{"product_id": product["id"], "qty": 1}],
+                "payment_method": "cash",
+                "customer_first": "نگار",
+                "customer_last": "پاکان",
+                "customer_phone": "09124445566",
+            })
+        finally:
+            appmod.http_request = original
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertEqual(response.get_json()["sms"]["status"], "sent")
+        sent = [item for item in seen["calls"] if item.get("action") == "send" and item.get("pattern") == "buyer"]
+        self.assertEqual(sent[-1]["to"], "09124445566")
+        self.assertEqual(sent[-1]["args"], ["نگار پاکان", "10,000"])
+        self.assertNotIn("password", sent[-1])
+
+    def test_source_zip_is_the_program(self):
+        zpath = Path(__file__).resolve().parents[1] / "deploy" / "Daftarchi-Source.zip"
+        self.assertTrue(zpath.is_file(), zpath)
+        with zipfile.ZipFile(zpath) as archive:
+            names = archive.namelist()
+            app_text = archive.read("Daftarchi-Source/app.py").decode()
+        self.assertIn('APP_VERSION = "1.1.13"', app_text)
+        self.assertIn("Daftarchi-Source/requirements.txt", names)
+        self.assertIn("Daftarchi-Source/static/js/app.js", names)
+        self.assertIn("Daftarchi-Source/templates/index.html", names)
+        self.assertIn("Daftarchi-Source/tests/test_app.py", names)
+        self.assertFalse(any(name.endswith(".zip") or name.endswith("python.exe") or "studio-unlock" in name for name in names))
 
     def test_zero_stock_is_sent_to_the_site_immediately(self):
         self.open_register(0)
@@ -1151,7 +1209,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(color.get_json()["product"]["name"], "تیشرت پاکان")
         clash = self.client.get("/api/products/scan", query_string={"code": "1234"})
         self.assertEqual(clash.status_code, 409)
-        page = self.client.get("/static/js/app.js?v=1.1.27").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.28").get_data(as_text=True)
         self.assertIn('data-act="dismiss"', page)
         self.assertIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
         self.assertIn('aria-label="بستن"', page)
@@ -1215,7 +1273,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(tried.status_code, 200, tried.get_json())
         self.assertEqual(calls, [(("192.168.1.50", 1362), 4)])
         self.assertEqual(self.client.get("/api/settings").get_json()["settings"]["pos_host"], "")
-        page = self.client.get("/static/js/app.js?v=1.1.27").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.28").get_data(as_text=True)
         self.assertIn("pos_host: data.pos_host", page)
 
     def test_archived_barcode_can_be_used_again(self):
@@ -2351,7 +2409,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.27")
+        self.assertEqual(appmod.APP_VERSION, "1.1.28")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -2416,7 +2474,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.27")
+        self.assertEqual(boot["version"], "1.1.28")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -2425,7 +2483,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.27", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.28", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)

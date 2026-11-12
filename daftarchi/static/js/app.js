@@ -155,6 +155,33 @@ function showUpdated() {
   try { sessionStorage.removeItem("daftarchi-updated"); } catch { /* ignore */ }
   toast("آپدیت شدی", { ok: true });
 }
+function shotData(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("تصویر خوانده نشد"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("تصویر خوانده نشد"));
+      img.onload = () => {
+        const max = 1280;
+        const scale = Math.min(1, max / Math.max(img.width, img.height, 1));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        let quality = 0.72;
+        let data = canvas.toDataURL("image/jpeg", quality);
+        while (data.length > 650000 && quality > 0.35) {
+          quality -= 0.12;
+          data = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(data);
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
+}
 function toast(message, options) {
   let el = document.getElementById("toast");
   if (!el) {
@@ -446,7 +473,7 @@ function supportHtml() {
     ? log.map((item) => `<article class="bubble ${item.kind === "bug" ? "bug" : ""}"><strong>${item.kind === "bug" ? "گزارش خطا" : "چت"}</strong><p>${esc(item.body)}</p>${item.detail ? `<p class="toast-remedy">${esc(item.detail)}</p>` : ""}</article>`).join("")
     : `<p class="empty">هنوز پیامی نیست.</p>`;
   const panel = state.supportTab === "bug"
-    ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><button class="btn primary" type="submit">ارسال گزارش</button></form>`
+    ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><div class="field"><label>اسکرین خطا</label><input type="file" name="shot" accept="image/*"></div><p class="hint">از هر صفحه، دکمه «ارسال اسکرین خطا» همین فرم را باز می‌کند. تصویر همان صفحه را انتخاب کنید.</p><button class="btn primary" type="submit">ارسال اسکرین و خطا</button></form>`
     : state.supportTab === "update"
       ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. با آپدیت، همین دفترچی عوض می‌شود و فروش‌ها می‌مانند.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>`
       : `<div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="field"><label>پیام</label><textarea name="body" required rows="3" placeholder="برای پشتیبانی بنویسید"></textarea></div><button class="btn primary" type="submit">ارسال به پشتیبانی</button></form>`;
@@ -868,7 +895,7 @@ function paintChrome() {
     ? `<span class="pill ${access.active ? "" : "warn"}">${access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
     : "";
   const status = document.getElementById("app-status");
-  if (status) status.innerHTML = `${accessPill}${pill}${desktopIconButton(false)}<button type="button" class="btn" data-act="password-modal">رمز</button><button type="button" class="btn" data-act="logout">خروج</button>`;
+  if (status) status.innerHTML = `${accessPill}${pill}${desktopIconButton(false)}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="password-modal">رمز</button><button type="button" class="btn" data-act="logout">خروج</button>`;
   const banner = document.getElementById("banner-host");
   if (banner) {
     banner.innerHTML = [
@@ -1283,7 +1310,7 @@ function smsHtml() {
       ${buyers.length ? buyers.map((row) => `<label class="check"><input type="checkbox" name="sms-customer" value="${row.id}">${esc(row.name)} <span class="ltr">${esc(row.phone)}</span></label>`).join("") : `<p class="empty">هنوز مشتری با موبایل ثبت نشده است.</p>`}
       <button type="button" class="btn primary" data-act="send-customer-sms">ارسال به انتخاب‌شده‌ها</button>
     </section>
-    <section class="card"><form data-act="send-sms"><div class="field"><label>یک شماره</label><input class="ltr" name="recipient" required placeholder="09..."></div><div class="field"><label>متن</label><textarea name="body" required></textarea></div><button class="btn primary" type="submit">ارسال</button><p class="hint">اگر کاوه‌نگار یا ملی‌پیامک در تنظیمات باشد، همان لحظه فرستاده می‌شود. وگرنه در صندوق دفترچی می‌ماند و از موجودی کم می‌شود.</p></form></section>
+    <section class="card"><form data-act="send-sms"><div class="field"><label>یک شماره</label><input class="ltr" name="recipient" required placeholder="09..."></div><div class="field"><label>متن</label><textarea name="body" required></textarea></div><button class="btn primary" type="submit">ارسال</button><p class="hint">ارسال آزاد از خط فروشگاه انجام نمی‌شود. فقط متن الگوهایی که در تنظیمات نوشته‌اید، بعد از ثبت در ملی‌پیامک فرستاده می‌شود.</p></form></section>
     <section class="card"><table><thead><tr><th>زمان</th><th>گیرنده</th><th>متن</th><th>وضعیت</th></tr></thead><tbody>
       ${state.sms.map((row) => `<tr><td>${esc(row.at_jalali)}</td><td class="ltr">${esc(row.recipient)}</td><td>${esc(row.body)}</td><td>${esc(row.status)} ${esc(row.detail || "")}</td></tr>`).join("") || `<tr><td colspan="4">پیامی نیست.</td></tr>`}
     </tbody></table></section></div>`;
@@ -1341,10 +1368,11 @@ function settingsHtml() {
       ${field("gateway_merchant", "مرچنت فروش کالا")}${field("gateway_callback", "آدرس بازگشت")}
       <label class="check"><input type="checkbox" name="gateway_sandbox" ${checked("gateway_sandbox")}>حالت آزمایشی زرین‌پال</label>
       <h2 class="section-title">پیامک</h2>
-      <div class="field"><label>سامانه</label><select name="sms_provider">${options([["internal", "فقط داخل دفترچی"], ["kavenegar", "کاوه‌نگار"], ["melipayamak", "ملی‌پیامک"]], s.sms_provider)}</select></div>
-      <div class="grid-2">${field("sms_api_key", "کلید کاوه‌نگار", "password")}${field("sms_sender", "شماره خط")}</div>
+      <p class="hint">کلید و شماره خط اینجا نیست. فقط متن الگو را بنویسید. همان متن در پنل وب‌بیکری می‌آید تا در ملی‌پیامک به صورت الگو ثبت شود. متغیرها: {نام} {مبلغ} {فاکتور}</p>
+      <div class="field"><label>الگوی پیامک خریدار</label><textarea name="sms_pattern_buyer" rows="3">${esc(s.sms_pattern_buyer || "")}</textarea></div>
+      <div class="field"><label>الگوی پیامک مدیر</label><textarea name="sms_pattern_manager" rows="3">${esc(s.sms_pattern_manager || "")}</textarea></div>
       ${field("manager_phone", "موبایل مدیر")}
-      <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>پیامک هر فروش به مدیر</label>
+      <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>بعد از هر فروش، الگوی مدیر فرستاده شود</label>
       <h2 class="section-title">سامانه مودیان</h2>
       ${field("moadian_fiscal_id", "شناسه حافظه مالیاتی")}
       <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>ارسال فاکتور به سامانه</label>
@@ -1709,11 +1737,15 @@ async function onSubmit(event) {
       toast("فاکتور اصلاح شد");
       render();
     } else if (act === "send-support") {
+      const file = form.querySelector('input[name="shot"]')?.files?.[0];
+      const image = file ? await shotData(file) : "";
+      if (image && image.length > 700000) throw new Error("حجم اسکرین زیاد است. تصویر کوچک‌تری بفرستید.");
       const result = await api("/api/support/messages", { method: "POST", body: {
         kind: data.kind === "bug" ? "bug" : "chat",
         body: data.body,
         page: state.page,
         error: state.lastError || "",
+        image,
       } });
       state.supportLog = (await api("/api/support/messages")).messages;
       state.support = true;
