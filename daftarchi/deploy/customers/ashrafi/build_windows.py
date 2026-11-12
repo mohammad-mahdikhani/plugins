@@ -13,7 +13,7 @@ QUIET_VBS = r"""Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 root = fso.GetParentFolderName(WScript.ScriptFullName)
 shell.CurrentDirectory = root
-env = shell.Environment("PROCESS")
+Set env = shell.Environment("PROCESS")
 env("DAFTARCHI_DATA") = root & "\data"
 env("DAFTARCHI_CHANNEL") = "customer"
 env("DAFTARCHI_PRESET") = root & "\preset.json"

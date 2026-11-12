@@ -359,6 +359,7 @@ class DaftarchiTest(unittest.TestCase):
             app_text = archive.read("Daftarchi-اشرافی/app/app.py").decode()
         self.assertIn("pythonw.exe", bat)
         self.assertIn("pythonw.exe", vbs)
+        self.assertIn("Set env = shell.Environment", vbs)
         self.assertIn("DAFTARCHI_PRESET", bat)
         self.assertIn("DAFTARCHI_PRESET", vbs)
         self.assertNotIn("DAFTARCHI_UNLOCK", bat)
