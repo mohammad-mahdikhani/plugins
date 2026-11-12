@@ -89,6 +89,7 @@ const state = {
   settings: null,
   users: [],
   importResult: null,
+  dismissed: null,
   importFile: null,
   support: false,
   updating: false,
@@ -1014,7 +1015,7 @@ function posHtml() {
       ${lowStockBanner(state.products)}
       ${checkAlertBanner()}
       <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد را اینجا بگیرید"></div>
-      ${state.scanHit ? `<div class="banner">همین بارکد: <strong>${esc(state.scanHit.name)}</strong> · قیمت ${money(state.scanHit.price)} · موجودی ${num(state.scanHit.stock)}</div>` : ""}
+      ${state.scanHit ? notice(`scan:${state.scanHit.name}:${state.scanHit.stock}`, `همین بارکد: <strong>${esc(state.scanHit.name)}</strong> · قیمت ${money(state.scanHit.price)} · موجودی ${num(state.scanHit.stock)}`) : ""}
       ${lines}
       <div class="grid-2">
         <div class="field"><label>تخفیف</label><input id="discount" value="${esc(state.discountValue)}" inputmode="numeric"></div>
@@ -1054,22 +1055,36 @@ function productRows() {
     ${shown.map((product) => `<tr><td>${thumb(product.image, product.name, true)}</td><td>${esc(product.name)}${product.woo_id ? ` <span class="pill">ووکامرس</span>` : ""}${product.type === "variable" ? ` <span class="pill">متغیر</span>` : ""}${variationLines(product)}</td><td class="ltr">${esc(product.barcode || "—")}</td><td class="ltr">${esc(product.tax_code || "—")}</td><td class="num">${product.type === "variable" ? `از ${money(product.price)}` : money(product.price)}</td><td class="num">${num(product.stock)} ${product.low ? `<span class="pill warn">کم</span>` : ""}</td><td class="row-actions">${isAdmin() ? `<button type="button" class="btn" data-act="edit-product" data-id="${product.id}">ویرایش</button><button type="button" class="btn danger" data-act="archive-product" data-id="${product.id}">بایگانی</button>` : ""}</td></tr>`).join("")}
   </tbody></table>${moreControl("more-products", rows.length, state.productLimit)}`;
 }
+function dismissedNotices() {
+  if (state.dismissed) return state.dismissed;
+  try {
+    state.dismissed = JSON.parse(sessionStorage.getItem("daftarchi-dismiss") || "{}");
+  } catch (error) {
+    state.dismissed = {};
+  }
+  return state.dismissed;
+}
+function notice(id, inner) {
+  if (!inner || dismissedNotices()[id]) return "";
+  return `<div class="banner notice"><div class="notice-text">${inner}</div><button type="button" class="notice-x" data-act="dismiss" data-id="${esc(id)}" aria-label="بستن">×</button></div>`;
+}
 function lowStockBanner(rows) {
   const low = (rows || []).filter((product) => product.low);
   if (!low.length) return "";
-  return `<div class="banner">موجودی این کالاها به زیر حد هشدار رسیده: ${low.slice(0, 8).map((product) => esc(product.name)).join("، ")}</div>`;
+  const id = `low:${low.map((product) => product.id).sort((a, b) => a - b).join(",")}`;
+  return notice(id, `موجودی این کالاها به زیر حد هشدار رسیده: ${low.slice(0, 8).map((product) => esc(product.name)).join("، ")}`);
 }
 function checkAlertBanner() {
   const alerts = state.checkAlerts || [];
   if (!alerts.length) return "";
-  return `<div class="banner">سررسید چک: ${alerts.slice(0, 4).map((row) => `${esc(row.number)} تا ${esc(row.due_jalali)}`).join("، ")}</div>`;
+  const id = `checks:${alerts.map((row) => row.id || row.number).join(",")}`;
+  return notice(id, `سررسید چک: ${alerts.slice(0, 4).map((row) => `${esc(row.number)} تا ${esc(row.due_jalali)}`).join("، ")}`);
 }
 function productsHtml() {
   const imported = state.importResult;
-  const banner = imported ? `<div class="banner">از اکسل ${num(imported.created)} کالا ثبت و ${num(imported.updated)} کالا به‌روز شد.
+  const banner = imported ? notice("import", `از اکسل ${num(imported.created)} کالا ثبت و ${num(imported.updated)} کالا به‌روز شد.
     ${imported.ids?.length ? `<button type="button" class="btn" data-act="woo-push-ids">ارسال همین‌ها به ووکامرس</button>` : ""}
-    ${imported.errors?.length ? `<div>${imported.errors.map((row) => `<div>ردیف ${num(row.row)}: ${esc(row.error)}</div>`).join("")}</div>` : ""}
-  </div>` : "";
+    ${imported.errors?.length ? `<div>${imported.errors.map((row) => `<div>ردیف ${num(row.row)}: ${esc(row.error)}</div>`).join("")}</div>` : ""}`) : "";
   const woo = state.shopMode !== "offline";
   return `<div class="stack">${lowStockBanner(state.products)}${banner}
     <section class="card"><div class="row-actions">
@@ -1966,6 +1981,16 @@ async function onClick(event) {
   if (act === "tour-replay") { await guard(() => replayTour()); return; }
   if (act === "nav") { await guard(() => navigate(el.dataset.page)); return; }
   if (act === "chart") { state.chart = el.dataset.range; render(); return; }
+  if (act === "dismiss") {
+    const id = el.dataset.id || "";
+    const bag = dismissedNotices();
+    bag[id] = true;
+    try { sessionStorage.setItem("daftarchi-dismiss", JSON.stringify(bag)); } catch (error) { /* keep it for this visit */ }
+    if (id.startsWith("scan:")) state.scanHit = null;
+    if (id === "import") state.importResult = null;
+    render();
+    return;
+  }
   if (act === "sms-topup") { await guard(() => startSmsTopup(el.dataset.amount)); return; }
   if (act === "send-customer-sms") {
     await guard(async () => {
@@ -2126,6 +2151,7 @@ async function onClick(event) {
       body.append("file", state.importFile);
       const result = await api("/api/products/import", { method: "POST", form: body });
       state.importResult = result;
+      delete dismissedNotices().import;
       state.importFile = null;
       state.modal = null;
       await loaders.products();

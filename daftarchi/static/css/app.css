@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.24") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.25") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.24") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.25") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.24") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.25") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -194,6 +194,17 @@ tr.selected { background: var(--soft); }
   border-radius: 12px;
   padding: 10px 12px;
   margin-bottom: 14px;
+}
+.banner.notice { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.notice-text { min-width: 0; }
+.notice-x {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
 }
 .empty { color: var(--muted); padding: 18px 4px; }
 .bars { display: flex; align-items: flex-end; gap: 4px; height: 150px; margin-top: 8px; }
