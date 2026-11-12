@@ -1,11 +1,11 @@
 {
-  "version": "1.1.25",
+  "version": "1.1.26",
   "channel": "customer",
-  "notes": "هشدار موجودی، سررسید چک و پیام بارکد دکمه بستن دارد.",
+  "notes": "بارکد را بگیرید، نام و قیمت خرید و قیمت فروش و تعداد را بنویسید. اگر سایت وصل باشد کالا آنجا هم ساخته می‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.25-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.26-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-12T10:13:35+00:00"
+  "published_at": "2026-11-12T10:28:31+00:00"
 }

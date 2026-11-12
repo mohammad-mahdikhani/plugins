@@ -1087,6 +1087,10 @@ function productsHtml() {
     ${imported.errors?.length ? `<div>${imported.errors.map((row) => `<div>ردیف ${num(row.row)}: ${esc(row.error)}</div>`).join("")}</div>` : ""}`) : "";
   const woo = state.shopMode !== "offline";
   return `<div class="stack">${lowStockBanner(state.products)}${banner}
+    ${isAdmin() ? `<section class="card"><h2 class="section-title">افزودن با بارکد</h2>
+      <div class="field"><label>بارکدخوان</label><input id="add-barcode" data-barcode="add" class="ltr" autocomplete="off" placeholder="بارکد را بگیرید"></div>
+      <p class="hint">بارکد را بگیرید. بعد نام، قیمت خرید، قیمت فروش و تعداد را بنویسید. اگر ووکامرس وصل باشد، کالا در سایت هم ساخته می‌شود.</p>
+    </section>` : ""}
     <section class="card"><div class="row-actions">
       ${isAdmin() ? `<button type="button" class="btn primary" data-act="new-product">کالای جدید</button>` : ""}
       <a class="btn" href="/api/products/template">نمونه اکسل</a>
@@ -1374,15 +1378,18 @@ function productForm() {
   const cost = product.cost ? product.cost : "";
   return `<form data-act="save-product"><h2 class="section-title">${product.id ? "ویرایش کالا" : "کالای جدید"}</h2>
     <input type="hidden" name="id" value="${product.id || ""}">
+    <div class="field"><label>بارکد</label><input class="ltr" name="barcode" data-barcode="product" autocomplete="off" placeholder="بارکد را با بارکدخوان بگیرید" value="${esc(product.barcode || "")}"><button type="button" class="btn" data-act="make-barcode">ساخت بارکد</button></div>
     <div class="field"><label>نام کالا</label><input name="name" value="${esc(product.name || "")}" required></div>
-    <div class="field"><label>قیمت فروش، تومان</label><input name="price" inputmode="decimal" required autocomplete="off" value="${price}" ${product.type === "variable" ? "readonly" : ""}></div>
-    ${product.type === "variable" ? `<p class="hint">موجودی و قیمت این کالا از متغیرهای ووکامرس می‌آید و با ویرایش اینجا عوض نمی‌شود.</p>${variationLines(product)}` : `<div class="field"><label>موجودی</label><input name="stock" inputmode="numeric" autocomplete="off" value="${product.id ? product.stock : ""}"></div>`}
-    <div class="field"><label>بارکد</label><input class="ltr" name="barcode" data-barcode="product" autocomplete="off" placeholder="بارکد را با بارکدخوان بگیرید" value="${esc(product.barcode || "")}"><button type="button" class="btn" data-act="make-barcode">ساخت بارکد</button><p class="hint">بارکدخوان را روی همین کادر بگیرید. اگر بارکد ندارد یا خوانده نمی‌شود، ساخت بارکد را بزنید یا خالی ذخیره کنید تا دفترچی یکی بسازد.</p></div>
+    <div class="grid-2">
+      <div class="field"><label>قیمت خرید، تومان</label><input name="cost" inputmode="numeric" autocomplete="off" placeholder="اختیاری" value="${cost}"></div>
+      <div class="field"><label>قیمت فروش، تومان</label><input name="price" inputmode="decimal" required autocomplete="off" value="${price}" ${product.type === "variable" ? "readonly" : ""}></div>
+    </div>
+    ${product.type === "variable" ? `<p class="hint">موجودی و قیمت این کالا از متغیرهای ووکامرس می‌آید و با ویرایش اینجا عوض نمی‌شود.</p>${variationLines(product)}` : `<div class="field"><label>تعداد</label><input name="stock" inputmode="numeric" autocomplete="off" value="${product.id ? product.stock : ""}"></div>`}
+    <p class="hint">اگر سایت وصل باشد، نام، قیمت فروش و تعداد روی سایت هم می‌نشیند.</p>
     <div class="field"><label>شناسه کالا/خدمت مودیان</label><input class="ltr" name="tax_code" inputmode="numeric" autocomplete="off" placeholder="۱۳ رقم، اختیاری" value="${esc(product.tax_code || "")}"></div>
     <details ${product.id ? "open" : ""}>
-      <summary>کد، قیمت خرید و تصویر</summary>
+      <summary>کد و تصویر</summary>
       <div class="field"><label>کد کالا</label><input name="sku" value="${esc(product.sku || "")}"></div>
-      <div class="field"><label>قیمت خرید، تومان</label><input name="cost" inputmode="numeric" placeholder="اختیاری" value="${cost}"></div>
       <div class="field"><label>آدرس تصویر</label><input class="ltr" name="image" value="${esc(product.image || "")}"></div>
       <div class="field"><label>یا بارگذاری تصویر</label><input type="file" name="file" accept="image/*"></div>
       ${product.image ? thumb(product.image, product.name) : ""}
@@ -1464,6 +1471,13 @@ function render() {
   if (state.focusBarcode) {
     document.getElementById("barcode")?.focus();
     state.focusBarcode = false;
+  }
+  if (state.focusName) {
+    document.querySelector('form[data-act="save-product"] input[name="name"]')?.focus();
+    state.focusName = false;
+  } else if (state.page === "products" && !state.modal) {
+    const active = document.activeElement;
+    if (!active || active === document.body) document.getElementById("add-barcode")?.focus();
   }
 }
 
@@ -1774,6 +1788,20 @@ async function onSubmit(event) {
   });
 }
 
+async function openProductFromBarcode(code) {
+  const trimmed = String(code || "").trim();
+  if (!trimmed) return;
+  try {
+    const data = await api(`/api/products/scan?code=${encodeURIComponent(trimmed)}`);
+    state.modal = { type: "product", product: data.product };
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    state.modal = { type: "product", product: { barcode: trimmed } };
+  }
+  state.page = "products";
+  state.focusName = true;
+  render();
+}
 async function saveProduct(form, data) {
   const file = form.querySelector('input[type="file"]')?.files?.[0];
   if (data.price !== undefined && data.price !== "") data.price = asInt(data.price);
@@ -2326,6 +2354,13 @@ function onChange(event) {
 let scanBuffer = "";
 let scanAt = 0;
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target?.dataset?.barcode === "add") {
+    event.preventDefault();
+    const code = event.target.value;
+    event.target.value = "";
+    guard(() => openProductFromBarcode(code));
+    return;
+  }
   if (event.target?.dataset?.barcode === "product" && event.key === "Enter") {
     event.preventDefault();
     return;

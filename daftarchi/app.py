@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.25"
+APP_VERSION = "1.1.26"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2460,12 +2460,38 @@ def woo_item(row) -> dict:
     }
     if row["sku"]:
         item["sku"] = row["sku"]
+    meta = []
     if row["barcode"]:
-        item["meta_data"] = [{"key": "barcode", "value": row["barcode"]}]
+        meta.append({"key": "barcode", "value": row["barcode"]})
+    if row["cost"]:
+        meta.append({"key": "purchase_price", "value": str(int(row["cost"]))})
+    if meta:
+        item["meta_data"] = meta
     image = row["image"] or ""
     if image.startswith("http://") or image.startswith("https://"):
         item["images"] = [{"src": image}]
     return item
+
+
+def publish_saved_product(conn, product_id: int) -> str:
+    row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
+    if not row or is_payment_product(row) or product_kind(row) == "variable":
+        return report_woo_stock(conn, product_id)
+    settings = get_settings(conn)
+    if not woo_auto_ready(settings):
+        return "کالا در دفترچی ذخیره شد. برای رفتن به سایت، آدرس و کلید ووکامرس را در تنظیمات بگذارید."
+    try:
+        if row["woo_id"]:
+            push_product_row_to_woo(settings, conn, product_id)
+            return "کالا ذخیره شد و روی سایت هم به‌روز شد."
+        _status, body = woo_request(settings, "POST", "products", payload=woo_item(row))
+        if not isinstance(body, dict) or not body.get("id"):
+            message = body.get("message") if isinstance(body, dict) else "پاسخ سایت نامعتبر بود"
+            return f"کالا در دفترچی ماند، اما به سایت نرفت: {message}"
+        conn.execute("UPDATE products SET woo_id=?, updated_at=? WHERE id=?", (int(body["id"]), iso(), product_id))
+        return "کالا ذخیره شد و در سایت هم ساخته شد."
+    except AppError as exc:
+        return f"کالا در دفترچی ماند، اما به سایت نرفت: {exc}"
 
 
 def remote_barcode(remote: dict) -> str | None:
@@ -4135,9 +4161,9 @@ def create_product():
             if stock:
                 log_stock(conn, product_id, "adjust", stock, 0, stock, "موجودی اولیه", user["id"])
         threshold = setting_int(get_settings(conn), "low_stock")
+        note = publish_saved_product(conn, product_id)
         row = conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
         product = present_product(conn, row, threshold)
-        note = report_woo_stock(conn, product_id)
     return jsonify(product=product, woo_sync_note=note)
 
 
@@ -4174,9 +4200,9 @@ def update_product(pid: int):
         if variable:
             variable_parent_stock(conn, pid)
         threshold = setting_int(get_settings(conn), "low_stock")
+        note = publish_saved_product(conn, pid)
         updated = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
         product = present_product(conn, updated, threshold)
-        note = report_woo_stock(conn, pid)
     return jsonify(product=product, woo_sync_note=note)
 
 

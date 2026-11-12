@@ -81,14 +81,14 @@ class DaftarchiTest(unittest.TestCase):
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.25", page)
-        self.assertIn("/static/js/app.js?v=1.1.25", page)
+        self.assertIn("/static/css/app.css?v=1.1.26", page)
+        self.assertIn("/static/js/app.js?v=1.1.26", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.25")
+        css = self.client.get("/static/css/app.css?v=1.1.26")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.25", css.get_data(as_text=True))
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.26", css.get_data(as_text=True))
         health = self.client.get("/api/health")
         self.assertIn("no-store", health.headers["Cache-Control"])
         me = self.client.get("/api/auth/me").get_json()
@@ -104,10 +104,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.25", worker)
+        self.assertIn("daftarchi-1.1.26", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.25", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.25", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.26", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.26", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 119483)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
@@ -367,7 +367,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("اشرافی", preset)
         self.assertIn('"shop_mode": "offline"', preset)
         self.assertNotIn("studio_unlock", preset)
-        self.assertIn('APP_VERSION = "1.1.25"', app_text)
+        self.assertIn('APP_VERSION = "1.1.26"', app_text)
         self.assertIn("def hide_console()", app_text)
         self.assertFalse(any("studio-unlock" in name for name in names))
         self.assertFalse(any(name.endswith(".dmg") for name in names))
@@ -1094,10 +1094,6 @@ class DaftarchiTest(unittest.TestCase):
         found = self.client.get("/api/products/scan", query_string={"code": own})
         self.assertEqual(found.status_code, 200, found.get_json())
         self.assertEqual(found.get_json()["product"]["name"], "بارکد داخلی")
-        page = self.client.get("/static/js/app.js?v=1.1.25").get_data(as_text=True)
-        self.assertIn('data-act="dismiss"', page)
-        self.assertIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
-        self.assertIn('aria-label="بستن"', page)
         parent = self.add_product(name="تیشرت پاکان", price=1000, stock=1, barcode="7000000000001")
         db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
         db.execute("UPDATE products SET product_type='variable' WHERE id=?", (parent["id"],))
@@ -1122,6 +1118,43 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(color.get_json()["product"]["name"], "تیشرت پاکان")
         clash = self.client.get("/api/products/scan", query_string={"code": "1234"})
         self.assertEqual(clash.status_code, 409)
+        page = self.client.get("/static/js/app.js?v=1.1.26").get_data(as_text=True)
+        self.assertIn('data-act="dismiss"', page)
+        self.assertIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
+        self.assertIn('aria-label="بستن"', page)
+        self.assertIn('data-barcode="add"', page)
+        self.assertIn("قیمت خرید، تومان", page)
+
+    def test_scanned_product_is_created_on_the_site(self):
+        seen = {}
+
+        def fake_http(method, url, payload=None, headers=None, form=None, timeout=12):
+            if method == "POST" and "/products" in str(url) and "batch" not in str(url):
+                seen["payload"] = payload
+                return 200, {"id": 91, "name": payload["name"]}
+            return 200, []
+
+        original = appmod.http_request
+        appmod.http_request = fake_http
+        try:
+            self.client.put("/api/settings", json={
+                "wp_url": "https://shop.example",
+                "woo_key": "ck_test",
+                "woo_secret": "cs_test",
+            })
+            made = self.client.post("/api/products", json={
+                "name": "شیر", "price": 12000, "cost": 8000, "stock": 4, "barcode": "6260001234567",
+            })
+        finally:
+            appmod.http_request = original
+        self.assertEqual(made.status_code, 200, made.get_json())
+        self.assertEqual(made.get_json()["woo_sync_note"], "کالا ذخیره شد و در سایت هم ساخته شد.")
+        self.assertEqual(made.get_json()["product"]["woo_id"], 91)
+        self.assertEqual(seen["payload"]["regular_price"], "12000")
+        self.assertEqual(seen["payload"]["stock_quantity"], 4)
+        metas = {item["key"]: item["value"] for item in seen["payload"]["meta_data"]}
+        self.assertEqual(metas["barcode"], "6260001234567")
+        self.assertEqual(metas["purchase_price"], "8000")
 
     def test_archived_barcode_can_be_used_again(self):
         product = self.add_product()
@@ -2256,7 +2289,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.25")
+        self.assertEqual(appmod.APP_VERSION, "1.1.26")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -2321,7 +2354,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.25")
+        self.assertEqual(boot["version"], "1.1.26")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -2330,7 +2363,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.25", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.26", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)
