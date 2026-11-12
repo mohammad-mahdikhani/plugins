@@ -682,7 +682,7 @@ async function createDesktopIcon() {
   toast("فایل آیکون دانلود شد. آن را روی دسکتاپ بگذارید و باز کنید.");
 }
 function logo() {
-  return `<svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="4" width="20" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v24M16 12h6M16 17h6" stroke="currentColor" stroke-width="2"/></svg>`;
+  return `<svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#16315f"/><path d="M8.5 7.2h11.2L23.6 11v13.6a1.8 1.8 0 0 1-1.8 1.8H8.5a1.8 1.8 0 0 1-1.8-1.8V9a1.8 1.8 0 0 1 1.8-1.8z" fill="#f8f3e8"/><path d="M19.6 7.2l.1 3.6h3.8" fill="#e8dcc6"/><rect x="10.2" y="13" width="6.4" height="1.5" rx=".7" fill="#1b3a70"/><rect x="10.2" y="16.1" width="7.4" height="1.5" rx=".7" fill="#1b3a70"/><rect x="10.2" y="19.2" width="4.6" height="1.5" rx=".7" fill="#1b3a70"/><circle cx="19.4" cy="21.2" r="2.15" fill="none" stroke="#c99a3f" stroke-width="1.35"/></svg>`;
 }
 function shopBrand() {
   return {

@@ -117,7 +117,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.31"
+APP_VERSION = "1.1.32"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -3327,8 +3327,14 @@ def place_windows_desktop_icon() -> str:
         raise AppError("آیکون دسکتاپ از داخل خود ویندوز ساخته می‌شود.")
     root = Path(__file__).resolve().parent
     icon = root / "static" / "daftarchi.ico"
+    parent_icon = root.parent / "daftarchi.ico"
+    if icon.is_file() and parent_icon.parent.is_dir():
+        try:
+            parent_icon.write_bytes(icon.read_bytes())
+        except OSError:
+            log.warning("installed icon file was not replaced")
     if not icon.is_file():
-        icon = root.parent / "daftarchi.ico"
+        icon = parent_icon
     parent = root.parent
     vbs = parent / "Start-Daftarchi.vbs"
     bat = parent / "Start-Daftarchi.bat"
@@ -3336,19 +3342,34 @@ def place_windows_desktop_icon() -> str:
         raise AppError("فایل آیکون دفترچی کنار برنامه نیست.")
     target = vbs if vbs.is_file() else bat if bat.is_file() else Path(__import__("sys").executable)
     work = target.parent
+    names = "دفترچی.lnk", "دفترچی اشرافی.lnk"
     script = (
         "$desktop = [Environment]::GetFolderPath('Desktop')\n"
-        "$path = Join-Path $desktop ([char]0x062F + [char]0x0641 + [char]0x062A + [char]0x0631 + [char]0x0686 + [char]0x06CC + '.lnk')\n"
         "$shell = New-Object -ComObject WScript.Shell\n"
-        "$link = $shell.CreateShortcut($path)\n"
-        f"$link.TargetPath = '{target}'\n"
-        f"$link.WorkingDirectory = '{work}'\n"
-        f"$link.IconLocation = '{icon},0'\n"
-        "$link.WindowStyle = 7\n"
-        "$link.Description = 'Daftarchi'\n"
-        "$link.Save()\n"
-        "Write-Output $path\n"
+        f"$icon = '{icon},0'\n"
+        f"$target = '{target}'\n"
+        f"$work = '{work}'\n"
     )
+    for index, name in enumerate(names):
+        chars = " + ".join(f"[char]0x{ord(ch):04X}" for ch in name)
+        script += (
+            f"$name{index} = {chars}\n"
+            f"$path{index} = Join-Path $desktop $name{index}\n"
+        )
+        if index:
+            script += f"if (Test-Path $path{index}) {{\n"
+        script += (
+            f"$link = $shell.CreateShortcut($path{index})\n"
+            "$link.TargetPath = $target\n"
+            "$link.WorkingDirectory = $work\n"
+            "$link.IconLocation = $icon\n"
+            "$link.WindowStyle = 7\n"
+            "$link.Description = 'Daftarchi'\n"
+            "$link.Save()\n"
+        )
+        if index:
+            script += "}\n"
+    script += "Write-Output 'ok'\n"
     try:
         done = subprocess.run(
             ["powershell", "-NoProfile", "-Command", script],
@@ -3367,8 +3388,12 @@ def place_windows_desktop_icon() -> str:
 def ensure_windows_desktop_icon() -> None:
     if os.name != "nt":
         return
+    icon = Path(__file__).resolve().parent / "static" / "daftarchi.ico"
+    if not icon.is_file():
+        icon = Path(__file__).resolve().parent.parent / "daftarchi.ico"
+    digest = hashlib.sha256(icon.read_bytes()).hexdigest() if icon.is_file() else ""
     flag = DATA / "desktop-icon.ok"
-    if flag.is_file():
+    if digest and flag.is_file() and flag.read_text(encoding="utf-8").strip() == digest:
         return
     try:
         place_windows_desktop_icon()
@@ -3379,7 +3404,7 @@ def ensure_windows_desktop_icon() -> None:
         log.exception("desktop icon")
         return
     try:
-        flag.write_text("1", encoding="utf-8")
+        flag.write_text(digest or "1", encoding="utf-8")
     except OSError:
         log.warning("desktop icon flag was not saved")
 

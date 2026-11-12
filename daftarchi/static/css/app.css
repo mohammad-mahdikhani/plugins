@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.31") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.32") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.31") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.32") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.31") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.32") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -297,7 +297,7 @@ summary { cursor: pointer; font-weight: 600; }
 }
 .appbar .brand { margin: 0; min-width: 0; gap: 8px; }
 .appbar .mark { width: 28px; height: 28px; border-radius: 8px; overflow: hidden; }
-.appbar .mark svg { width: 16px; height: 16px; }
+.mark svg { width: 78%; height: 78%; }
 .appbar .mark img { width: 100%; height: 100%; object-fit: cover; }
 .appbar .brand strong { font-size: 15px; font-weight: 600; }
 .appbar .top-actions { margin-inline-start: auto; }
