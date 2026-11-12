@@ -81,14 +81,14 @@ class DaftarchiTest(unittest.TestCase):
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.21", page)
-        self.assertIn("/static/js/app.js?v=1.1.21", page)
+        self.assertIn("/static/css/app.css?v=1.1.22", page)
+        self.assertIn("/static/js/app.js?v=1.1.22", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.21")
+        css = self.client.get("/static/css/app.css?v=1.1.22")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.21", css.get_data(as_text=True))
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.22", css.get_data(as_text=True))
         health = self.client.get("/api/health")
         self.assertIn("no-store", health.headers["Cache-Control"])
         me = self.client.get("/api/auth/me").get_json()
@@ -104,10 +104,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.21", worker)
+        self.assertIn("daftarchi-1.1.22", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.21", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.21", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.22", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.22", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 119483)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
@@ -366,7 +366,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("اشرافی", preset)
         self.assertIn('"shop_mode": "offline"', preset)
         self.assertNotIn("studio_unlock", preset)
-        self.assertIn('APP_VERSION = "1.1.21"', app_text)
+        self.assertIn('APP_VERSION = "1.1.22"', app_text)
         self.assertIn("def hide_console()", app_text)
         self.assertFalse(any("studio-unlock" in name for name in names))
         self.assertFalse(any(name.endswith(".dmg") for name in names))
@@ -1501,7 +1501,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("api.telegram.org/bot" + token + "/sendMessage", seen["url"])
         self.assertEqual(seen["chat"], "55001")
         self.assertIn("صندوق بسته ماند", seen["text"])
-        self.assertIn("1.1.21", seen["text"])
+        self.assertIn("1.1.22", seen["text"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
         self.assertEqual(listed[-1]["delivery"], "telegram")
@@ -2151,6 +2151,19 @@ class DaftarchiTest(unittest.TestCase):
         finally:
             appmod.http_request = original
 
+    def test_windowed_python_can_still_print(self):
+        import sys
+        old_out, old_err = sys.stdout, sys.stderr
+        try:
+            sys.stdout = None
+            sys.stderr = None
+            appmod.quiet_stdio()
+            self.assertIsNotNone(sys.stdout)
+            print("دفترچی", file=sys.stdout)
+        finally:
+            sys.stdout = old_out
+            sys.stderr = old_err
+
     def test_update_restarts_quietly_and_says_so(self):
         import inspect
         source = inspect.getsource(appmod.schedule_restart)
@@ -2217,7 +2230,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.21")
+        self.assertEqual(appmod.APP_VERSION, "1.1.22")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -2282,7 +2295,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.21")
+        self.assertEqual(boot["version"], "1.1.22")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -2291,7 +2304,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.21", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.22", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)

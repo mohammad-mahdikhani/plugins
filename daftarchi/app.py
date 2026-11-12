@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.21"
+APP_VERSION = "1.1.22"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -6489,16 +6489,37 @@ def hide_console() -> None:
         return
 
 
+def quiet_stdio() -> None:
+    """pythonw.exe has no console, and print() would kill the app before it listens."""
+    import sys
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    sink = open(os.devnull, "w", encoding="utf-8", errors="replace")
+    if sys.stdout is None:
+        sys.stdout = sink
+    if sys.stderr is None:
+        sys.stderr = sink
+    for handler in logging.root.handlers:
+        if getattr(handler, "stream", None) is None:
+            handler.stream = sys.stderr
+
+
 def main():
     import time
 
+    quiet_stdio()
     hide_console()
     port = int(os.environ.get("PORT", "8080"))
     print(f"دفترچی روی http://127.0.0.1:{port}")
     threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
     if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
         def _open_browser():
-            time.sleep(0.8)
+            for _ in range(40):
+                try:
+                    with socket.create_connection(("127.0.0.1", port), timeout=0.3):
+                        break
+                except OSError:
+                    time.sleep(0.25)
             import webbrowser
             webbrowser.open(f"http://127.0.0.1:{port}")
         threading.Thread(target=_open_browser, daemon=True).start()
