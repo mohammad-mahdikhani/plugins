@@ -1399,15 +1399,55 @@ function smsHtml() {
     </tbody></table></section></div>`;
 }
 
+function smsVarChips(field) {
+  const vars = [
+    ["mobile", "شماره موبایل مشتری"],
+    ["phone", "شماره تلفن مشتری"],
+    ["email", "ایمیل مشتری"],
+    ["status", "وضعیت سفارش"],
+    ["all_items", "محصولات سفارش"],
+    ["all_items_full", "محصولات سفارش با نام کامل متغیر"],
+    ["all_items_qty", "محصولات سفارش بهمراه تعداد"],
+    ["item_count", "تعداد محصولات سفارش"],
+    ["price", "مبلغ سفارش"],
+    ["order_id", "شماره سفارش"],
+    ["order_number", "شماره سفارش اصلی"],
+    ["transaction_id", "شماره تراکنش"],
+    ["order_date", "تاریخ سفارش"],
+    ["customer_note", "توضیحات مشتری"],
+    ["payment_method", "روش پرداخت"],
+    ["shipping_method", "روش ارسال"],
+    ["payment_link", "لینک پرداخت"],
+    ["sh_first_name", "نام مشتری"],
+    ["sh_last_name", "نام خانوادگی مشتری"],
+    ["b_company", "نام شرکت"],
+    ["b_country", "کشور"],
+    ["b_state", "ایالت/استان"],
+    ["b_city", "شهر"],
+    ["b_address_1", "آدرس 1"],
+    ["b_address_2", "آدرس 2"],
+    ["b_postcode", "کد پستی"],
+    ["sh_first_name", "نام مشتری (حمل و نقل)"],
+    ["sh_last_name", "نام خانوادگی مشتری (حمل و نقل)"],
+    ["sh_company", "نام شرکت (حمل و نقل)"],
+    ["sh_country", "کشور (حمل و نقل)"],
+    ["sh_state", "ایالت/استان (حمل و نقل)"],
+    ["sh_city", "شهر (حمل و نقل)"],
+    ["sh_address_1", "آدرس 1 (حمل و نقل)"],
+    ["sh_address_2", "آدرس 2 (حمل و نقل)"],
+    ["sh_postcode", "کد پستی (حمل و نقل)"],
+  ];
+  return `<div class="var-chips">${vars.map(([token, label]) => `<button type="button" class="chip" data-act="insert-sms-var" data-token="${token}" data-field="${field}">${esc(label)}</button>`).join("")}</div>`;
+}
 function patternPicker(role, label) {
   const catalog = state.smsCatalog || [];
   const current = state.settings[`sms_pattern_${role}`] || "";
   const choice = state.settings[`sms_choice_${role}`] || "";
   if (!catalog.length) {
-    return `<div class="field"><label>${label}</label><textarea name="sms_pattern_${role}" rows="3">${esc(current)}</textarea></div>`;
+    return `<div class="field"><label>${label}</label><textarea name="sms_pattern_${role}" rows="3">${esc(current)}</textarea>${smsVarChips(`sms_pattern_${role}`)}</div>`;
   }
   const options = catalog.map((item) => `<label class="check"><input type="radio" name="sms_choice_${role}" value="${esc(item.id)}" ${choice === item.id ? "checked" : ""}><span><strong>${esc(item.title)}</strong><br>${esc(item.text)}${item.pattern ? `<br><span class="ltr">${esc(item.pattern)}</span>` : ""}</span></label>`).join("");
-  return `<div class="field"><label>${label}</label>${options}<label class="check"><input type="radio" name="sms_choice_${role}" value="" ${choice ? "" : "checked"}>متن خود فروشگاه</label></div><div class="field"><textarea name="sms_pattern_${role}" rows="3">${esc(current)}</textarea></div>`;
+  return `<div class="field"><label>${label}</label>${options}<label class="check"><input type="radio" name="sms_choice_${role}" value="" ${choice ? "" : "checked"}>متن خود فروشگاه</label></div><div class="field"><textarea name="sms_pattern_${role}" rows="3">${esc(current)}</textarea>${smsVarChips(`sms_pattern_${role}`)}</div>`;
 }
 function options(pairs, current) {
   return pairs.map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join("");
@@ -2157,6 +2197,18 @@ async function onClick(event) {
   if (el.closest("form[data-act]") && el.type === "submit") return;
   if (el.dataset.act === "stop") { event.stopPropagation(); return; }
   const act = el.dataset.act;
+  if (act === "insert-sms-var") {
+    const field = document.querySelector(`[name="${el.dataset.field}"]`);
+    const token = `{${el.dataset.token || ""}}`;
+    if (!field || token === "{}") return;
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? start;
+    field.value = field.value.slice(0, start) + token + field.value.slice(end);
+    field.focus();
+    const caret = start + token.length;
+    field.setSelectionRange(caret, caret);
+    return;
+  }
   if (act === "close-modal") { state.modal = null; render(); return; }
   if (act === "edit-sale") {
     await guard(() => openSaleEdit(el.dataset.id));

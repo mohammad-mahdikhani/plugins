@@ -114,6 +114,71 @@ function daftarchi_sms_pattern_key($shop_phone, $pattern) {
     return daftarchi_sms_phone($shop_phone) . '__' . sanitize_key((string) $pattern);
 }
 
+function daftarchi_sms_var_buttons() {
+    $vars = array(
+        array('mobile', 'شماره موبایل مشتری'),
+        array('phone', 'شماره تلفن مشتری'),
+        array('email', 'ایمیل مشتری'),
+        array('status', 'وضعیت سفارش'),
+        array('all_items', 'محصولات سفارش'),
+        array('all_items_full', 'محصولات سفارش با نام کامل متغیر'),
+        array('all_items_qty', 'محصولات سفارش بهمراه تعداد'),
+        array('item_count', 'تعداد محصولات سفارش'),
+        array('price', 'مبلغ سفارش'),
+        array('order_id', 'شماره سفارش'),
+        array('order_number', 'شماره سفارش اصلی'),
+        array('transaction_id', 'شماره تراکنش'),
+        array('order_date', 'تاریخ سفارش'),
+        array('customer_note', 'توضیحات مشتری'),
+        array('payment_method', 'روش پرداخت'),
+        array('shipping_method', 'روش ارسال'),
+        array('payment_link', 'لینک پرداخت'),
+        array('sh_first_name', 'نام مشتری'),
+        array('sh_last_name', 'نام خانوادگی مشتری'),
+        array('b_company', 'نام شرکت'),
+        array('b_country', 'کشور'),
+        array('b_state', 'ایالت/استان'),
+        array('b_city', 'شهر'),
+        array('b_address_1', 'آدرس 1'),
+        array('b_address_2', 'آدرس 2'),
+        array('b_postcode', 'کد پستی'),
+        array('sh_first_name', 'نام مشتری (حمل و نقل)'),
+        array('sh_last_name', 'نام خانوادگی مشتری (حمل و نقل)'),
+        array('sh_company', 'نام شرکت (حمل و نقل)'),
+        array('sh_country', 'کشور (حمل و نقل)'),
+        array('sh_state', 'ایالت/استان (حمل و نقل)'),
+        array('sh_city', 'شهر (حمل و نقل)'),
+        array('sh_address_1', 'آدرس 1 (حمل و نقل)'),
+        array('sh_address_2', 'آدرس 2 (حمل و نقل)'),
+        array('sh_postcode', 'کد پستی (حمل و نقل)'),
+    );
+    echo '<p>روی متغیر بزنید تا در متن الگویی که انتخاب کرده‌اید قرار بگیرد.</p>';
+    echo '<p class="daftarchi-sms-vars">';
+    foreach ($vars as $var) {
+        echo '<button type="button" class="button" data-token="' . esc_attr($var[0]) . '" style="margin:0 0 6px 6px">' . esc_html($var[1]) . '</button>';
+    }
+    echo '</p><script>
+    (function () {
+      var last = null;
+      document.querySelectorAll("textarea[name=\\"catalog_text[]\\"]").forEach(function (area) {
+        area.addEventListener("focus", function () { last = area; });
+      });
+      document.querySelectorAll(".daftarchi-sms-vars button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var area = last || document.querySelector("textarea[name=\\"catalog_text[]\\"]");
+          if (!area) return;
+          var token = "{" + button.getAttribute("data-token") + "}";
+          var start = area.selectionStart || 0;
+          var end = area.selectionEnd || start;
+          area.value = area.value.slice(0, start) + token + area.value.slice(end);
+          area.focus();
+          area.selectionStart = area.selectionEnd = start + token.length;
+        });
+      });
+    }());
+    </script>';
+}
+
 function daftarchi_sms_pattern_vars($text) {
     $index = 0;
     return preg_replace_callback('/\{[^{}]+\}/u', function () use (&$index) {
@@ -410,7 +475,8 @@ function daftarchi_sms_page() {
     submit_button('ذخیره اتصال');
     echo '</form>';
     echo '<h2>الگوهای آماده</h2>';
-    echo '<p>هر الگویی که اینجا ذخیره شود در پنل فروشگاه نمایش داده می‌شود تا برای خریدار یا مدیر یکی را انتخاب کند. متغیرها: {نام} {مبلغ} {فاکتور}. متن الگو برای ملی‌پیامک همان ستون کناری است.</p>';
+    echo '<p>هر الگویی که اینجا ذخیره شود در پنل فروشگاه نمایش داده می‌شود تا برای خریدار یا مدیر یکی را انتخاب کند. متن الگو برای ملی‌پیامک همان ستون کناری است.</p>';
+    daftarchi_sms_var_buttons();
     $catalog = daftarchi_sms_catalog();
     $blank = 0;
     while ($blank < 3) {

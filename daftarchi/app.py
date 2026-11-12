@@ -119,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.35"
+APP_VERSION = "1.1.36"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -1793,6 +1793,126 @@ def render_pattern(template: str, values: dict) -> tuple[str, list[str]]:
     return text, args
 
 
+def pattern_values(conn, sale: dict, items: list, settings: dict) -> dict:
+    full = str(sale.get("customer_name") or "").strip()
+    first = ""
+    last = ""
+    if conn is not None and sale.get("customer_id"):
+        row = conn.execute(
+            "SELECT first_name, last_name, name FROM customers WHERE id=?",
+            (sale["customer_id"],),
+        ).fetchone()
+        if row:
+            first = str(row["first_name"] or "").strip()
+            last = str(row["last_name"] or "").strip()
+            full = full or str(row["name"] or "").strip()
+    if not first and full:
+        bits = full.split()
+        first = bits[0]
+        last = last or " ".join(bits[1:])
+    names = []
+    counted = []
+    total_qty = 0
+    for item in items:
+        if isinstance(item, dict):
+            name = str(item.get("name") or "").strip()
+            qty = int(item.get("qty") or 0)
+        else:
+            name = str(item["name"] or "").strip()
+            qty = int(item["qty"] or 0)
+        if not name:
+            continue
+        names.append(name)
+        counted.append(f"{name} ×{qty}")
+        total_qty += qty
+    phone = str(sale.get("customer_phone") or "")
+    money = f"{int(sale.get('payable') or 0):,}"
+    order = str(sale.get("id") or "")
+    invoice = str(sale.get("invoice_code") or order)
+    pay = {"cash": "نقد", "card": "کارت", "gateway": "درگاه", "credit": "نسیه"}.get(str(sale.get("payment_method") or ""), "")
+    ref = str(sale.get("pos_ref") or sale.get("gateway_ref") or "")
+    status = "پرداخت‌شده" if sale.get("status") == "paid" else "در انتظار"
+    products = "، ".join(names)
+    products_qty = "، ".join(counted)
+    count = str(total_qty)
+    shared = {
+        "نام": full,
+        "نام مشتری": first or full,
+        "نام خانوادگی مشتری": last,
+        "نام مشتری (حمل و نقل)": first or full,
+        "نام خانوادگی مشتری (حمل و نقل)": last,
+        "مبلغ": money,
+        "مبلغ سفارش": money,
+        "فاکتور": order,
+        "شماره سفارش": invoice,
+        "شماره سفارش اصلی": order,
+        "شماره موبایل مشتری": phone,
+        "شماره تلفن مشتری": phone,
+        "ایمیل مشتری": "",
+        "وضعیت سفارش": status,
+        "محصولات سفارش": products,
+        "محصولات سفارش با نام کامل متغیر": products,
+        "محصولات سفارش بهمراه تعداد": products_qty,
+        "تعداد محصولات سفارش": count,
+        "شماره تراکنش": ref,
+        "تاریخ سفارش": str(sale.get("at_jalali") or ""),
+        "توضیحات مشتری": "",
+        "روش پرداخت": pay,
+        "روش ارسال": "حضوری",
+        "لینک پرداخت": str(sale.get("pay_url") or ""),
+        "نام شرکت": str(settings.get("shop_name") or ""),
+        "نام شرکت (حمل و نقل)": "",
+        "کشور": "",
+        "ایالت/استان": "",
+        "شهر": "",
+        "آدرس 1": "",
+        "آدرس 2": "",
+        "کد پستی": "",
+        "کشور (حمل و نقل)": "",
+        "ایالت/استان (حمل و نقل)": "",
+        "شهر (حمل و نقل)": "",
+        "آدرس 1 (حمل و نقل)": "",
+        "آدرس 2 (حمل و نقل)": "",
+        "کد پستی (حمل و نقل)": "",
+        "mobile": phone,
+        "phone": phone,
+        "email": "",
+        "status": status,
+        "all_items": products,
+        "all_items_full": products,
+        "all_items_qty": products_qty,
+        "item_count": count,
+        "price": money,
+        "order_id": order,
+        "order_number": invoice,
+        "transaction_id": ref,
+        "order_date": str(sale.get("at_jalali") or ""),
+        "customer_note": "",
+        "payment_method": pay,
+        "shipping_method": "حضوری",
+        "payment_link": str(sale.get("pay_url") or ""),
+        "sh_first_name": first or full,
+        "sh_last_name": last,
+        "sh_company": "",
+        "sh_country": "",
+        "sh_state": "",
+        "sh_city": "",
+        "sh_address_1": "",
+        "sh_address_2": "",
+        "sh_postcode": "",
+        "b_first_name": first or full,
+        "b_last_name": last,
+        "b_company": str(settings.get("shop_name") or ""),
+        "b_country": "",
+        "b_state": "",
+        "b_city": "",
+        "b_address_1": "",
+        "b_address_2": "",
+        "b_postcode": "",
+    }
+    return shared
+
+
 def shop_sms_identity(conn) -> tuple[str, str]:
     shop = conn.execute("SELECT phone FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
     settings = get_settings(conn)
@@ -1904,9 +2024,12 @@ def notify_buyer(sale: dict) -> dict:
     if not re.fullmatch(r"09\d{9}", phone):
         return {"status": "skipped", "detail": ""}
     name = sale.get("customer_name") or "مشتری"
-    values = {"نام": name, "مبلغ": f"{int(sale['payable']):,}", "فاکتور": str(sale["id"])}
     try:
         with connect() as conn:
+            items = conn.execute("SELECT name, qty FROM sale_items WHERE sale_id=?", (sale["id"],)).fetchall()
+            values = pattern_values(conn, sale, items, get_settings(conn))
+            if not values.get("نام"):
+                values["نام"] = name
             status, detail = send_shop_pattern(conn, "buyer", phone, values)
     except Exception:
         log.exception("buyer sms")
@@ -5665,11 +5788,7 @@ def create_sale():
         return jsonify(**result)
     if settings.get("sms_on_sale") == "1":
         with connect() as conn:
-            send_shop_pattern(conn, "manager", manager_phone(settings), {
-                "نام": result["sale"].get("customer_name") or "",
-                "مبلغ": f"{payable:,}",
-                "فاکتور": str(sale_id),
-            })
+            send_shop_pattern(conn, "manager", manager_phone(settings), pattern_values(conn, result["sale"], result["items"], get_settings(conn)))
     if alerts and settings.get("sms_low_stock") == "1":
         notify_manager(settings, "دفترچی: موجودی کم شد: " + "، ".join(alerts))
     maybe_send_moadian(sale_id)
@@ -5735,11 +5854,7 @@ def confirm_sale(sale_id: int):
         settings = get_settings(conn)
     if settings.get("sms_on_sale") == "1":
         with connect() as conn:
-            send_shop_pattern(conn, "manager", manager_phone(settings), {
-                "نام": result["sale"].get("customer_name") or "",
-                "مبلغ": f"{result['sale']['payable']:,}",
-                "فاکتور": str(sale_id),
-            })
+            send_shop_pattern(conn, "manager", manager_phone(settings), pattern_values(conn, result["sale"], result["items"], get_settings(conn)))
     if alerts and settings.get("sms_low_stock") == "1":
         notify_manager(settings, "دفترچی: موجودی کم شد: " + "، ".join(alerts))
     maybe_send_moadian(sale_id)
@@ -6948,7 +7063,14 @@ def test_setting(kind: str):
                 conn,
                 "manager",
                 phone,
-                {"نام": "آزمایش", "مبلغ": "1000", "فاکتور": "تست"},
+                pattern_values(None, {
+                    "id": "تست",
+                    "customer_name": "آزمایش",
+                    "customer_phone": phone,
+                    "payable": 1000,
+                    "payment_method": "cash",
+                    "status": "paid",
+                }, [{"name": "آزمایش", "qty": 1}], settings),
                 template=pattern,
             )
             if status == "skipped":
