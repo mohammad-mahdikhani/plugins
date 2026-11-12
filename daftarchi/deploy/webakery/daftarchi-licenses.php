@@ -211,7 +211,11 @@ function daftarchi_licenses_page() {
         echo '<tr>';
         echo '<td>' . esc_html((string) ($row['buyer_name'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['phone'] ?? '')) . '</td>';
-        echo '<td>' . esc_html((string) ($row['title'] ?? $row['plan'] ?? '')) . '</td>';
+        $title = (string) ($row['title'] ?? $row['plan'] ?? '');
+        if (($row['plan'] ?? '') === '50y') {
+            $title .= ' VIP';
+        }
+        echo '<td>' . esc_html($title) . '</td>';
         echo '<td>' . esc_html(number_format((int) ($row['payable'] ?? 0))) . '</td>';
         echo '<td>' . esc_html($pay[$row['payment_method'] ?? ''] ?? (string) ($row['payment_method'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['gateway_ref'] ?? '')) . '</td>';

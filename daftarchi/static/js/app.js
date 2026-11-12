@@ -168,32 +168,61 @@ function resetProgramButton() {
   if (!state.justUpdated) return "";
   return `<button type="button" class="btn primary" data-act="restart-app">ریست برنامه</button>`;
 }
-function shotData(file) {
+function compressCanvas(canvas, done) {
+  let quality = 0.72;
+  let data = canvas.toDataURL("image/jpeg", quality);
+  while (data.length > 650000 && quality > 0.35) {
+    quality -= 0.12;
+    data = canvas.toDataURL("image/jpeg", quality);
+  }
+  done(data);
+}
+function loadCanvas() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  const current = document.querySelector('script[src*="/static/js/app.js"]')?.getAttribute("src") || "";
+  const version = (current.match(/[?&]v=([^&]+)/) || [])[1] || "";
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("تصویر خوانده نشد"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("تصویر خوانده نشد"));
-      img.onload = () => {
-        const max = 1280;
-        const scale = Math.min(1, max / Math.max(img.width, img.height, 1));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(img.width * scale));
-        canvas.height = Math.max(1, Math.round(img.height * scale));
-        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        let quality = 0.72;
-        let data = canvas.toDataURL("image/jpeg", quality);
-        while (data.length > 650000 && quality > 0.35) {
-          quality -= 0.12;
-          data = canvas.toDataURL("image/jpeg", quality);
-        }
-        resolve(data);
-      };
-      img.src = String(reader.result || "");
-    };
-    reader.readAsDataURL(file);
+    const script = document.createElement("script");
+    script.src = `/static/js/html2canvas.min.js${version ? `?v=${version}` : ""}`;
+    script.onload = () => (window.html2canvas ? resolve(window.html2canvas) : reject(new Error("اسکرین صفحه ساخته نشد")));
+    script.onerror = () => reject(new Error("اسکرین صفحه ساخته نشد"));
+    document.head.appendChild(script);
   });
+}
+async function captureApp() {
+  const html2canvas = await loadCanvas();
+  const node = document.getElementById("app") || document.body;
+  const canvas = await html2canvas(node, {
+    backgroundColor: "#f4f6fb",
+    scale: 1,
+    useCORS: true,
+    logging: false,
+    x: window.scrollX,
+    y: window.scrollY,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    windowWidth: document.documentElement.clientWidth,
+    windowHeight: window.innerHeight,
+  });
+  const data = await new Promise((resolve) => compressCanvas(canvas, resolve));
+  if (!String(data).startsWith("data:image/") || data.length > 700000) throw new Error("اسکرین صفحه ساخته نشد");
+  return data;
+}
+async function sendScreenToSupport() {
+  const image = await captureApp();
+  const where = TITLES[state.page] || "برنامه";
+  const result = await api("/api/support/messages", { method: "POST", body: {
+    kind: "bug",
+    body: state.lastError ? `اسکرین صفحه ${where}. ${state.lastError}` : `اسکرین صفحه ${where}`,
+    page: state.page || "",
+    error: state.lastError || "",
+    image,
+  } });
+  if (result.delivery !== "host") throw new Error(result.detail || "اسکرین به پشتیبان نرسید");
+  toast("اسکرین برای پشتیبان ارسال شد", { ok: true });
+}
+function withVip(title, vip) {
+  return `${esc(title || "")}${vip ? " VIP" : ""}`;
 }
 function toast(message, options) {
   let el = document.getElementById("toast");
@@ -486,7 +515,7 @@ function supportHtml() {
     ? log.map((item) => `<article class="bubble ${item.kind === "bug" ? "bug" : ""}"><strong>${item.kind === "bug" ? "گزارش خطا" : "چت"}</strong><p>${esc(item.body)}</p>${item.detail ? `<p class="toast-remedy">${esc(item.detail)}</p>` : ""}</article>`).join("")
     : `<p class="empty">هنوز پیامی نیست.</p>`;
   const panel = state.supportTab === "bug"
-    ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><div class="field"><label>اسکرین خطا</label><input type="file" name="shot" accept="image/*"></div><p class="hint">از هر صفحه، دکمه «ارسال اسکرین خطا» همین فرم را باز می‌کند. تصویر همان صفحه را انتخاب کنید.</p><button class="btn primary" type="submit">ارسال اسکرین و خطا</button></form>`
+    ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><p class="hint">با ارسال، اسکرین همین صفحه هم برای پشتیبان می‌رود. نیازی به انتخاب عکس نیست.</p><button class="btn primary" type="submit">ارسال اسکرین و خطا</button></form>`
     : state.supportTab === "update"
       ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. با آپدیت، همین دفترچی عوض می‌شود و فروش‌ها می‌مانند.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${state.justUpdated ? `<p class="hint">آپدیت شد. ریست برنامه را بزنید تا نسخه جدید را ببینید.</p>` : ""}${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>${resetProgramButton()}</div>`
       : `<div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="field"><label>پیام</label><textarea name="body" required rows="3" placeholder="برای پشتیبانی بنویسید"></textarea></div><button class="btn primary" type="submit">ارسال به پشتیبانی</button></form>`;
@@ -905,7 +934,7 @@ function paintChrome() {
     : "";
   const access = state.access;
   const accessPill = access
-    ? `<span class="pill ${access.active ? "" : "warn"}">${access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
+    ? `<span class="pill ${access.active ? "" : "warn"}">${access.vip ? "لایسنس VIP" : access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
     : "";
   const status = document.getElementById("app-status");
   if (status) status.innerHTML = `${accessPill}${pill}${desktopIconButton(false)}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="password-modal">رمز</button><button type="button" class="btn" data-act="logout">خروج</button>`;
@@ -1254,7 +1283,7 @@ function registerHtml() {
 function accessCard(access) {
   if (!access) return "";
   if (access.mode === "paid" && access.active) {
-    return `<section class="card access-card"><span>لایسنس این دفترچی</span><h2>${esc(access.title)}</h2><p class="days">${num(access.days_left)} روز مانده</p><p class="hint">تا ${esc(access.ends_jalali)}</p></section>`;
+    return `<section class="card access-card"><span>لایسنس این دفترچی</span><h2>${withVip(access.title, access.vip)}</h2><p class="days">${num(access.days_left)} روز مانده</p><p class="hint">تا ${esc(access.ends_jalali)}</p></section>`;
   }
   if (access.active) {
     return `<section class="card access-card"><span>استفاده رایگان</span><h2>۷ روز رایگان فعال است</h2><p class="days">${num(access.days_left)} روز مانده</p><p class="hint">تا ${esc(access.ends_jalali)}. هر وقت خواستید روی یک طرح بزنید.</p></section>`;
@@ -1264,7 +1293,7 @@ function accessCard(access) {
 function licensesHtml() {
   const data = state.licenses;
   if (!data) return "";
-  const plans = data.plans.map((plan) => `<button type="button" class="plan buy" data-act="pick-plan" data-plan="${plan.id}"><span>${esc(plan.title)}</span><em class="num">${money(plan.price)}</em><span class="buy-label">خرید</span>${plan.remaining != null ? `<span>باقی‌مانده ${num(plan.remaining)} از ${num(plan.cap)}</span>` : ""}</button>`).join("");
+  const plans = data.plans.map((plan) => `<button type="button" class="plan buy" data-act="pick-plan" data-plan="${plan.id}"><span>${withVip(plan.title, plan.vip)}</span><em class="num">${money(plan.price)}</em><span class="buy-label">خرید</span>${plan.remaining != null ? `<span>باقی‌مانده ${num(plan.remaining)} از ${num(plan.cap)}</span>` : ""}</button>`).join("");
   return `<div class="stack">${accessCard(data.access)}<div class="plans">${plans}</div>
     <p class="hint">روی طرح بزنید تا صفحه زیبال باز شود. مبلغ وارد صندوق فروشگاه نمی‌شود. نام، موبایل و طرح خریدار روی هاست وب‌بیکری هم می‌ماند؛ فایل accounts.php را کنار pay.php در public_html/license-server بگذارید.</p>
       <details><summary>قیمت‌ها و ظرفیت پنجاه‌ساله</summary><form data-act="save-prices"><div class="grid-2">
@@ -1276,14 +1305,14 @@ function licensesHtml() {
       </div><button class="btn" type="submit">ذخیره قیمت‌ها</button></form></details>
     ${pendingLicenses(data)}
     <section class="card"><h2 class="section-title">لایسنس‌های فروخته‌شده</h2><table><thead><tr><th>طرح</th><th>خریدار</th><th>تماس</th><th>مبلغ</th><th>وضعیت</th><th>هاست</th><th>تا</th></tr></thead><tbody>
-      ${data.licenses.map((row) => `<tr><td>${esc(row.title)}</td><td>${esc(row.buyer_name)}</td><td class="ltr">${esc(row.phone)}</td><td class="num">${money(row.payable)}</td><td>${esc(LICENSE_STATUS[row.status] || row.status)}</td><td>${row.host_saved ? "ذخیره شد" : "منتظر هاست"}</td><td>${esc(row.ends_jalali)}</td></tr>`).join("") || `<tr><td colspan="7">هنوز لایسنسی فروخته نشده.</td></tr>`}
+      ${data.licenses.map((row) => `<tr><td>${withVip(row.title, row.vip)}</td><td>${esc(row.buyer_name)}</td><td class="ltr">${esc(row.phone)}</td><td class="num">${money(row.payable)}</td><td>${esc(LICENSE_STATUS[row.status] || row.status)}</td><td>${row.host_saved ? "ذخیره شد" : "منتظر هاست"}</td><td>${esc(row.ends_jalali)}</td></tr>`).join("") || `<tr><td colspan="7">هنوز لایسنسی فروخته نشده.</td></tr>`}
     </tbody></table></section></div>`;
 }
 
 function pendingLicenses(data) {
   const rows = (data.licenses || []).filter((row) => row.status === "pending");
   if (!rows.length) return "";
-  return `<section class="card"><h2 class="section-title">پرداخت‌های باز وب‌بیکری</h2>${rows.map((row) => `<div class="line"><span>${esc(row.title)} · ${esc(row.buyer_name)} · ${money(row.payable)}</span><button type="button" class="btn" data-act="open-license" data-id="${row.id}">ادامه</button></div>`).join("")}</section>`;
+  return `<section class="card"><h2 class="section-title">پرداخت‌های باز وب‌بیکری</h2>${rows.map((row) => `<div class="line"><span>${withVip(row.title, row.vip)} · ${esc(row.buyer_name)} · ${money(row.payable)}</span><button type="button" class="btn" data-act="open-license" data-id="${row.id}">ادامه</button></div>`).join("")}</section>`;
 }
 
 function customersHtml() {
@@ -1784,9 +1813,7 @@ async function onSubmit(event) {
       toast("فاکتور اصلاح شد");
       render();
     } else if (act === "send-support") {
-      const file = form.querySelector('input[name="shot"]')?.files?.[0];
-      const image = file ? await shotData(file) : "";
-      if (image && image.length > 700000) throw new Error("حجم اسکرین زیاد است. تصویر کوچک‌تری بفرستید.");
+      const image = data.kind === "bug" ? await captureApp() : "";
       const result = await api("/api/support/messages", { method: "POST", body: {
         kind: data.kind === "bug" ? "bug" : "chat",
         body: data.body,
@@ -2231,7 +2258,11 @@ async function onClick(event) {
     return;
   }
   if (act === "password-modal") { state.modal = { type: "password" }; render(); return; }
-  if (act === "toggle-support" || act === "report-error" || act === "support-tab") {
+  if (act === "report-error") {
+    await guard(() => sendScreenToSupport());
+    return;
+  }
+  if (act === "toggle-support" || act === "support-tab") {
     if (act === "toggle-support" && state.support && !el.dataset.tab) {
       state.support = false;
       paintChrome();
@@ -2239,7 +2270,6 @@ async function onClick(event) {
     }
     await guard(async () => {
       state.support = true;
-      if (act === "report-error") state.supportTab = "bug";
       if (el.dataset.tab) state.supportTab = el.dataset.tab;
       state.supportLog = (await api("/api/support/messages")).messages;
       paintChrome();
