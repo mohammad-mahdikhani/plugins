@@ -3412,14 +3412,20 @@ body.pm-wc-shell .site-main {
   float: none !important;
 }
 
-.pm-pagination .page-numbers {
+.pm-pagination ul.page-numbers {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-flow: row wrap;
+  direction: ltr;
+  align-items: center;
+  gap: 0.4rem;
   list-style: none;
   padding: 0;
   margin: 1.25rem 0 0;
   justify-content: center;
+}
+
+.pm-pagination ul.page-numbers li::marker {
+  content: none;
 }
 
 .pm-pagination .page-numbers li {
