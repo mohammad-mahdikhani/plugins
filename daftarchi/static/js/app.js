@@ -1311,7 +1311,7 @@ function settingsHtml() {
       <div class="grid-2">${field("pos_host", "آدرس یا IP")}${field("pos_port", "پورت")}</div>
       ${field("pos_terminal", "شماره پایانه")}
       <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش اتصال</button>
-      <p class="hint">اگر دستگاه روی شبکه باشد، اتصال آزمایش می‌شود. شماره پیگیری رسید را موقع فروش وارد می‌کنید.</p>
+      <p class="hint">آدرس یا IP را بنویسید و آزمایش را بزنید؛ لازم نیست قبلش ذخیره شود. شماره پیگیری رسید را موقع فروش وارد می‌کنید.</p>
     </section>`;
   const extra = `<details><summary>تنظیمات بیشتر</summary>
       <h2 class="section-title">درگاه پرداخت</h2>
@@ -2273,10 +2273,16 @@ async function onClick(event) {
         toast("کادر Consumer key خالی است. کلید را بچسبانید؛ با ck_ شروع می‌شود.");
         return;
       }
+      if (el.dataset.kind === "pos" && !String(data.pos_host || "").trim()) {
+        toast("آدرس یا IP کارت‌خوان را بنویسید، بعد آزمایش اتصال را بزنید.");
+        return;
+      }
       const result = await api(`/api/settings/test/${el.dataset.kind}`, { method: "POST", body: {
         wp_url: data.wp_url || "",
         woo_key: data.woo_key || "",
         woo_secret: data.woo_secret || "",
+        pos_host: data.pos_host || "",
+        pos_port: data.pos_port || "",
       } });
       toast(result.message);
     }

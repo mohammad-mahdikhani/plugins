@@ -6520,7 +6520,7 @@ def test_setting(kind: str):
     posted = request.get_json(silent=True) or {}
     with connect() as conn:
         settings = get_settings(conn)
-        for key in ("wp_url", "woo_key", "woo_secret"):
+        for key in ("wp_url", "woo_key", "woo_secret", "pos_host", "pos_port"):
             text = str(posted.get(key) or "").strip()
             if text:
                 settings[key] = text

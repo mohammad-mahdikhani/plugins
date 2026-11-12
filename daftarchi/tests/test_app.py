@@ -1156,6 +1156,35 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(metas["barcode"], "6260001234567")
         self.assertEqual(metas["purchase_price"], "8000")
 
+    def test_card_reader_test_uses_the_address_typed_in_the_form(self):
+        empty = self.client.post("/api/settings/test/pos", json={})
+        self.assertEqual(empty.status_code, 400)
+        self.assertIn("آدرس کارت‌خوان", empty.get_json()["error"])
+        calls = []
+
+        class Opened:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_exc):
+                return False
+
+        def fake_connection(address, timeout=4):
+            calls.append((address, timeout))
+            return Opened()
+
+        original = appmod.socket.create_connection
+        appmod.socket.create_connection = fake_connection
+        try:
+            tried = self.client.post("/api/settings/test/pos", json={"pos_host": "192.168.1.50", "pos_port": "۱۳۶۲"})
+        finally:
+            appmod.socket.create_connection = original
+        self.assertEqual(tried.status_code, 200, tried.get_json())
+        self.assertEqual(calls, [(("192.168.1.50", 1362), 4)])
+        self.assertEqual(self.client.get("/api/settings").get_json()["settings"]["pos_host"], "")
+        page = self.client.get("/static/js/app.js?v=1.1.26").get_data(as_text=True)
+        self.assertIn("pos_host: data.pos_host", page)
+
     def test_archived_barcode_can_be_used_again(self):
         product = self.add_product()
         removed = self.client.delete(f"/api/products/{product['id']}")
