@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.22"
+APP_VERSION = "1.1.23"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -157,6 +157,9 @@ HOST_LICENSE_URLS = (
 )
 HOST_SMS_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/sms-credit",
+)
+HOST_SUPPORT_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/support",
 )
 SMS_CREDIT_MIN = 100_000
 SMS_CREDIT_MAX = 1_000_000
@@ -3623,6 +3626,27 @@ def telegram_text(user, kind: str, body: str, page: str, error: str, settings: d
     return "\n".join(lines)[:3500]
 
 
+def push_support_to_host(item: dict) -> tuple[str, str]:
+    payload = {"key": HOST_MAIL_KEY, **item}
+    payload.pop("password", None)
+    payload.pop("password_hash", None)
+    payload.pop("token", None)
+    last = "پیشخوان وب‌بیکری جواب نداد"
+    for url in HOST_SUPPORT_URLS:
+        try:
+            status, body = http_request("POST", url, payload=payload, timeout=8)
+        except AppError as exc:
+            last = str(exc)
+            continue
+        if status < 400 and isinstance(body, dict) and body.get("ok"):
+            return "host", "در پیشخوان وب‌بیکری ثبت شد"
+        if isinstance(body, dict) and body.get("message"):
+            last = str(body.get("message"))
+        elif isinstance(body, dict) and body.get("error"):
+            last = str(body.get("error"))
+    return "stored", f"پیام در دفترچی ماند و به پیشخوان وب‌بیکری نرسید: {last[:140]}"
+
+
 def deliver_telegram(settings: dict, text: str) -> tuple[str, str]:
     token = (settings.get("telegram_bot_token") or "").strip()
     chat = (settings.get("telegram_chat_id") or "").strip()
@@ -3670,7 +3694,17 @@ def support_send():
     error = clean_text(payload.get("error"), "خطا", 300)
     with connect() as conn:
         settings = get_settings(conn)
-        delivery, detail = deliver_telegram(settings, telegram_text(user, kind, body, page, error, settings))
+        delivery, detail = push_support_to_host({
+            "kind": kind,
+            "body": body,
+            "page": page,
+            "error": error,
+            "shop": settings.get("shop_name") or "دفترچی",
+            "user": user["name"],
+            "phone": user["phone"],
+            "version": APP_VERSION,
+            "channel": update_channel(),
+        })
         cur = conn.execute(
             """INSERT INTO support_messages (kind, body, page, app_version, error, delivery, detail, user_id, created_at)
                VALUES (?,?,?,?,?,?,?,?,?)""",
