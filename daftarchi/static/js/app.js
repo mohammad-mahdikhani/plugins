@@ -82,6 +82,7 @@ const state = {
   plan: "12m",
   more: false,
   sms: [],
+  smsCatalog: [],
   shopMode: "",
   tourDone: false,
   tourOn: false,
@@ -375,9 +376,11 @@ const loaders = {
   },
   async settings() {
     const updatePromise = loadUpdate();
-    const [settings, users] = await Promise.all([api("/api/settings"), api("/api/users")]);
+    const catalogPromise = api("/api/sms/catalog").catch(() => ({ patterns: [] }));
+    const [settings, users, catalog] = await Promise.all([api("/api/settings"), api("/api/users"), catalogPromise]);
     state.settings = settings.settings;
     state.users = users.users;
+    state.smsCatalog = catalog.patterns || [];
     updatePromise.then(() => { if (state.page === "settings") paintChrome(); });
   },
   async updates() {
@@ -1382,6 +1385,16 @@ function smsHtml() {
     </tbody></table></section></div>`;
 }
 
+function patternPicker(role, label) {
+  const catalog = state.smsCatalog || [];
+  const current = state.settings[`sms_pattern_${role}`] || "";
+  const choice = state.settings[`sms_choice_${role}`] || "";
+  if (!catalog.length) {
+    return `<div class="field"><label>${label}</label><textarea name="sms_pattern_${role}" rows="3">${esc(current)}</textarea></div>`;
+  }
+  const options = catalog.map((item) => `<label class="check"><input type="radio" name="sms_choice_${role}" value="${esc(item.id)}" ${choice === item.id ? "checked" : ""}><span><strong>${esc(item.title)}</strong><br>${esc(item.text)}${item.pattern ? `<br><span class="ltr">${esc(item.pattern)}</span>` : ""}</span></label>`).join("");
+  return `<div class="field"><label>${label}</label>${options}<label class="check"><input type="radio" name="sms_choice_${role}" value="" ${choice ? "" : "checked"}>متن خود فروشگاه</label></div><div class="field"><textarea name="sms_pattern_${role}" rows="3">${esc(current)}</textarea></div>`;
+}
 function options(pairs, current) {
   return pairs.map(([value, label]) => `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`).join("");
 }
@@ -1434,9 +1447,9 @@ function settingsHtml() {
       ${field("gateway_merchant", "مرچنت فروش کالا")}${field("gateway_callback", "آدرس بازگشت")}
       <label class="check"><input type="checkbox" name="gateway_sandbox" ${checked("gateway_sandbox")}>حالت آزمایشی زرین‌پال</label>
       <h2 class="section-title">پیامک</h2>
-      <p class="hint">کلید و شماره خط اینجا نیست. فقط متن الگو را بنویسید. همان متن در پنل وب‌بیکری می‌آید تا در ملی‌پیامک به صورت الگو ثبت شود. متغیرها: {نام} {مبلغ} {فاکتور}</p>
-      <div class="field"><label>الگوی پیامک خریدار</label><textarea name="sms_pattern_buyer" rows="3">${esc(s.sms_pattern_buyer || "")}</textarea></div>
-      <div class="field"><label>الگوی پیامک مدیر</label><textarea name="sms_pattern_manager" rows="3">${esc(s.sms_pattern_manager || "")}</textarea></div>
+      <p class="hint">الگوهای آماده وب‌بیکری اینجاست. یکی را برای خریدار و یکی را برای مدیر انتخاب کنید. متن هر الگو برای ملی‌پیامک به صورت الگو کنار همان گزینه دیده می‌شود. اگر الگویی نیست، متن را خودتان بنویسید. متغیرها: {نام} {مبلغ} {فاکتور}</p>
+      ${patternPicker("buyer", "الگوی پیامک خریدار")}
+      ${patternPicker("manager", "الگوی پیامک مدیر")}
       ${field("manager_phone", "موبایل مدیر")}
       <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>بعد از هر فروش، الگوی مدیر فرستاده شود</label>
       <button type="button" class="btn" data-act="test-setting" data-kind="sms">آزمایش پیامک</button>
@@ -2007,6 +2020,10 @@ async function saveSettings(form) {
   if (form.querySelector('[name="clear_shop_logo"]')?.checked) data.shop_logo = "";
   delete data.logo_file;
   delete data.clear_shop_logo;
+  for (const role of ["buyer", "manager"]) {
+    const picked = state.smsCatalog?.find((item) => item.id === (data[`sms_choice_${role}`] || ""));
+    if (picked) data[`sms_pattern_${role}`] = picked.text;
+  }
   for (const key of ["gateway_sandbox", "sms_on_close", "sms_on_sale", "sms_low_stock", "moadian_enabled", "moadian_sandbox", "woo_auto_sync"]) {
     const box = form.querySelector(`[name="${key}"]`);
     if (box) data[key] = box.checked ? "1" : "0";

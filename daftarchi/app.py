@@ -82,6 +82,8 @@ DEFAULT_SETTINGS = {
     "sms_password": "",
     "sms_pattern_buyer": "{نام} عزیز\nخرید حضوری شما ثبت شد.\nمبلغ: {مبلغ} تومان\nفاکتور: {فاکتور}",
     "sms_pattern_manager": "فروش {مبلغ} تومان. فاکتور {فاکتور}",
+    "sms_choice_buyer": "",
+    "sms_choice_manager": "",
     "manager_phone": "",
     "sms_on_close": "1",
     "sms_on_sale": "0",
@@ -117,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.32"
+APP_VERSION = "1.1.33"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -1797,6 +1799,37 @@ def shop_sms_identity(conn) -> tuple[str, str]:
     return (shop["phone"] if shop else ""), (settings.get("shop_name") or "")
 
 
+def pull_sms_catalog() -> list[dict]:
+    found = []
+    for url in HOST_SMS_PATTERN_URLS:
+        try:
+            status, body = http_request("POST", url, payload={"key": HOST_MAIL_KEY, "action": "catalog"}, timeout=8)
+        except Exception:
+            log.warning("sms catalog was not loaded")
+            continue
+        if status >= 400 or not isinstance(body, dict):
+            continue
+        rows = body.get("patterns")
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            pattern_id = re.sub(r"[^a-z0-9]", "", str(row.get("id") or "").lower())[:40]
+            text = clean_text(row.get("text"), "الگو", 400)
+            title = clean_text(row.get("title"), "عنوان الگو", 80)
+            if not pattern_id or not text or not title:
+                continue
+            found.append({
+                "id": pattern_id,
+                "title": title,
+                "text": text,
+                "pattern": str(row.get("pattern") or "")[:400],
+            })
+        break
+    return found
+
+
 def push_sms_patterns(conn) -> None:
     settings = get_settings(conn)
     phone, shop = shop_sms_identity(conn)
@@ -1835,12 +1868,13 @@ def send_shop_pattern(conn, pattern_id: str, recipient: str, values: dict, templ
     text, args = render_pattern(template, values)
     status, detail = "internal", "در صندوق پیامک سیستم ثبت شد"
     phone, shop = shop_sms_identity(conn)
+    remote = (settings.get(f"sms_choice_{pattern_id}") or "").strip() or pattern_id
     payload = {
         "key": HOST_MAIL_KEY,
         "action": "send",
         "shop_phone": phone,
         "shop": shop,
-        "pattern": pattern_id,
+        "pattern": remote,
         "to": recipient,
         "args": args,
         "text": text,
@@ -2818,6 +2852,8 @@ def save_settings(conn, payload: dict):
             stored = str(parse_money(value or "10", "نرخ مالیات", allow_empty=True))
             if int(stored) > 100:
                 raise AppError("نرخ مالیات تا ۱۰۰ است")
+        elif key in {"sms_choice_buyer", "sms_choice_manager"}:
+            stored = re.sub(r"[^a-z0-9]", "", str(value or "").lower())[:40]
         else:
             stored = clean_text(value, key, 400)
             if key in {"wp_url", "gateway_callback"} and stored:
@@ -6437,6 +6473,12 @@ def list_sms():
         item["at_jalali"] = to_jalali(row["created_at"])
         messages.append(item)
     return jsonify(messages=messages, **wallet)
+
+
+@app.get("/api/sms/catalog")
+def sms_catalog():
+    require_admin()
+    return jsonify(patterns=pull_sms_catalog())
 
 
 @app.post("/api/sms")
