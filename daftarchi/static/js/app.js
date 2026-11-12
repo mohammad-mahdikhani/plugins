@@ -471,16 +471,37 @@ function authHtml() {
       <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
     </form></div>`;
   }
+  if (state.authView === "phone-verify" || state.authView === "phone-enter") {
+    const entering = state.authView === "phone-enter";
+    return `<div class="auth"><form class="card auth-card" data-act="${entering ? "phone-enter" : "phone-verify"}">
+      <div class="brand"><div class="mark">${logo()}</div><div><strong>${entering ? "ورود با کد" : "تأیید شماره"}</strong><span>دفترچی</span></div></div>
+      <p class="hint">${esc(state.phoneNote || "کد شش‌رقمی به همین شماره می‌رود.")}</p>
+      ${authProblem()}
+      ${state.phoneCode ? `<p><strong class="num">${esc(state.phoneCode)}</strong></p>` : ""}
+      <div class="field"><label>موبایل</label><input class="ltr" name="phone" required value="${esc(state.pendingPhone || draft.phone || "")}"></div>
+      <div class="field"><label>کد ۶ رقمی</label><input class="ltr" name="code" inputmode="numeric" autocomplete="one-time-code" required value="${esc(state.phoneCode || "")}"></div>
+      <button class="btn primary block" type="submit">${entering ? "ورود" : "تأیید شماره"}</button>
+      <button class="btn block" type="button" data-act="${entering ? "resend-phone-login" : "resend-phone"}">ارسال دوباره کد</button>
+      <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
+    </form></div>`;
+  }
+  if (state.authView === "phone-login") {
+    return `<div class="auth"><form class="card auth-card" data-act="phone-login">
+      <div class="brand"><div class="mark">${logo()}</div><div><strong>ورود با کد</strong><span>شماره ثبت‌شده</span></div></div>
+      <p class="hint">فقط شماره‌ای که قبلاً ثبت و تأیید شده کد ورود می‌گیرد.</p>
+      ${authProblem()}
+      <div class="field"><label>موبایل</label><input class="ltr" name="phone" required placeholder="09..." value="${esc(draft.phone || draft.ident || "")}"></div>
+      <button class="btn primary block" type="submit">دریافت کد</button>
+      <button class="btn block" type="button" data-act="show-login">بازگشت</button>
+    </form></div>`;
+  }
   if (state.authView === "register") {
     return `<div class="auth"><form class="card auth-card" data-act="register">
-      <div class="brand"><div class="mark">${logo()}</div><div><strong>ساخت حساب</strong><span>با جیمیل</span></div></div>
-      <p class="hint">کد تأیید از هاست وب‌بیکری به همین جیمیل می‌رود. بدون اتصال به هاست حساب ساخته نمی‌شود.</p>
+      <div class="brand"><div class="mark">${logo()}</div><div><strong>ثبت شماره</strong><span>اولین ورود</span></div></div>
+      <p class="hint">فقط شماره موبایل را بنویسید. کد تأیید به همان شماره می‌رود. تا کد تأیید نشود، دفترچی این شماره را نمی‌شناسد.</p>
       ${authProblem()}
-      <div class="field"><label>نام</label><input name="name" required value="${esc(draft.name || "")}"></div>
       <div class="field"><label>موبایل</label><input class="ltr" name="phone" required placeholder="09..." value="${esc(draft.phone || "")}"></div>
-      <div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" required placeholder="name@gmail.com" value="${esc(draft.email || "")}"></div>
-      <div class="field"><label>رمز</label><input type="password" name="password" required value="${esc(draft.password || "")}"></div>
-      <button class="btn primary block" type="submit">ساخت حساب</button>
+      <button class="btn primary block" type="submit">دریافت کد</button>
       <button class="btn block" type="button" data-act="show-login">بازگشت</button>
     </form></div>`;
   }
@@ -517,7 +538,8 @@ function authHtml() {
     <div class="field"><label>موبایل یا جیمیل</label><input name="ident" autocomplete="username" required value="${esc(draft.ident || (state.bootstrap?.initial ? state.bootstrap.phone : ""))}"></div>
     <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}"></div>
     <button class="btn primary block" type="submit">ورود</button>
-    <button class="btn block" type="button" data-act="show-register">ساخت حساب با جیمیل</button>
+    <button class="btn block" type="button" data-act="show-phone-login">ورود با کد موبایل</button>
+    <button class="btn block" type="button" data-act="show-register">ثبت شماره موبایل</button>
     <button class="btn block" type="button" data-act="show-forgot">رمز را فراموش کرده‌ام</button>
     ${desktopIconButton(true)}
     ${updateBanner()}
@@ -1595,6 +1617,14 @@ async function onSubmit(event) {
         hideToast();
         await navigate(homePage());
       } catch (err) {
+        if (err.data?.needs_phone_verify) {
+          state.pendingPhone = err.data.ident || data.ident || data.phone;
+          state.phoneNote = err.message;
+          state.phoneCode = "";
+          state.authView = "phone-verify";
+          render();
+          return;
+        }
         if (err.data?.needs_verify) {
           state.pendingEmail = err.data.ident || data.ident;
           state.verifyNote = err.message;
@@ -1607,7 +1637,15 @@ async function onSubmit(event) {
     } else if (act === "register") {
       const result = await api("/api/auth/register", { method: "POST", body: data });
       state.authError = "";
-      if (result.needs_verify) {
+      if (result.phone) {
+        state.pendingPhone = result.phone;
+        state.phoneCode = result.preview_code || "";
+        state.phoneNote = result.delivery === "sms"
+          ? "کد تأیید به همین شماره فرستاده شد."
+          : "سامانه پیامک وصل نیست؛ کد روی همین صفحه ساخته شد.";
+        state.authView = "phone-verify";
+        render();
+      } else if (result.needs_verify) {
         state.pendingEmail = result.email;
         state.verifyNote = "کد شش‌رقمی به جیمیل فرستاده شد. صندوق ورودی و هرزنامه را ببینید.";
         state.authView = "verify";
@@ -1618,6 +1656,27 @@ async function onSubmit(event) {
         hideToast();
         await navigate("dashboard");
       }
+    } else if (act === "phone-verify" || act === "phone-enter") {
+      const path = act === "phone-enter" ? "/api/auth/phone/enter" : "/api/auth/phone/verify";
+      const result = await api(path, { method: "POST", body: data });
+      state.user = result.user;
+      state.mustChange = result.must_change_password;
+      state.access = result.access || null;
+      state.shop = result.shop || null;
+      readSetup(result.setup);
+      state.authError = "";
+      hideToast();
+      await navigate(homePage());
+    } else if (act === "phone-login") {
+      const result = await api("/api/auth/phone/code", { method: "POST", body: data });
+      state.pendingPhone = result.phone;
+      state.phoneCode = result.preview_code || "";
+      state.phoneNote = result.delivery === "sms"
+        ? "کد ورود به همین شماره فرستاده شد."
+        : "سامانه پیامک وصل نیست؛ کد روی همین صفحه ساخته شد.";
+      state.authError = "";
+      state.authView = "phone-enter";
+      render();
     } else if (act === "save-sale") {
       readSaleEdit();
       const modal = state.modal;
@@ -1991,8 +2050,22 @@ async function onClick(event) {
   }
   if (act === "desktop-icon") { createDesktopIcon(); return; }
   if (act === "show-forgot") { state.authView = "forgot"; state.authError = ""; render(); return; }
+  if (act === "show-phone-login") { state.authView = "phone-login"; state.authError = ""; render(); return; }
   if (act === "show-register") { state.authView = "register"; state.authError = ""; render(); return; }
   if (act === "show-login") { state.authView = "login"; state.authError = ""; render(); return; }
+  if (act === "resend-phone" || act === "resend-phone-login") {
+    await guard(async () => {
+      const phone = state.pendingPhone || document.querySelector('[name="phone"]')?.value || "";
+      const path = act === "resend-phone-login" ? "/api/auth/phone/code" : "/api/auth/register";
+      const result = await api(path, { method: "POST", body: { phone } });
+      state.pendingPhone = result.phone || phone;
+      state.phoneCode = result.preview_code || "";
+      state.phoneNote = result.delivery === "sms" ? "کد تازه به شماره فرستاده شد." : "کد تازه روی همین صفحه ساخته شد.";
+      toast("کد دوباره فرستاده شد");
+      render();
+    });
+    return;
+  }
   if (act === "resend-verify") {
     await guard(async () => {
       await api("/api/auth/verify/resend", { method: "POST", body: { ident: state.pendingEmail || document.querySelector('[name="ident"]')?.value || "" } });

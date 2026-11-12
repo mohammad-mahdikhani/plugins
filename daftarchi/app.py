@@ -115,7 +115,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.26"
+APP_VERSION = "1.1.27"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -281,6 +281,17 @@ def norm_phone(value: str) -> str:
     elif text.startswith("98") and len(text) == 12:
         text = "0" + text[2:]
     return text
+
+
+def mobile_number(value, required: bool = True) -> str:
+    phone = norm_phone(value)
+    if re.fullmatch(r"9\d{9}", phone):
+        phone = "0" + phone
+    if re.fullmatch(r"09\d{9}", phone):
+        return phone
+    if required:
+        raise AppError("شماره موبایل معتبر نیست")
+    return ""
 
 
 def parse_money(value, label: str = "مبلغ", allow_empty: bool = False) -> int:
@@ -2085,7 +2096,7 @@ def signup_host_item(conn, user) -> dict:
         "name": user["name"] or "",
         "phone": user["phone"] or "",
         "email": (user["email"] or "").lower(),
-        "verified": int(user["email_verified"] or 0),
+        "verified": int(user["email_verified"] or 0) if user["email"] else int(user["phone_verified"] or 0),
         "shop": settings.get("shop_name") or "",
         "channel": update_channel(),
         "created_at": user["created_at"] or "",
@@ -3033,6 +3044,9 @@ def init_db():
                    SELECT id, name, phone, email, password_hash, role, email_verified, created_at FROM users_roles_old"""
             )
             conn.execute("DROP TABLE users_roles_old")
+        user_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+        if "phone_verified" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 1")
         if not conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             conn.execute(
                 "INSERT INTO users (name, phone, email, password_hash, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?)",
@@ -3796,6 +3810,16 @@ def login():
     password = str(payload.get("password") or "")
     with connect() as conn:
         row = find_user(conn, ident)
+        typed_phone = mobile_number(ident, required=False) if "@" not in ident else ""
+        if typed_phone and not row:
+            raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 401)
+        if row and typed_phone and not int(row["phone_verified"] or 0):
+            raise AppError(
+                "این شماره هنوز تأیید نشده. کد تأیید را وارد کنید.",
+                403,
+                needs_phone_verify=True,
+                ident=row["phone"],
+            )
         if not row or not check_pw(password, row["password_hash"]):
             raise AppError("شماره یا رمز نادرست است", 401)
         if row["email"] and not int(row["email_verified"] or 0):
@@ -3816,9 +3840,137 @@ def login():
     return jsonify(user=user, must_change_password=flag, access=access, shop=shop, setup=setup)
 
 
+def send_phone_code(conn, user_id: int, phone: str, purpose: str) -> dict:
+    channel = "phone" if purpose == "verify" else "login"
+    code = store_code(conn, user_id, channel)
+    if purpose == "verify":
+        text = f"کد تأیید شماره دفترچی: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
+    else:
+        text = f"کد ورود دفترچی: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
+    status, detail = deliver_sms(conn, get_settings(conn), phone, text)
+    sent = status == "sent"
+    return {
+        "ok": True,
+        "phone": phone,
+        "needs_verify": purpose == "verify",
+        "delivery": "sms" if sent else "internal",
+        "preview_code": None if sent else code,
+        "detail": detail,
+    }
+
+
+def accept_phone_code(conn, user, code: str, channel: str) -> None:
+    code = str(code or "").translate(DIGITS).strip()
+    if not re.fullmatch(r"\d{6}", code):
+        raise AppError("کد باید ۶ رقم باشد")
+    row = conn.execute(
+        "SELECT * FROM password_resets WHERE user_id=? AND used=0 AND channel=? ORDER BY id DESC LIMIT 1",
+        (user["id"], channel),
+    ).fetchone()
+    digest = hashlib.sha256(code.encode()).hexdigest()
+    if not row or row["expires_at"] < iso() or not secrets.compare_digest(row["code_hash"], digest):
+        raise AppError("کد نادرست یا منقضی است")
+    conn.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
+
+
+def login_payload(conn, row) -> dict:
+    return {
+        "uid": row["id"],
+        "user": public_user(row),
+        "must_change_password": get_settings(conn).get("must_change_password") == "1",
+        "access": ensure_access(conn),
+        "shop": shop_profile(conn),
+        "setup": setup_state(conn),
+    }
+
+
+def finish_login(payload: dict):
+    uid = payload.pop("uid")
+    session.clear()
+    session["uid"] = uid
+    session.permanent = True
+    return jsonify(**payload)
+
+
+def register_phone(payload: dict):
+    phone = mobile_number(payload.get("phone") or payload.get("ident"))
+    with connect() as conn:
+        owner = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
+        if owner and int(owner["phone_verified"] or 0):
+            raise AppError("این شماره قبلاً ثبت شده. از صفحه ورود با کد وارد شوید.")
+        if owner:
+            user_id = owner["id"]
+        else:
+            settings = get_settings(conn)
+            others = conn.execute("SELECT COUNT(*) AS c FROM users WHERE phone<>?", (INITIAL_PHONE,)).fetchone()["c"]
+            role = "admin" if settings.get("must_change_password") == "1" and others == 0 else "cashier"
+            cur = conn.execute(
+                """INSERT INTO users (name, phone, email, password_hash, role, email_verified, phone_verified, created_at)
+                   VALUES (?,?,?,?,?,1,0,?)""",
+                (phone, phone, None, hash_pw(secrets.token_urlsafe(18)), role, iso()),
+            )
+            user_id = cur.lastrowid
+            fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            push_signup(conn, fresh)
+        result = send_phone_code(conn, user_id, phone, "verify")
+    return jsonify(**result)
+
+
+@app.post("/api/auth/phone/verify")
+def verify_phone():
+    payload = body_json()
+    phone = mobile_number(payload.get("phone") or payload.get("ident"))
+    with connect() as conn:
+        user = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
+        if not user:
+            raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 404)
+        accept_phone_code(conn, user, payload.get("code"), "phone")
+        conn.execute("UPDATE users SET phone_verified=1 WHERE id=?", (user["id"],))
+        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        clear_initial_secret(conn, fresh)
+        push_signup(conn, fresh)
+        packed = login_payload(conn, fresh)
+    return finish_login(packed)
+
+
+@app.post("/api/auth/phone/code")
+def phone_login_code():
+    payload = body_json()
+    phone = mobile_number(payload.get("phone") or payload.get("ident"))
+    with connect() as conn:
+        user = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
+        if not user:
+            raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 404)
+        if not int(user["phone_verified"] or 0):
+            raise AppError(
+                "این شماره هنوز تأیید نشده. کد ثبت‌نام را وارد کنید.",
+                403,
+                needs_phone_verify=True,
+                ident=phone,
+            )
+        result = send_phone_code(conn, user["id"], phone, "login")
+    return jsonify(**result)
+
+
+@app.post("/api/auth/phone/enter")
+def phone_login_enter():
+    payload = body_json()
+    phone = mobile_number(payload.get("phone") or payload.get("ident"))
+    with connect() as conn:
+        user = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
+        if not user or not int(user["phone_verified"] or 0):
+            raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 404)
+        accept_phone_code(conn, user, payload.get("code"), "login")
+        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        packed = login_payload(conn, fresh)
+    return finish_login(packed)
+
+
 @app.post("/api/auth/register")
 def register():
     payload = body_json()
+    if not str(payload.get("email") or payload.get("gmail") or "").strip():
+        return register_phone(payload)
     name = clean_text(payload.get("name"), "نام", 80, required=True)
     phone = norm_phone(payload.get("phone") or "")
     email = gmail_address(payload.get("email") or payload.get("gmail"))
