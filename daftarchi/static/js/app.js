@@ -155,6 +155,14 @@ function markUpdated() {
   toast("آپدیت شدی", { ok: true });
 }
 function showUpdated() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("updated") === "1") {
+    params.delete("updated");
+    const next = params.toString();
+    history.replaceState(null, "", location.pathname + (next ? `?${next}` : "") + location.hash);
+    toast("آپدیت شدی", { ok: true });
+    return;
+  }
   let flag = "";
   let reset = "";
   try {
@@ -164,6 +172,13 @@ function showUpdated() {
   } catch { flag = ""; }
   state.justUpdated = reset === "1";
   if (flag) toast("آپدیت شدی", { ok: true });
+}
+function reopenAfterUpdate() {
+  markUpdated();
+  setTimeout(() => {
+    window.close();
+    setTimeout(() => location.replace(location.pathname + location.hash), 2200);
+  }, 500);
 }
 function resetProgramButton() {
   if (!state.justUpdated) return "";
@@ -520,7 +535,7 @@ function supportHtml() {
   const panel = state.supportTab === "bug"
     ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><p class="hint">با ارسال، اسکرین همین صفحه هم برای پشتیبان می‌رود. نیازی به انتخاب عکس نیست.</p><button class="btn primary" type="submit">ارسال اسکرین و خطا</button></form>`
     : state.supportTab === "update"
-      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. با آپدیت، همین دفترچی عوض می‌شود و فروش‌ها می‌مانند.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${state.justUpdated ? `<p class="hint">آپدیت شد. ریست برنامه را بزنید تا نسخه جدید را ببینید.</p>` : ""}${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>${resetProgramButton()}</div>`
+      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. بعد از آپدیت برنامه بسته می‌شود و دوباره باز می‌شود.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>${resetProgramButton()}</div>`
       : `<div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="field"><label>پیام</label><textarea name="body" required rows="3" placeholder="برای پشتیبانی بنویسید"></textarea></div><button class="btn primary" type="submit">ارسال به پشتیبانی</button></form>`;
   const sheet = state.support ? `<section class="support-sheet" data-act="stop"><div class="row-actions"><strong>پشتیبانی دفترچی</strong><button type="button" class="btn" data-act="toggle-support">بستن</button></div><div class="seg">${[["chat", "چت"], ["bug", "گزارش خطا"], ["update", "به‌روزرسانی"]].map(([id, label]) => `<button type="button" class="${state.supportTab === id ? "on" : ""}" data-act="support-tab" data-tab="${id}">${label}</button>`).join("")}</div>${panel}</section>` : "";
   return `${sheet}<button type="button" class="dock" data-act="toggle-support">${state.support ? "بستن پشتیبانی" : "پشتیبانی"}</button>`;
@@ -2363,9 +2378,7 @@ async function onClick(event) {
         }
         const result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
         installed = true;
-        markUpdated();
-        render();
-        setTimeout(() => location.reload(), 2500);
+        reopenAfterUpdate();
       } finally {
         if (!installed) {
           state.updating = false;
@@ -2388,8 +2401,7 @@ async function onClick(event) {
       } else {
         result = await api("/api/panel/update", { method: "POST", body: { source: "remote" } });
       }
-      markUpdated();
-      setTimeout(() => location.reload(), 2500);
+      reopenAfterUpdate();
     } else if (act === "check-update") {
       await loadUpdate();
       state.support = true;

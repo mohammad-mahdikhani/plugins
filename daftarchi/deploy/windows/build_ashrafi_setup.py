@@ -44,11 +44,11 @@ InstallDir "$LOCALAPPDATA\\Daftarchi-Ashrafi"
 RequestExecutionLevel user
 ShowInstDetails nevershow
 BrandingText "دفترچی اشرافی"
-VIProductVersion 1.1.34.0
+VIProductVersion 1.1.35.0
 VIAddVersionKey "ProductName" "دفترچی اشرافی"
 VIAddVersionKey "FileDescription" "نصب دفترچی برای اشرافی"
-VIAddVersionKey "FileVersion" "1.1.34"
-VIAddVersionKey "ProductVersion" "1.1.34"
+VIAddVersionKey "FileVersion" "1.1.35"
+VIAddVersionKey "ProductVersion" "1.1.35"
 
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "نصب دفترچی اشرافی"

@@ -119,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.34"
+APP_VERSION = "1.1.35"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -3758,11 +3758,25 @@ def quiet_python() -> str:
     return current
 
 
-def schedule_restart() -> None:
-    """Relaunch the app without a terminal window on Windows or Mac."""
+def schedule_restart(after_update: bool = False) -> None:
+    """Close this process, then open a new one with no terminal window."""
     root = panel_root()
     env = os.environ.copy()
+    if after_update:
+        env["DAFTARCHI_JUST_UPDATED"] = "1"
+    else:
+        env.pop("DAFTARCHI_JUST_UPDATED", None)
     python = quiet_python()
+    helper = (
+        "import os,subprocess,sys,time\n"
+        "time.sleep(1.4)\n"
+        "flags = {}\n"
+        "if os.name == 'nt':\n"
+        "    flags['creationflags'] = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP\n"
+        "else:\n"
+        "    flags['start_new_session'] = True\n"
+        "subprocess.Popen([sys.argv[1], sys.argv[2]], cwd=sys.argv[3], env=os.environ.copy(), close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **flags)\n"
+    )
     kwargs = {
         "cwd": str(root),
         "env": env,
@@ -3775,8 +3789,8 @@ def schedule_restart() -> None:
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True
-    subprocess.Popen([python, str(root / "app.py")], **kwargs)
-    threading.Timer(0.8, lambda: os._exit(0)).start()
+    subprocess.Popen([python, "-c", helper, python, str(root / "app.py"), str(root)], **kwargs)
+    threading.Timer(0.4, lambda: os._exit(0)).start()
 
 
 @app.get("/api/panel/update")
@@ -3800,8 +3814,8 @@ def panel_update_apply():
             raise AppError(status["error"] or "آدرس نسخه جدید پیدا نشد")
         blob = download_update_zip(status["app_url"])
     written = apply_panel_package(blob)
-    schedule_restart()
-    return jsonify(ok=True, files=len(written), message="آپدیت شد. دفترچی چند ثانیه دیگر دوباره باز می‌شود. فروش‌ها ماند.")
+    schedule_restart(after_update=True)
+    return jsonify(ok=True, files=len(written), message="آپدیت شد. دفترچی بسته می‌شود و دوباره باز می‌شود.")
 
 
 @app.post("/api/system/restart")
@@ -6997,6 +7011,7 @@ def main():
     port = int(os.environ.get("PORT", "8080"))
     print(f"دفترچی روی http://127.0.0.1:{port}")
     threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
+    fresh = os.environ.pop("DAFTARCHI_JUST_UPDATED", "").strip().lower() in ("1", "true", "yes", "on")
     if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
         def _open_browser():
             for _ in range(40):
@@ -7006,7 +7021,10 @@ def main():
                 except OSError:
                     time.sleep(0.25)
             import webbrowser
-            webbrowser.open(f"http://127.0.0.1:{port}")
+            target = f"http://127.0.0.1:{port}/"
+            if fresh:
+                target += "?updated=1"
+            webbrowser.open(target)
         threading.Thread(target=_open_browser, daemon=True).start()
     deadline = time.time() + 20
     while True:
