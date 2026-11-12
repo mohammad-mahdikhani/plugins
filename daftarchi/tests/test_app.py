@@ -347,6 +347,39 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("Daftarchi-Pakan", setup)
         self.assertNotIn("DAFTARCHI_UNLOCK", setup)
 
+    def test_ashrafi_windows_installer_is_named_and_quiet(self):
+        deploy = Path(__file__).resolve().parents[1] / "deploy"
+        zpath = deploy / "Daftarchi-اشرافی.zip"
+        self.assertTrue(zpath.is_file(), zpath)
+        with zipfile.ZipFile(zpath) as archive:
+            names = archive.namelist()
+            bat = archive.read("Daftarchi-اشرافی/Start-Daftarchi.bat").decode()
+            vbs = archive.read("Daftarchi-اشرافی/Start-Daftarchi.vbs").decode()
+            preset = archive.read("Daftarchi-اشرافی/preset.json").decode()
+            app_text = archive.read("Daftarchi-اشرافی/app/app.py").decode()
+        self.assertIn("pythonw.exe", bat)
+        self.assertIn("pythonw.exe", vbs)
+        self.assertIn("DAFTARCHI_PRESET", bat)
+        self.assertIn("DAFTARCHI_PRESET", vbs)
+        self.assertNotIn("DAFTARCHI_UNLOCK", bat)
+        self.assertIn('"unlimited": true', preset)
+        self.assertIn("اشرافی", preset)
+        self.assertIn('"shop_mode": "offline"', preset)
+        self.assertNotIn("studio_unlock", preset)
+        self.assertIn('APP_VERSION = "1.1.21"', app_text)
+        self.assertIn("def hide_console()", app_text)
+        self.assertFalse(any("studio-unlock" in name for name in names))
+        self.assertFalse(any(name.endswith(".dmg") for name in names))
+        setup_exe = (deploy / "Daftarchi-اشرافی-setup.exe").read_bytes()
+        self.assertEqual(setup_exe[:2], b"MZ")
+        self.assertGreater(len(setup_exe), 8_000_000)
+        self.assertIn("دفترچی اشرافی".encode("utf-16le"), setup_exe)
+        builder = (deploy / "windows" / "build_ashrafi_setup.py").read_text(encoding="utf-8")
+        shortcuts = [line for line in builder.splitlines() if "CreateShortcut" in line]
+        self.assertTrue(shortcuts)
+        self.assertTrue(all("دفترچی اشرافی.lnk" in line and "Start-Daftarchi.vbs" in line for line in shortcuts))
+        self.assertTrue(all("Start-Daftarchi.bat" not in line for line in shortcuts))
+
     def test_atr_package_is_unlimited_and_not_studio(self):
         deploy = Path(__file__).resolve().parents[1] / "deploy"
         expected = {

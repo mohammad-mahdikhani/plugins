@@ -3194,10 +3194,12 @@ def place_windows_desktop_icon() -> str:
     icon = root / "static" / "daftarchi.ico"
     if not icon.is_file():
         icon = root.parent / "daftarchi.ico"
-    bat = root.parent / "Start-Daftarchi.bat"
+    parent = root.parent
+    vbs = parent / "Start-Daftarchi.vbs"
+    bat = parent / "Start-Daftarchi.bat"
     if not icon.is_file():
         raise AppError("فایل آیکون دفترچی کنار برنامه نیست.")
-    target = bat if bat.is_file() else Path(__import__("sys").executable)
+    target = vbs if vbs.is_file() else bat if bat.is_file() else Path(__import__("sys").executable)
     work = target.parent
     script = (
         "$desktop = [Environment]::GetFolderPath('Desktop')\n"
@@ -6475,9 +6477,22 @@ def test_setting(kind: str):
 init_db()
 
 
+def hide_console() -> None:
+    if os.name != "nt":
+        return
+    try:
+        ctypes = __import__("ctypes")
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 0)
+    except Exception:
+        return
+
+
 def main():
     import time
 
+    hide_console()
     port = int(os.environ.get("PORT", "8080"))
     print(f"دفترچی روی http://127.0.0.1:{port}")
     threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
