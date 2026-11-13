@@ -1496,7 +1496,7 @@ function settingsHtml() {
       <div class="grid-2">${field("pos_host", "آدرس یا IP")}${field("pos_port", "پورت")}</div>
       ${field("pos_terminal", "شماره پایانه")}
       <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش اتصال</button>
-      <p class="hint">آدرس یا IP را بنویسید و آزمایش را بزنید؛ لازم نیست قبلش ذخیره شود. شماره پیگیری رسید را موقع فروش وارد می‌کنید.</p>
+      <p class="hint">برای پرداخت نوین، آدرس و پورت ۱۳۶۲ را ذخیره کنید. با زدن کارت‌خوان، مبلغ فاکتور به دستگاه می‌رود و مشتری فقط کارت می‌کشد و رمز می‌زند. فاکتور بعد از تأیید دستگاه ثبت می‌شود.</p>
     </section>`;
   const extra = `<details><summary>تنظیمات بیشتر</summary>
       <h2 class="section-title">درگاه پرداخت</h2>
@@ -1599,7 +1599,8 @@ function modalHtml() {
     const product = modal.product;
     inner = `<h2 class="section-title">${esc(product.name)}</h2><p class="hint">نوع متغیر را انتخاب کنید. موجودی هر نوع جداست.</p><div class="var-pick">${(product.variations || []).map((item) => `<button type="button" class="btn var-choice" data-act="pick-variation" data-id="${product.id}" data-variation="${item.id}" ${item.in_stock ? "" : "disabled"}><span>${esc(item.label)}</span><span class="num">${item.tracked ? `موجودی ${num(item.stock)}` : (item.in_stock ? "موجود" : "ناموجود")}</span><span class="num">${money(item.price)}</span></button>`).join("")}</div>`;
   }
-  if (modal.type === "card") inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><div class="field"><label>شماره پیگیری رسید</label><input id="pos-ref" class="ltr"></div><button type="button" class="btn primary" data-act="confirm-card">ثبت پرداخت کارت</button>`;
+  if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">تا وقتی کارت‌خوان پرداخت را تأیید نکند، فاکتوری ثبت نمی‌شود.</p>`;
+  if (modal.type === "card" && !modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><div class="field"><label>شماره پیگیری رسید</label><input id="pos-ref" class="ltr"></div><button type="button" class="btn primary" data-act="confirm-card">ثبت پرداخت کارت</button>`;
   if (modal.type === "gateway") inner = `<h2 class="section-title">پرداخت در مرورگر</h2><p>کد <span class="ltr">${esc(modal.sale.invoice_code || "")}</span> · فاکتور ${num(modal.sale.id)} · ${money(modal.sale.payable)}</p>${gatewayPanel(modal.sale)}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-sale" data-id="${modal.sale.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-sale" data-id="${modal.sale.id}">لغو</button></div><form data-act="manual-gateway"><input type="hidden" name="id" value="${modal.sale.id}"><div class="field"><label>اگر در پنل درگاه پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
   if (modal.type === "pay-link") {
     const sale = modal.sale;
@@ -2418,9 +2419,23 @@ async function onClick(event) {
     } else if (act === "pay") {
       if (!buyerFields()) return;
       if (el.dataset.method === "card") {
-        const prep = await api("/api/pos/prepare", { method: "POST", body: { amount: cartSubtotal() - cartDiscount() } });
-        state.modal = { type: "card", message: prep.message, ok: prep.ok };
+        const amount = cartSubtotal() - cartDiscount();
+        state.modal = { type: "card", waiting: true, message: "مبلغ به کارت‌خوان فرستاده می‌شود. کارت را بکشید و رمز را بزنید." };
         render();
+        let paid;
+        try {
+          paid = await api("/api/pos/pay", { method: "POST", body: { amount } });
+        } catch (err) {
+          state.modal = { type: "card", waiting: false, message: err.message || "کارت‌خوان پرداخت را تأیید نکرد", ok: false };
+          render();
+          throw err;
+        }
+        if (!paid.sent) {
+          state.modal = { type: "card", waiting: false, message: paid.message, ok: paid.ok };
+          render();
+          return;
+        }
+        await submitSale("card", paid.ref || "");
       } else await submitSale(el.dataset.method, "");
     } else if (act === "confirm-card") {
       await submitSale("card", document.getElementById("pos-ref")?.value || "");

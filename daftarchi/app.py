@@ -119,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.40"
+APP_VERSION = "1.1.41"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -6132,6 +6132,120 @@ def card_reader_target(host: str, port_text: str) -> tuple[str, int]:
     return host, port
 
 
+PNA_MARK = "@@PNA@@"
+PNA_SWIPE_SECONDS = 90
+PNA_CODES = {
+    0: "پرداخت تأیید شد",
+    12: "تراکنش روی کارت‌خوان نامعتبر بود",
+    51: "موجودی کارت کافی نبود",
+    54: "کارت منقضی شده است",
+    55: "رمز کارت نادرست بود",
+    57: "این کارت اجازه این تراکنش را ندارد",
+    58: "کارت‌خوان اجازه این تراکنش را ندارد",
+    61: "مبلغ از سقف کارت بیشتر است",
+    99: "مشتری پرداخت را تمام نکرد",
+}
+
+
+def pna_prefixed(value: str, width: str = "02d") -> str:
+    text = str(value or "")
+    if len(text) > 99:
+        raise AppError("مبلغ کارت‌خوان بیش از حد است")
+    return f"{len(text):{width}}{text}"
+
+
+def pna_sale_message(amount_rial: int, timeout: int = PNA_SWIPE_SECONDS) -> str:
+    if amount_rial <= 0:
+        raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
+    amount = str(int(amount_rial))
+    wait = str(max(1, int(timeout)))
+    return (
+        "@@PNA@@01"
+        "1"
+        + pna_prefixed("")
+        + pna_prefixed(amount)
+        + pna_prefixed("", "02X")
+        + pna_prefixed("")
+        + "02"
+        + "00"
+        + pna_prefixed("")
+        + pna_prefixed("")
+        + pna_prefixed(wait)
+        + "01"
+        + "1"
+    )
+
+
+def pna_fields(text: str) -> list[str] | None:
+    if not text.startswith(PNA_MARK):
+        return None
+    index = len(PNA_MARK)
+    fields: list[str] = []
+    for _ in range(8):
+        if index + 2 > len(text):
+            return None
+        length_text = text[index:index + 2]
+        if not length_text.isdigit():
+            return None
+        length = int(length_text)
+        index += 2
+        if index + length > len(text):
+            return None
+        fields.append(text[index:index + length])
+        index += length
+    return fields
+
+
+def parse_pna_response(raw: str) -> dict:
+    text = str(raw or "").strip("\x00\r\n ")
+    fields = pna_fields(text)
+    if not fields or not fields[5]:
+        raise AppError("پاسخ کارت‌خوان شناخته نشد. سفارشی ثبت نشد")
+    try:
+        code = int(fields[5])
+    except ValueError as exc:
+        raise AppError("پاسخ کارت‌خوان شناخته نشد. سفارشی ثبت نشد") from exc
+    if code != 0:
+        raise AppError(PNA_CODES.get(code, f"کارت‌خوان پرداخت را رد کرد ({code}). سفارشی ثبت نشد"))
+    ref = fields[2] or fields[1]
+    if not ref:
+        raise AppError("کارت‌خوان شماره پیگیری نداد. سفارشی ثبت نشد")
+    return {"ref": ref, "stan": fields[1], "rrn": fields[2], "code": code}
+
+
+def charge_pardakht_novin(host: str, port: int, amount_toman: int) -> dict:
+    if amount_toman <= 0:
+        raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
+    message = pna_sale_message(amount_toman * 10).encode("ascii")
+    try:
+        sock = socket.create_connection((host, port), timeout=8)
+    except socket.gaierror as exc:
+        raise AppError("آدرس کارت‌خوان پیدا نشد. سفارشی ثبت نشد") from exc
+    except OSError as exc:
+        raise AppError(f"کارت‌خوان در {host}:{port} پاسخ نداد. سفارشی ثبت نشد") from exc
+    chunks: list[bytes] = []
+    try:
+        sock.settimeout(PNA_SWIPE_SECONDS + 15)
+        sock.sendall(message)
+        while True:
+            try:
+                piece = sock.recv(1024)
+            except socket.timeout:
+                break
+            if not piece:
+                break
+            chunks.append(piece)
+            if pna_fields(b"".join(chunks).decode("ascii", "ignore").strip("\x00\r\n ")):
+                break
+    except OSError as exc:
+        raise AppError("ارتباط با کارت‌خوان قطع شد. سفارشی ثبت نشد") from exc
+    finally:
+        sock.close()
+    if not chunks:
+        raise AppError("کارت‌خوان پاسخی نداد. کارت کشیده نشد و سفارشی ثبت نشد")
+    return parse_pna_response(b"".join(chunks).decode("ascii", "ignore"))
+
+
 def probe_card_reader(host: str, port_text: str) -> tuple[str, int]:
     host, port = card_reader_target(host, port_text)
     try:
@@ -6157,7 +6271,27 @@ def pos_prepare():
     except AppError as exc:
         return jsonify(ok=False, mode="network", message=str(exc))
     provider = settings.get("pos_provider") or "manual"
+    if provider == "pardakhtnovin":
+        return jsonify(ok=True, mode="network", message=f"ارتباط با {host} برقرار است. هنگام فروش، مبلغ به همین کارت‌خوان می‌رود و مشتری فقط کارت و رمز را وارد می‌کند.")
     return jsonify(ok=True, mode="network", message=f"ارتباط با {host} برقرار شد. شماره پیگیری رسید را وارد کنید.")
+
+
+@app.post("/api/pos/pay")
+def pos_pay():
+    require_user()
+    payload = body_json()
+    amount = parse_money(payload.get("amount"), "مبلغ")
+    if amount <= 0:
+        raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
+    with connect() as conn:
+        settings = get_settings(conn)
+    provider = settings.get("pos_provider") or "manual"
+    host = (settings.get("pos_host") or "").strip()
+    if provider != "pardakhtnovin" or not host:
+        return jsonify(ok=True, sent=False, mode="manual", message="شماره پیگیری رسید را وارد کنید.")
+    host, port = card_reader_target(host, settings.get("pos_port") or "0")
+    paid = charge_pardakht_novin(host, port, amount)
+    return jsonify(ok=True, sent=True, mode="device", ref=paid["ref"], message="پرداخت روی کارت‌خوان تأیید شد")
 
 
 @app.get("/api/reports/summary")

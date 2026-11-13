@@ -1,11 +1,11 @@
 {
-  "version": "1.1.40",
+  "version": "1.1.41",
   "channel": "customer",
-  "notes": "در اصلاح فاکتور می‌شود فاکتور را حذف کرد تا کالا و حساب به قبل از فروش برگردد.",
+  "notes": "با زدن کارت‌خوان، مبلغ فاکتور به دستگاه پرداخت نوین می‌رود. مشتری کارت می‌کشد و رمز می‌زند و فاکتور فقط بعد از تأیید دستگاه ثبت می‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.40-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.41-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-13T00:38:20+00:00"
+  "published_at": "2026-11-13T01:01:28+00:00"
 }
