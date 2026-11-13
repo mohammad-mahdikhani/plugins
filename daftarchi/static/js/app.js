@@ -960,7 +960,7 @@ function paintChrome() {
     ? `<span class="pill ${access.active ? "" : "warn"}">${access.vip ? "لایسنس VIP" : access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
     : "";
   const status = document.getElementById("app-status");
-  if (status) status.innerHTML = `${accessPill}${pill}${desktopIconButton(false)}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="password-modal">رمز</button><button type="button" class="btn" data-act="logout">خروج</button>`;
+  if (status) status.innerHTML = `${accessPill}${pill}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="logout">خروج</button>`;
   const banner = document.getElementById("banner-host");
   if (banner) {
     banner.innerHTML = [
@@ -1553,9 +1553,7 @@ function settingsHtml() {
       <label class="check"><input type="checkbox" name="moadian_enabled" ${checked("moadian_enabled")}>ارسال فاکتور به سامانه</label>
       <label class="check"><input type="checkbox" name="moadian_sandbox" ${checked("moadian_sandbox")}>ارسال آزمایشی</label>
     </details>`;
-  const desk = showDesktopIcon()
-    ? `<section class="card"><h2 class="section-title">آیکون روی دسکتاپ</h2><p class="hint">همین نسخه وب مثل یک برنامه باز می‌شود. صفحه و فونت از حافظه مرورگر می‌آید و فروش معطل دانلود دوباره نمی‌ماند.</p><button type="button" class="btn primary" data-act="desktop-icon">ساخت آیکون</button></section>`
-    : "";
+  const desk = `<section class="card"><h2 class="section-title">برنامه و ورود</h2><div class="row-actions">${desktopIconButton(false)}<button type="button" class="btn" data-act="password-modal">رمز</button></div></section>`;
   const parts = [desk, modeCard].filter(Boolean);
   if (mode === "online") parts.push(woo);
   else if (mode === "offline") parts.push(invoice, pos, extra);
