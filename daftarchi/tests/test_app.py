@@ -1,8 +1,12 @@
+import http.client
 import io
 import json
 import os
+import socket
 import sqlite3
 import tempfile
+import threading
+import time
 import unittest
 import zipfile
 from pathlib import Path
@@ -110,22 +114,22 @@ class DaftarchiTest(unittest.TestCase):
         entered = self.client.post("/api/auth/phone/enter", json={"phone": "09125556677", "code": sent.get_json()["preview_code"]})
         self.assertEqual(entered.status_code, 200, entered.get_json())
         self.assertEqual(entered.get_json()["user"]["phone"], "09125556677")
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("ثبت شماره موبایل", page)
         self.assertIn("فقط شماره موبایل را بنویسید", page)
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.44", page)
-        self.assertIn("/static/icon-192.png?v=1.1.44", page)
-        self.assertIn("/static/js/app.js?v=1.1.44", page)
+        self.assertIn("/static/css/app.css?v=1.1.45", page)
+        self.assertIn("/static/icon-192.png?v=1.1.45", page)
+        self.assertIn("/static/js/app.js?v=1.1.45", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.44")
+        css = self.client.get("/static/css/app.css?v=1.1.45")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
         sheet = css.get_data(as_text=True)
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.44", sheet)
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.45", sheet)
         self.assertIn(".bubble .toast-remedy { color: #16315f; }", sheet)
         self.assertIn(".bubble.bug .toast-remedy { color: #9f1239; }", sheet)
         health = self.client.get("/api/health")
@@ -151,10 +155,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.44", worker)
+        self.assertIn("daftarchi-1.1.45", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.44", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.44", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.45", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.45", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 119483)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
@@ -537,7 +541,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(customers[0]["balance"], 0)
 
     def test_shop_pattern_is_sent_through_melipayamak(self):
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("الگوی پیامک خریدار", page)
         self.assertIn("به صورت الگو", page)
         self.assertNotIn("کلید کاوه‌نگار", page)
@@ -622,7 +626,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(tried.status_code, 200, tried.get_json())
         sent = [item for item in seen["calls"] if item.get("action") == "send"]
         self.assertEqual(sent[-1]["pattern"], "noway")
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("sms_choice_", page)
         self.assertIn("الگوهای آماده", page)
         php = (Path(__file__).resolve().parents[1] / "deploy/webakery/daftarchi-sms.php").read_text(encoding="utf-8")
@@ -646,7 +650,7 @@ class DaftarchiTest(unittest.TestCase):
         values = appmod.pattern_values(None, sale, items, {"shop_name": "دفترچی"})
         _text, args = appmod.render_pattern("{mobile};{sh_first_name};{price};{all_items};{order_id}", values)
         self.assertEqual(args, ["09120000000", "نگار", "10,000", "عطر، کرم", "12"])
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("insert-sms-var", page)
         self.assertIn("شماره موبایل مشتری", page)
         php = (Path(__file__).resolve().parents[1] / "deploy/webakery/daftarchi-sms.php").read_text(encoding="utf-8")
@@ -670,7 +674,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(removed.status_code, 200, removed.get_json())
         phones = [row["phone"] for row in self.client.get("/api/users").get_json()["users"]]
         self.assertNotIn("09127778899", phones)
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn('data-act="delete-user"', page)
         self.assertIn("آزمایش پیامک", page)
         self.assertIn("ریست برنامه", page)
@@ -1444,7 +1448,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(color.get_json()["product"]["name"], "تیشرت پاکان")
         clash = self.client.get("/api/products/scan", query_string={"code": "1234"})
         self.assertEqual(clash.status_code, 409)
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn('data-act="dismiss"', page)
         self.assertIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
         self.assertIn('aria-label="بستن"', page)
@@ -1520,7 +1524,7 @@ class DaftarchiTest(unittest.TestCase):
         bad = self.client.post("/api/settings/test/pos", json={"pos_host": "192.168.001.999", "pos_port": "1362"})
         self.assertEqual(bad.status_code, 400)
         self.assertIn("آدرس کارت‌خوان درست نیست", bad.get_json()["error"])
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("pos_host: data.pos_host", page)
         self.assertIn("پرداخت نوین", page)
 
@@ -1609,7 +1613,7 @@ class DaftarchiTest(unittest.TestCase):
         typed = self.client.post("/api/pos/pay", json={"amount": 15000})
         self.assertEqual(typed.status_code, 200, typed.get_json())
         self.assertFalse(typed.get_json()["sent"])
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("/api/pos/pay", page)
         self.assertIn("waiting: true", page)
 
@@ -1725,9 +1729,137 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
         self.assertEqual(empty.status_code, 400)
         self.assertEqual(self.client.get("/api/pro").get_json()["tokens"], 9160)
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("buy-pro", page)
         self.assertIn("دست‌نویس", page)
+
+    def _live_shop(self, threads=4):
+        from waitress import create_server
+
+        server = create_server(appmod.app, host="127.0.0.1", port=0, threads=threads)
+        port = int(server.effective_port)
+        worker = threading.Thread(target=server.run, daemon=True)
+        worker.start()
+        cookie = self.client.get_cookie("session")
+        jar = f"{cookie.key}={cookie.value}" if cookie else ""
+        return server, port, jar
+
+    def _shop_json(self, port, jar, method, path, payload=None, timeout=8):
+        body = json.dumps(payload).encode() if payload is not None else None
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
+        try:
+            headers = {"Cookie": jar, "Accept": "application/json"}
+            if body is not None:
+                headers["Content-Type"] = "application/json"
+            conn.request(method, path, body=body, headers=headers)
+            response = conn.getresponse()
+            raw = response.read()
+            try:
+                data = json.loads(raw.decode())
+            except json.JSONDecodeError:
+                data = {"raw": raw.decode(errors="replace")[:200]}
+            return response.status, data
+        finally:
+            conn.close()
+
+    def test_architecture_keeps_shop_open_and_stock_honest(self):
+        self.open_register(0)
+        product = self.add_product(name="چای", price=10000, stock=5, barcode="arch-1")
+        original_take = appmod.take_line_stock
+
+        def delayed_take(conn, item, user_id, sale_id, threshold):
+            time.sleep(0.08)
+            return original_take(conn, item, user_id, sale_id, threshold)
+
+        appmod.take_line_stock = delayed_take
+        server, port, jar = self._live_shop(threads=8)
+        try:
+            hits = []
+            lock = threading.Lock()
+
+            def sell():
+                status, body = self._shop_json(port, jar, "POST", "/api/sales", {
+                    "items": [{"product_id": product["id"], "qty": 1}],
+                    "payment_method": "cash",
+                }, timeout=12)
+                with lock:
+                    hits.append((status, body.get("error") or body.get("sale", {}).get("status")))
+
+            workers = [threading.Thread(target=sell) for _ in range(8)]
+            for worker in workers:
+                worker.start()
+            for worker in workers:
+                worker.join(20)
+            paid = [row for row in hits if row[0] == 200]
+            blocked = [row for row in hits if row[0] != 200]
+            listed = self.client.get("/api/products").get_json()["products"]
+            stock = next(row["stock"] for row in listed if row["id"] == product["id"])
+            sales = self.client.get("/api/sales").get_json()["sales"]
+            tea_sales = [row for row in sales if row["status"] == "paid"]
+            self.assertEqual(len(paid), 5, hits)
+            self.assertEqual(len(blocked), 3, hits)
+            self.assertEqual(stock, 0)
+            self.assertEqual(len(tea_sales), 5)
+        finally:
+            appmod.take_line_stock = original_take
+        try:
+
+            seen = {"ready": threading.Event()}
+
+            def linger(conn, _addr):
+                try:
+                    conn.recv(4096)
+                    time.sleep(2.5)
+                    conn.sendall(
+                        b"@@PNA@@0812345678066543211212345678901206000001020002001660379912345678901420261113041900"
+                    )
+                finally:
+                    conn.close()
+
+            def serve_reader():
+                sock = socket.socket()
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.bind(("127.0.0.1", 0))
+                sock.listen(1)
+                seen["port"] = sock.getsockname()[1]
+                seen["ready"].set()
+                conn, _addr = sock.accept()
+                linger(conn, _addr)
+                sock.close()
+
+            reader = threading.Thread(target=serve_reader, daemon=True)
+            reader.start()
+            self.assertTrue(seen["ready"].wait(2))
+            self.assertEqual(self.client.put("/api/settings", json={
+                "pos_provider": "pardakhtnovin",
+                "pos_host": "127.0.0.1",
+                "pos_port": str(seen["port"]),
+            }).status_code, 200)
+            started = time.monotonic()
+            pay_status = {"code": None}
+
+            def pay():
+                pay_status["code"], pay_status["body"] = self._shop_json(
+                    port, jar, "POST", "/api/pos/pay", {"amount": 10000}, timeout=12,
+                )
+
+            payer = threading.Thread(target=pay)
+            payer.start()
+            time.sleep(0.3)
+            status, health = self._shop_json(port, jar, "GET", "/api/health", timeout=2)
+            elapsed = time.monotonic() - started
+            extra = self.add_product(name="قند", price=2000, stock=4, barcode="arch-2")
+            payer.join(12)
+            reader.join(12)
+        finally:
+            server.close()
+        self.assertEqual(status, 200, health)
+        self.assertLess(elapsed, 1.5)
+        self.assertEqual(pay_status["code"], 200, pay_status)
+        self.assertEqual(extra["stock"], 4)
+        self.assertEqual(self.client.get("/api/sales").get_json()["sales"][0]["status"], "paid")
+        self.assertGreaterEqual(appmod.SERVER_THREADS, 8)
+        self.assertGreaterEqual(appmod.SERVER_CHANNEL_TIMEOUT, 90)
 
     def test_archived_barcode_can_be_used_again(self):
         product = self.add_product()
@@ -2135,7 +2267,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertNotIn("token", seen["payload"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
-        page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
         self.assertIn("اسکرین برای پشتیبان ارسال شد", page)
         self.assertIn("html2canvas.min.js", page)
         self.assertNotIn('name="shot"', page)
@@ -2877,7 +3009,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.44")
+        self.assertEqual(appmod.APP_VERSION, "1.1.45")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -2942,7 +3074,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.44")
+        self.assertEqual(boot["version"], "1.1.45")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -2951,7 +3083,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.44", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.45", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)
@@ -3163,7 +3295,7 @@ class DaftarchiTest(unittest.TestCase):
             self.assertTrue(str(paid["topup"]["invoice_code"]).startswith("S"))
             self.assertEqual(seen["credit"]["invoice_code"], paid["topup"]["invoice_code"])
             self.assertNotIn("password", seen["credit"])
-            page = self.client.get("/static/js/app.js?v=1.1.44").get_data(as_text=True)
+            page = self.client.get("/static/js/app.js?v=1.1.45").get_data(as_text=True)
             self.assertIn('"sms", "settings"', page)
             self.assertIn("این فاکتور برای مدیر فروشگاه صادر شد", page)
             self.assertNotIn("با زدن مبلغ، صفحه زیبال باز می‌شود", page)

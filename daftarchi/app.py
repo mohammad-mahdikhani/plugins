@@ -117,12 +117,14 @@ DEFAULT_SETTINGS = {
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
 WOO_SYNC_URGENT = 0.12
+SERVER_THREADS = 16
+SERVER_CHANNEL_TIMEOUT = 180
 POS_PROVIDERS = {"manual", "saman", "behpardakht", "parsian", "irankish", "sepehr", "asanpardakht", "pardakhtnovin"}
 GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.44"
+APP_VERSION = "1.1.45"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -7817,10 +7819,16 @@ def main():
     while True:
         try:
             from waitress import serve
-            serve(app, host="0.0.0.0", port=port)
+            serve(
+                app,
+                host="0.0.0.0",
+                port=port,
+                threads=SERVER_THREADS,
+                channel_timeout=SERVER_CHANNEL_TIMEOUT,
+            )
             return
         except ImportError:
-            app.run(host="0.0.0.0", port=port, debug=False)
+            app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
             return
         except OSError:
             if time.time() > deadline:

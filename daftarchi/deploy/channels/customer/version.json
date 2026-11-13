@@ -1,11 +1,11 @@
 {
-  "version": "1.1.44",
+  "version": "1.1.45",
   "channel": "customer",
-  "notes": "دکمه آیکون دسکتاپ و دکمه رمز از نوار بالا برداشته شد و داخل تنظیمات است.",
+  "notes": "معماری زنده تست شد: چند فروش هم‌زمان موجودی را منفی نمی‌کند و موقع انتظار کارت‌خوان بقیه فروشگاه باز می‌ماند.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.44-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.45-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-13T02:15:06+00:00"
+  "published_at": "2026-11-13T15:56:24+00:00"
 }
