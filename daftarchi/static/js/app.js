@@ -996,7 +996,7 @@ function invoicesHtml() {
     return `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`.includes(query);
   });
   return `<div class="stack"><section class="card"><h2 class="section-title">فاکتورهای ثبت‌شده</h2>
-    <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. موجودی و سند حسابداری با همین فاکتور عوض می‌شود.</p>
+    <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. اگر یک قلم اشتباه خریده شده، همان قلم را حذف کنید. اگر کل سفارش اشتباه است، داخل اصلاح «حذف فاکتور» را بزنید تا موجودی و حساب به قبل از فروش برگردد.</p>
     <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
     <div id="invoice-table">${salesTable(rows, true)}</div></section></div>`;
 }
@@ -1034,7 +1034,7 @@ function saleEditHtml() {
     <div class="field"><label>فی</label><input name="edit-price-${index}" inputmode="numeric" value="${esc(line.unit_price)}"></div></div>
     <button type="button" class="btn danger" data-act="edit-sale-remove" data-index="${index}">حذف این قلم</button></div>`).join("");
   return `<form data-act="save-sale"><h2 class="section-title">اصلاح فاکتور ${num(modal.sale.id)}</h2>
-    <p class="hint">شماره فاکتور همان می‌ماند. اگر به سامانه مودیان رفته باشد، اصلاح بسته است.</p>
+    <p class="hint">شماره فاکتور همان می‌ماند. اگر یک کالا اشتباه است، همان قلم را حذف کنید و اصلاح را ذخیره کنید. اگر کل سفارش اشتباه ثبت شده، حذف فاکتور موجودی و حساب را به قبل از این فروش برمی‌گرداند. فاکتور مودیان از اینجا بسته است.</p>
     ${lines || `<p class="empty">حداقل یک کالا لازم است.</p>`}
     <div class="field"><label>افزودن کالا</label><div class="row-actions"><select id="edit-add">${stockChoices(state.products || [])}</select><button type="button" class="btn" data-act="edit-sale-add">اضافه</button></div></div>
     <div class="grid-2">
@@ -1049,7 +1049,10 @@ function saleEditHtml() {
     <div class="field"><label>پیگیری کارت</label><input id="edit-pos" class="ltr" value="${esc(modal.posRef || "")}"></div>
     <p>جمع <strong class="num" id="edit-sub">${money(totals.subtotal)}</strong></p>
     <p>قابل پرداخت <strong class="num" id="edit-due">${money(totals.payable)}</strong></p>
-    <button class="btn primary" type="submit">ذخیره اصلاح</button></form>`;
+    <div class="row-actions">
+      <button class="btn primary" type="submit">ذخیره اصلاح</button>
+      <button type="button" class="btn danger" data-act="delete-sale" data-id="${modal.sale.id}">حذف فاکتور و برگشت کالا</button>
+    </div></form>`;
 }
 function dashboardHtml() {
   const data = state.dashboard;
@@ -2212,6 +2215,18 @@ async function onClick(event) {
   if (act === "close-modal") { state.modal = null; render(); return; }
   if (act === "edit-sale") {
     await guard(() => openSaleEdit(el.dataset.id));
+    return;
+  }
+  if (act === "delete-sale") {
+    const saleId = el.dataset.id;
+    if (!saleId || !window.confirm("این فاکتور حذف شود؟ کالاها به موجودی برمی‌گردند و حساب به قبل از این فروش برمی‌گردد.")) return;
+    await guard(async () => {
+      const result = await api(`/api/sales/${saleId}`, { method: "DELETE" });
+      state.modal = null;
+      if (loaders[state.page]) await loaders[state.page]();
+      toast(result.message || "فاکتور حذف شد و کالاها به موجودی برگشت");
+      render();
+    });
     return;
   }
   if (act === "edit-sale-add") {

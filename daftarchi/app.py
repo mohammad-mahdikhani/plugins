@@ -119,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.39"
+APP_VERSION = "1.1.40"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -6055,6 +6055,43 @@ def revise_sale(sale_id: int):
         result = sale_payload(conn, sale_id)
     result["alerts"] = alerts
     return jsonify(**result)
+
+
+def undo_paid_sale(conn, sale, user_id: int) -> None:
+    sale_id = int(sale["id"])
+    if sale["status"] != "paid":
+        raise AppError("فقط فاکتور ثبت‌شده را می‌شود حذف کرد")
+    if sale["payment_method"] == "gateway":
+        raise AppError("فاکتور درگاه را از اینجا حذف نکنید")
+    if (sale["moadian_status"] or "") in {"sent", "success", "pending"}:
+        raise AppError("این فاکتور به سامانه مودیان رفته و از اینجا قابل حذف نیست")
+    old_items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale_id,)).fetchall()
+    for item in old_items:
+        product = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
+        if product and is_payment_product(product):
+            raise AppError("این فاکتور لینک پرداخت است و قابل حذف نیست")
+    for item in old_items:
+        restore_line_stock(conn, item, user_id, sale_id)
+    flipped = [(account_id, credit, debit) for account_id, debit, credit in sale_book_lines(conn, sale, old_items)]
+    post_entry(conn, f"حذف فاکتور {sale_id}", flipped, "sale-delete", sale_id, user_id)
+    conn.execute("UPDATE sales SET status='canceled', revised_at=? WHERE id=?", (iso(), sale_id))
+    for item in old_items:
+        vid = int(item["variation_id"] or 0) or None
+        maybe_queue_woo_sync(conn, int(item["product_id"]), vid)
+
+
+@app.delete("/api/sales/<int:sale_id>")
+def delete_sale(sale_id: int):
+    user = require_user()
+    if user["role"] == "stock":
+        raise AppError("حذف فاکتور با صندوق‌دار یا مدیر است", 403)
+    with connect() as conn:
+        require_access(conn)
+        sale = conn.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
+        if not sale:
+            raise AppError("فاکتور پیدا نشد", 404)
+        undo_paid_sale(conn, sale, user["id"])
+    return jsonify(ok=True, message="فاکتور حذف شد و کالاها به موجودی برگشت")
 
 
 @app.post("/api/sales/<int:sale_id>/cancel")
