@@ -119,7 +119,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.38"
+APP_VERSION = "1.1.39"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2661,16 +2661,41 @@ def woo_stock_fields(stock) -> dict:
     }
 
 
-def site_stock_applied(body, quantity: int) -> bool:
-    if not isinstance(body, dict) or body.get("manage_stock") is False:
-        return False
-    raw = body.get("stock_quantity")
-    if raw is None or raw == "":
-        return False
+def stock_amount(raw) -> int | None:
+    if raw is None or isinstance(raw, bool):
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
     try:
-        return int(raw) == int(quantity)
-    except (TypeError, ValueError):
+        return int(Decimal(text).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def site_manages_stock(body) -> bool:
+    managed = body.get("manage_stock")
+    return managed not in (False, 0, "0", "no", "false", "False")
+
+
+def site_stock_applied(body, quantity: int) -> bool:
+    if not isinstance(body, dict) or not site_manages_stock(body):
         return False
+    got = stock_amount(body.get("stock_quantity"))
+    return got is not None and got == int(quantity)
+
+
+def stock_sync_payload(quantity: int, extra: dict | None) -> dict:
+    fields = woo_stock_fields(quantity)
+    if int(quantity) != 0:
+        return {**(extra or {}), **fields}
+    # نام و تصویر را با صفر نفرست. ووکامرس موقع ذخیره عنوان، موجودی قبلی را برمی‌گرداند.
+    kept = {}
+    for key in ("regular_price", "sku"):
+        value = (extra or {}).get(key)
+        if value not in (None, ""):
+            kept[key] = value
+    return {**kept, **fields}
 
 
 def enable_site_stock_management(settings: dict) -> None:
@@ -2680,15 +2705,90 @@ def enable_site_stock_management(settings: dict) -> None:
         log.warning("woocommerce manage stock setting was not changed")
 
 
-def put_site_stock(settings: dict, path: str, quantity: int, extra: dict | None = None):
-    fields = {**(extra or {}), **woo_stock_fields(quantity)}
-    _status, body = woo_request(settings, "PUT", path, payload=fields)
-    if site_stock_applied(body, quantity):
+def write_zero_by_delta(settings: dict, path: str):
+    try:
+        _status, current = woo_request(settings, "GET", path)
+    except AppError:
+        return {}
+    if not isinstance(current, dict):
+        return {}
+    if site_stock_applied(current, 0):
+        return current
+    have = stock_amount(current.get("stock_quantity"))
+    if have is None or have <= 0:
+        woo_request(settings, "PUT", path, payload=woo_stock_fields(1))
+        have = 1
+    _status, body = woo_request(
+        settings,
+        "PUT",
+        path,
+        payload={
+            "manage_stock": True,
+            "backorders": "no",
+            "stock_status": "outofstock",
+            "inventory_delta": -int(have),
+        },
+    )
+    if site_stock_applied(body, 0):
         return body
-    enable_site_stock_management(settings)
-    _status, body = woo_request(settings, "PUT", path, payload=woo_stock_fields(quantity))
+    try:
+        _status, again = woo_request(settings, "GET", path)
+    except AppError:
+        return body if isinstance(body, dict) else {}
+    return again if isinstance(again, dict) else {}
+
+
+def zero_linked_variations(settings: dict, path: str, body) -> None:
+    if "/variations/" in path:
+        return
+    remote = body if isinstance(body, dict) and body.get("type") else None
+    if remote is None:
+        try:
+            _status, remote = woo_request(settings, "GET", path)
+        except AppError:
+            return
+    if not isinstance(remote, dict) or remote.get("type") != "variable":
+        return
+    try:
+        parent_id = int(remote.get("id") or 0)
+    except (TypeError, ValueError):
+        parent_id = 0
+    if not parent_id:
+        return
+    try:
+        variations = fetch_woo_variations(settings, parent_id)
+    except AppError:
+        return
+    for var in variations:
+        try:
+            vid = int(var.get("id") or 0)
+        except (TypeError, ValueError):
+            vid = 0
+        if not vid:
+            continue
+        if site_stock_applied(var, 0):
+            continue
+        put_site_stock(settings, f"products/{parent_id}/variations/{vid}", 0)
+    woo_request(
+        settings,
+        "PUT",
+        f"products/{parent_id}",
+        payload={"manage_stock": False, "stock_status": "outofstock"},
+    )
+
+
+def put_site_stock(settings: dict, path: str, quantity: int, extra: dict | None = None):
+    payload = stock_sync_payload(quantity, extra)
+    _status, body = woo_request(settings, "PUT", path, payload=payload)
+    if not site_stock_applied(body, quantity):
+        enable_site_stock_management(settings)
+        _status, body = woo_request(settings, "PUT", path, payload=woo_stock_fields(quantity))
+    if not site_stock_applied(body, quantity) and int(quantity) == 0:
+        body = write_zero_by_delta(settings, path)
     if not site_stock_applied(body, quantity):
         raise AppError("عدد موجودی روی سایت ننشست. در ووکامرس، تنظیمات، محصولات، مدیریت موجودی را روشن کنید.")
+    if int(quantity) == 0:
+        zero_linked_variations(settings, path, body)
     return body
 
 
@@ -2886,9 +2986,18 @@ def queue_woo_sync(product_id: int, variation_id: int | None = None, urgent: boo
 
 
 def maybe_queue_woo_sync(conn, product_id: int, variation_id: int | None = None) -> None:
-    if woo_auto_ready(get_settings(conn)):
-        conn.commit()
-        queue_woo_sync(product_id, variation_id, urgent=stock_hit_zero(conn, product_id, variation_id))
+    if not woo_auto_ready(get_settings(conn)):
+        return
+    conn.commit()
+    if stock_hit_zero(conn, product_id, variation_id):
+        try:
+            push_product_row_to_woo(get_settings(conn), conn, product_id, variation_id)
+            return
+        except AppError as exc:
+            log.warning("woo zero sync %s: %s", product_id, exc)
+        queue_woo_sync(product_id, variation_id, urgent=True)
+        return
+    queue_woo_sync(product_id, variation_id, urgent=False)
 
 
 def report_woo_stock(conn, product_id: int, variation_id: int | None = None) -> str:

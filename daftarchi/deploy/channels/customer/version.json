@@ -1,11 +1,11 @@
 {
-  "version": "1.1.38",
+  "version": "1.1.39",
   "channel": "customer",
-  "notes": "۱.۱.۳۸",
+  "notes": "وقتی موجودی دفترچی صفر شود، همان صفر روی سایت می‌نشیند.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.38-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.39-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-12T19:41:34+00:00"
+  "published_at": "2026-11-13T00:34:27+00:00"
 }
