@@ -1,11 +1,11 @@
 {
-  "version": "1.1.41",
+  "version": "1.1.42",
   "channel": "customer",
-  "notes": "با زدن کارت‌خوان، مبلغ فاکتور به دستگاه پرداخت نوین می‌رود. مشتری کارت می‌کشد و رمز می‌زند و فاکتور فقط بعد از تأیید دستگاه ثبت می‌شود.",
+  "notes": "خواندن عکس فاکتور، حتی دست‌نویس، با هوش مصنوعی. VIP این بخش را باز نمی‌کند. اکانت Pro با توکن مصرف‌شده کم می‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.41-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.42-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-13T01:01:28+00:00"
+  "published_at": "2026-11-13T01:56:54+00:00"
 }

@@ -402,9 +402,14 @@ const loaders = {
     state.panelUpdate = await api("/api/panel/update");
   },
   async invoices() {
-    const [sales, products] = await Promise.all([api("/api/sales?limit=80"), api("/api/products")]);
+    const [sales, products, pro] = await Promise.all([
+      api("/api/sales?limit=80"),
+      api("/api/products"),
+      isAdmin() ? api("/api/pro") : Promise.resolve(null),
+    ]);
     state.invoices = sales.sales;
     state.products = stampProducts(products.products);
+    state.pro = pro;
   },
 };
 
@@ -989,13 +994,36 @@ function salesTable(rows, actions) {
     ${rows.map((sale) => `<tr><td class="num">${num(sale.id)}</td><td>${esc(sale.at_jalali)}</td><td>${esc(sale.customer_name || "—")}</td><td>${PAY[sale.payment_method] || ""}</td><td class="num">${money(sale.payable)}</td>${actions && canEditSale(sale) ? `<td><button type="button" class="btn" data-act="edit-sale" data-id="${sale.id}">اصلاح</button></td>` : (actions ? "<td></td>" : "")}</tr>`).join("")}
   </tbody></table>`;
 }
+function invoiceReadHtml(invoice) {
+  const lines = (invoice.lines || []).map((line, index) => `<div class="line"><div class="field"><label>کالا</label><input name="name-${index}" value="${esc(line.name)}"></div>
+    <div class="grid-2"><div class="field"><label>تعداد</label><input name="qty-${index}" inputmode="numeric" value="${esc(line.qty)}"></div>
+    <div class="field"><label>فی، تومان</label><input name="price-${index}" inputmode="numeric" value="${esc(line.unit_price)}"></div></div>
+    <div class="field"><label>کالای موجود</label><select name="product-${index}"><option value="">کالای تازه</option>${stockChoices(state.products || []).replace(`value="${line.product_id}"`, `value="${line.product_id}" selected`)}</select></div></div>`).join("");
+  return `<form data-act="apply-invoice"><h2 class="section-title">فاکتور خوانده‌شده</h2>
+    <p class="hint">${esc(invoice.seller || "فروشنده نامشخص")}${invoice.invoice_no ? ` · ${esc(invoice.invoice_no)}` : ""}${invoice.date ? ` · ${esc(invoice.date)}` : ""}</p>
+    <p class="hint">این بار ${num(invoice.usage?.tokens || invoice.tokens || 0)} توکن از پرو کم شد. ${num(invoice.usage?.remaining || 0)} توکن مانده. VIP از این موجودی جداست.</p>
+    <input type="hidden" name="seller" value="${esc(invoice.seller || "")}">
+    <input type="hidden" name="count" value="${(invoice.lines || []).length}">
+    ${lines}
+    <p>قابل پرداخت روی عکس <strong class="num">${money(invoice.payable || 0)}</strong></p>
+    <button class="btn primary" type="submit">ثبت خرید و افزودن موجودی</button></form>`;
+}
 function invoicesHtml() {
   const query = state.invoiceQuery.trim();
   const rows = (state.invoices || []).filter((sale) => {
     if (!query) return true;
     return `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`.includes(query);
   });
-  return `<div class="stack"><section class="card"><h2 class="section-title">فاکتورهای ثبت‌شده</h2>
+  const pro = state.pro;
+  const reader = isAdmin() ? `<section class="card"><h2 class="section-title">خواندن عکس فاکتور</h2>
+    <p class="hint">عکس فاکتور چاپی یا دست‌نویس را بگذارید. هوش مصنوعی قلم‌ها را درمی‌آورد. این بخش با VIP باز نمی‌شود و فقط از توکن اکانت Pro کم می‌کند.</p>
+    <p>توکن مانده: <strong class="num">${num(pro?.tokens || 0)}</strong></p>
+    <div class="row-actions">
+      <label class="btn primary">انتخاب عکس<input id="invoice-photo" type="file" accept="image/*" hidden></label>
+      <button type="button" class="btn" data-act="nav" data-page="licenses">خرید توکن Pro</button>
+    </div>
+  </section>` : "";
+  return `<div class="stack">${reader}<section class="card"><h2 class="section-title">فاکتورهای ثبت‌شده</h2>
     <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. اگر یک قلم اشتباه خریده شده، همان قلم را حذف کنید. اگر کل سفارش اشتباه است، داخل اصلاح «حذف فاکتور» را بزنید تا موجودی و حساب به قبل از فروش برگردد.</p>
     <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
     <div id="invoice-table">${salesTable(rows, true)}</div></section></div>`;
@@ -1315,12 +1343,20 @@ function licensesHtml() {
   const data = state.licenses;
   if (!data) return "";
   const plans = data.plans.map((plan) => `<button type="button" class="plan buy" data-act="pick-plan" data-plan="${plan.id}"><span>${withVip(plan.title, plan.vip)}</span><em class="num">${money(plan.price)}</em><span class="buy-label">خرید</span>${plan.remaining != null ? `<span>باقی‌مانده ${num(plan.remaining)} از ${num(plan.cap)}</span>` : ""}</button>`).join("");
+  const pro = data.pro || { tokens: 0, packs: [] };
+  const packs = (pro.packs || []).map((pack) => `<button type="button" class="plan buy" data-act="buy-pro" data-pack="${pack.id}"><span>${esc(pack.title)}</span><em class="num">${money(pack.price)}</em><span class="buy-label">${num(pack.tokens)} توکن</span></button>`).join("");
   return `<div class="stack">${accessCard(data.access)}<div class="plans">${plans}</div>
+    <section class="card"><h2 class="section-title">اکانت Pro، فقط خواندن عکس فاکتور</h2>
+      <p class="hint">VIP این بخش را شامل نمی‌شود. هر بار که هوش مصنوعی یک فاکتور، حتی دست‌نویس، را می‌خواند به اندازه توکن مصرف‌شده از همین موجودی کم می‌شود.</p>
+      <p>توکن مانده: <strong class="num">${num(pro.tokens || 0)}</strong></p>
+      <div class="plans">${packs}</div>
+    </section>
     <p class="hint">روی طرح بزنید تا صفحه زیبال باز شود. مبلغ وارد صندوق فروشگاه نمی‌شود. نام، موبایل و طرح خریدار روی هاست وب‌بیکری هم می‌ماند؛ فایل accounts.php را کنار pay.php در public_html/license-server بگذارید.</p>
       <details><summary>قیمت‌ها و ظرفیت پنجاه‌ساله</summary><form data-act="save-prices"><div class="grid-2">
-        ${[["price_3m", "سه ماهه"], ["price_6m", "شش ماهه"], ["price_12m", "یک ساله"], ["price_50y", "پنجاه ساله"], ["cap_50y", "ظرفیت پنجاه ساله"]].map(([key, label]) => {
+        ${[["price_3m", "سه ماهه"], ["price_6m", "شش ماهه"], ["price_12m", "یک ساله"], ["price_50y", "پنجاه ساله"], ["cap_50y", "ظرفیت پنجاه ساله"], ["price_pro10", "پرو ۱۰ هزار توکن"], ["price_pro50", "پرو ۵۰ هزار توکن"], ["price_pro200", "پرو ۲۰۰ هزار توکن"]].map(([key, label]) => {
           const plan = data.plans.find((item) => item.id === { price_3m: "3m", price_6m: "6m", price_12m: "12m", price_50y: "50y" }[key]);
-          const value = key === "cap_50y" ? (data.plans.find((item) => item.id === "50y")?.cap ?? 50) : (plan?.price ?? "");
+          const pack = (data.pro?.packs || []).find((item) => item.id === { price_pro10: "pro10", price_pro50: "pro50", price_pro200: "pro200" }[key]);
+          const value = key === "cap_50y" ? (data.plans.find((item) => item.id === "50y")?.cap ?? 50) : (plan?.price ?? pack?.price ?? "");
           return `<div class="field"><label>${label}</label><input name="${key}" value="${value}"></div>`;
         }).join("")}
       </div><button class="btn" type="submit">ذخیره قیمت‌ها</button></form></details>
@@ -1599,6 +1635,9 @@ function modalHtml() {
     const product = modal.product;
     inner = `<h2 class="section-title">${esc(product.name)}</h2><p class="hint">نوع متغیر را انتخاب کنید. موجودی هر نوع جداست.</p><div class="var-pick">${(product.variations || []).map((item) => `<button type="button" class="btn var-choice" data-act="pick-variation" data-id="${product.id}" data-variation="${item.id}" ${item.in_stock ? "" : "disabled"}><span>${esc(item.label)}</span><span class="num">${item.tracked ? `موجودی ${num(item.stock)}` : (item.in_stock ? "موجود" : "ناموجود")}</span><span class="num">${money(item.price)}</span></button>`).join("")}</div>`;
   }
+  if (modal.type === "invoice-read" && modal.waiting) inner = `<h2 class="section-title">خواندن فاکتور</h2><p>هوش مصنوعی در حال خواندن عکس است. اگر دست‌نویس باشد هم همان‌جا می‌ماند.</p>`;
+  if (modal.type === "invoice-read" && modal.invoice) inner = invoiceReadHtml(modal.invoice);
+  if (modal.type === "pro") inner = `<h2 class="section-title">اکانت Pro</h2><p>${esc(modal.credit?.pack || "")} · ${money(modal.payable)}</p><p class="hint">بعد از پرداخت در زیبال، تأیید را بزنید تا توکن‌ها به موجودی پرو اضافه شود. این توکن لایسنس فروشگاه و VIP نیست.</p><div class="row-actions"><button type="button" class="btn primary" data-act="confirm-pro" data-id="${modal.credit?.id || ""}">تأیید پرداخت</button></div>`;
   if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">تا وقتی کارت‌خوان پرداخت را تأیید نکند، فاکتوری ثبت نمی‌شود.</p>`;
   if (modal.type === "card" && !modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><div class="field"><label>شماره پیگیری رسید</label><input id="pos-ref" class="ltr"></div><button type="button" class="btn primary" data-act="confirm-card">ثبت پرداخت کارت</button>`;
   if (modal.type === "gateway") inner = `<h2 class="section-title">پرداخت در مرورگر</h2><p>کد <span class="ltr">${esc(modal.sale.invoice_code || "")}</span> · فاکتور ${num(modal.sale.id)} · ${money(modal.sale.payable)}</p>${gatewayPanel(modal.sale)}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-sale" data-id="${modal.sale.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-sale" data-id="${modal.sale.id}">لغو</button></div><form data-act="manual-gateway"><input type="hidden" name="id" value="${modal.sale.id}"><div class="field"><label>اگر در پنل درگاه پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
@@ -1638,7 +1677,7 @@ function modalHtml() {
   if (modal.type === "password") inner = `<form data-act="change-password"><h2 class="section-title">تغییر رمز</h2><div class="field"><label>رمز فعلی</label><input type="password" name="current" required></div><div class="field"><label>رمز جدید</label><input type="password" name="password" minlength="6" required></div><button class="btn primary" type="submit">ذخیره</button></form>
     <form data-act="attach-email"><h2 class="section-title">ورود با جیمیل</h2><p class="hint">همین جیمیل را ذخیره کنید و بعد با آن وارد شوید.</p><div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" value="${esc(state.user.email || "")}" required placeholder="name@gmail.com"></div><button class="btn primary" type="submit">ذخیره جیمیل</button></form>
     <form data-act="verify-email"><div class="field"><label>کد ۶ رقمی جیمیل</label><input class="ltr" name="code" inputmode="numeric" required></div><button class="btn" type="submit">تأیید جیمیل</button></form>`;
-  const wide = modal.type === "receipt" || modal.type === "sale-edit" || modal.type === "sms-invoice" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
+  const wide = modal.type === "receipt" || modal.type === "sale-edit" || modal.type === "sms-invoice" || modal.type === "invoice-read" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
   return `<div class="modal-back" data-act="close-modal"><div class="modal card ${wide}" data-act="stop"><div class="row-actions"><button type="button" class="btn" data-act="close-modal">بستن</button></div>${inner}</div></div>`;
 }
 
@@ -1851,6 +1890,22 @@ async function onSubmit(event) {
         : "سامانه پیامک وصل نیست؛ کد روی همین صفحه ساخته شد.";
       state.authError = "";
       state.authView = "phone-enter";
+      render();
+    } else if (act === "apply-invoice") {
+      const count = asInt(data.count);
+      const lines = [];
+      for (let index = 0; index < count; index += 1) {
+        lines.push({
+          name: data[`name-${index}`] || "",
+          qty: data[`qty-${index}`] || "1",
+          unit_price: data[`price-${index}`] || "0",
+          product_id: asInt(data[`product-${index}`] || "0"),
+        });
+      }
+      await api("/api/invoices/apply", { method: "POST", body: { seller: data.seller || "", lines } });
+      state.modal = null;
+      toast("خرید از روی فاکتور ثبت شد", { ok: true });
+      await loaders.invoices();
       render();
     } else if (act === "save-sale") {
       readSaleEdit();
@@ -2342,6 +2397,39 @@ async function onClick(event) {
     await guard(() => buyLicense(el.dataset.plan, null, popup));
     return;
   }
+  if (act === "buy-pro") {
+    const popup = window.open("about:blank", "_blank");
+    await guard(async () => {
+      try {
+        const result = await api("/api/pro/packs", { method: "POST", body: { pack: el.dataset.pack } });
+        const url = result.credit?.pay_url || "";
+        if (!url) {
+          closePopup(popup);
+          throw new Error("زیبال صفحه پرداخت نداد");
+        }
+        if (popup && !popup.closed) popup.location.href = url;
+        else location.assign(url);
+        state.modal = { type: "pro", credit: result.credit, payable: result.payable };
+        state.pro = result.pro;
+        render();
+      } catch (err) {
+        closePopup(popup);
+        throw err;
+      }
+    });
+    return;
+  }
+  if (act === "confirm-pro") {
+    await guard(async () => {
+      const result = await api(`/api/pro/credits/${el.dataset.id}/confirm`, { method: "POST", body: {} });
+      state.pro = result.pro;
+      state.modal = null;
+      toast(`توکن پرو ${num(result.pro?.tokens || 0)} شد`, { ok: true });
+      if (state.page === "licenses") await loaders.licenses();
+      render();
+    });
+    return;
+  }
   if (act === "print") { window.print(); return; }
   if (act === "copy-text") {
     const node = document.getElementById(el.dataset.target || "");
@@ -2667,6 +2755,26 @@ function onInput(event) {
 }
 function onChange(event) {
   if (event.target.id === "discount-type") refreshPayable();
+  if (event.target.id === "invoice-photo" && event.target.files[0]) {
+    const file = event.target.files[0];
+    event.target.value = "";
+    guard(async () => {
+      state.modal = { type: "invoice-read", waiting: true };
+      render();
+      const body = new FormData();
+      body.append("file", file);
+      try {
+        const result = await api("/api/invoices/read", { method: "POST", form: body });
+        state.pro = { ...(state.pro || {}), tokens: result.invoice?.usage?.remaining || 0 };
+        state.modal = { type: "invoice-read", invoice: result.invoice };
+        render();
+      } catch (err) {
+        state.modal = null;
+        render();
+        throw err;
+      }
+    });
+  }
   if (event.target.id === "excel-file" && event.target.files[0]) {
     const file = event.target.files[0];
     state.importFile = file;

@@ -96,6 +96,9 @@ DEFAULT_SETTINGS = {
     "price_12m": "15000000",
     "price_50y": "15000000",
     "cap_50y": "50",
+    "price_pro10": "150000",
+    "price_pro50": "600000",
+    "price_pro200": "2000000",
     "must_change_password": "1",
     "moadian_fiscal_id": "",
     "moadian_economic_code": "",
@@ -119,7 +122,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.41"
+APP_VERSION = "1.1.42"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -167,6 +170,19 @@ HOST_SMS_PATTERN_URLS = (
 )
 HOST_SUPPORT_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/support",
+)
+HOST_INVOICE_URL = "https://webakery.ir/wp-json/daftarchi/v1/invoice-read"
+PRO_PACKS = {
+    "pro10": ("پرو، ۱۰ هزار توکن", 10_000, "price_pro10"),
+    "pro50": ("پرو، ۵۰ هزار توکن", 50_000, "price_pro50"),
+    "pro200": ("پرو، ۲۰۰ هزار توکن", 200_000, "price_pro200"),
+}
+INVOICE_PROMPT = (
+    "این عکس یک فاکتور فارسی است و ممکن است چاپی یا دست‌نویس باشد. "
+    "نام فروشنده، شماره فاکتور، تاریخ، و هر قلم را با نام کالا، تعداد و فی بخوان. "
+    "رقم‌های فارسی و لاتین هر دو معتبرند. اگر مبلغ به ریال است آن را به تومان تبدیل کن و در خروجی فقط تومان بده. "
+    "شماره کارت و کد ملی را برنگردان. فقط JSON با این شکل: "
+    '{"seller":"","invoice_no":"","date":"","lines":[{"name":"","qty":1,"unit_price":0}],"discount":0,"payable":0}'
 )
 SMS_CREDIT_MIN = 100_000
 SMS_CREDIT_MAX = 1_000_000
@@ -3031,7 +3047,7 @@ def save_settings(conn, payload: dict):
             continue
         if key in BOOL_KEYS:
             stored = "1" if str(value) in {"1", "true", "True", "on"} else "0"
-        elif key in {"price_3m", "price_6m", "price_12m", "price_50y"}:
+        elif key in {"price_3m", "price_6m", "price_12m", "price_50y", "price_pro10", "price_pro50", "price_pro200"}:
             stored = str(parse_money(value, "قیمت لایسنس"))
         elif key in {"cap_50y", "low_stock"}:
             stored = str(parse_money(value, key, allow_empty=True))
@@ -3335,6 +3351,29 @@ def init_db():
               invoice_code TEXT,
               buyer_name TEXT,
               buyer_phone TEXT
+            );
+            CREATE TABLE IF NOT EXISTS pro_credits (
+              id INTEGER PRIMARY KEY,
+              pack TEXT NOT NULL,
+              tokens INTEGER NOT NULL,
+              payable INTEGER NOT NULL,
+              status TEXT NOT NULL DEFAULT 'pending',
+              gateway TEXT,
+              gateway_ref TEXT,
+              pay_url TEXT,
+              paid_ref TEXT,
+              user_id INTEGER,
+              created_at TEXT NOT NULL,
+              paid_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS ai_usage (
+              id INTEGER PRIMARY KEY,
+              kind TEXT NOT NULL,
+              tokens INTEGER NOT NULL,
+              billed INTEGER NOT NULL,
+              detail TEXT,
+              user_id INTEGER,
+              created_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS password_resets (
               id INTEGER PRIMARY KEY,
@@ -5768,6 +5807,306 @@ def create_purchase():
     return jsonify(ok=True, total=total)
 
 
+def pro_balance(conn) -> int:
+    row = conn.execute("SELECT value FROM settings WHERE key='pro_tokens'").fetchone()
+    if not row:
+        return 0
+    try:
+        return max(0, int(str(row["value"]).translate(DIGITS) or "0"))
+    except ValueError:
+        return 0
+
+
+def set_pro_balance(conn, value: int) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES ('pro_tokens', ?)",
+        (str(max(0, int(value))),),
+    )
+
+
+def pro_pack_rows(settings: dict) -> list[dict]:
+    rows = []
+    for key, (title, tokens, price_key) in PRO_PACKS.items():
+        rows.append({
+            "id": key,
+            "title": title,
+            "tokens": tokens,
+            "price": setting_int(settings, price_key),
+            "vip": False,
+        })
+    return rows
+
+
+def pro_state(conn) -> dict:
+    settings = get_settings(conn)
+    access = ensure_access(conn)
+    return {
+        "tokens": pro_balance(conn),
+        "packs": pro_pack_rows(settings),
+        "vip": bool(access.get("vip")),
+        "vip_included": False,
+    }
+
+
+def mark_pro_paid(conn, credit_id: int, ref: str):
+    row = conn.execute("SELECT * FROM pro_credits WHERE id=?", (credit_id,)).fetchone()
+    if not row:
+        raise AppError("بسته پرو پیدا نشد", 404)
+    if row["status"] == "paid":
+        return row
+    if row["status"] != "pending":
+        raise AppError("این بسته پرو قابل تأیید نیست")
+    paid = conn.execute(
+        "UPDATE pro_credits SET status='paid', paid_ref=?, paid_at=? WHERE id=? AND status='pending'",
+        (ref, iso(), credit_id),
+    )
+    if paid.rowcount == 1:
+        set_pro_balance(conn, pro_balance(conn) + int(row["tokens"]))
+    return conn.execute("SELECT * FROM pro_credits WHERE id=?", (credit_id,)).fetchone()
+
+
+def spend_pro_tokens(conn, user_id: int, tokens: int, detail: str) -> dict:
+    used = int(tokens)
+    if used <= 0:
+        raise AppError("هوش مصنوعی تعداد توکن را برنگرداند. چیزی از پرو کم نشد")
+    balance = pro_balance(conn)
+    billed = min(balance, used)
+    set_pro_balance(conn, balance - billed)
+    conn.execute(
+        "INSERT INTO ai_usage (kind, tokens, billed, detail, user_id, created_at) VALUES ('invoice',?,?,?,?,?)",
+        (used, billed, detail[:180], user_id, iso()),
+    )
+    return {"tokens": used, "billed": billed, "remaining": pro_balance(conn)}
+
+
+def suggest_invoice_product(conn, name: str) -> int:
+    folded = re.sub(r"[\s\u200c]+", "", name)
+    if len(folded) < 2:
+        return 0
+    rows = conn.execute("SELECT id, name FROM products WHERE active=1").fetchall()
+    for row in rows:
+        other = re.sub(r"[\s\u200c]+", "", str(row["name"] or ""))
+        if other == folded:
+            return int(row["id"])
+    for row in rows:
+        other = re.sub(r"[\s\u200c]+", "", str(row["name"] or ""))
+        if len(other) >= 3 and (folded in other or other in folded):
+            return int(row["id"])
+    return 0
+
+
+def invoice_from_ai(payload: dict) -> dict:
+    if not isinstance(payload, dict):
+        raise AppError("هوش مصنوعی فاکتور را برنگرداند")
+    lines = []
+    for row in payload.get("lines") or []:
+        if not isinstance(row, dict):
+            continue
+        name = clean_text(row.get("name"), "نام کالا", 120)
+        if not name:
+            continue
+        lines.append({
+            "name": name,
+            "qty": parse_qty(row.get("qty") or 1),
+            "unit_price": parse_money(row.get("unit_price"), "فی", allow_empty=True),
+            "product_id": 0,
+        })
+    if not lines:
+        raise AppError("کالایی در عکس فاکتور پیدا نشد")
+    try:
+        tokens = int(payload.get("tokens") or 0)
+    except (TypeError, ValueError):
+        tokens = 0
+    return {
+        "seller": clean_text(payload.get("seller"), "فروشنده", 80),
+        "invoice_no": clean_text(payload.get("invoice_no"), "شماره فاکتور", 40),
+        "date": clean_text(payload.get("date"), "تاریخ", 40),
+        "lines": lines,
+        "discount": parse_money(payload.get("discount"), "تخفیف", allow_empty=True),
+        "payable": parse_money(payload.get("payable"), "قابل پرداخت", allow_empty=True),
+        "tokens": tokens,
+    }
+
+
+def read_invoice_with_ai(blob: bytes, mime: str) -> dict:
+    encoded = base64.b64encode(blob).decode()
+    status, body = http_request(
+        "POST",
+        HOST_INVOICE_URL,
+        payload={"key": HOST_MAIL_KEY, "image": encoded, "mime": mime, "prompt": INVOICE_PROMPT},
+        timeout=55,
+    )
+    if not isinstance(body, dict):
+        raise AppError("پاسخ هوش مصنوعی خوانده نشد", 502)
+    if status >= 400:
+        message = str(body.get("message") or body.get("error") or "هوش مصنوعی فاکتور را نخواند")
+        raise AppError(message, 502 if status >= 500 else 400)
+    return invoice_from_ai(body)
+
+
+def record_simple_purchase(conn, user_id: int, product_id: int, qty: int, unit_cost: int, seller: str) -> None:
+    row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
+    if not row:
+        raise AppError("کالا پیدا نشد", 404)
+    if product_kind(row) == "variable":
+        raise AppError(f"«{row['name']}» متغیر است. نوعش را در انبار جدا ثبت کنید")
+    new_stock = int(row["stock"]) + qty
+    conn.execute("UPDATE products SET stock=?, updated_at=? WHERE id=?", (new_stock, iso(), product_id))
+    note = f"فاکتور {seller}".strip() if seller else "فاکتور عکس"
+    log_stock(conn, product_id, "purchase", qty, row["stock"], new_stock, f"خرید با فی {unit_cost} · {note}", user_id)
+    new_cost = moving_avg(int(row["stock"]), int(row["cost"]), qty, unit_cost)
+    conn.execute("UPDATE products SET cost=?, updated_at=? WHERE id=?", (new_cost, iso(), product_id))
+    pay = acc(conn, "1010")
+    cur = conn.execute(
+        """INSERT INTO purchases (product_id, qty, unit_cost, total, pay_account_id, session_id, user_id, created_at)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (product_id, qty, unit_cost, qty * unit_cost, pay["id"], None, user_id, iso()),
+    )
+    total = qty * unit_cost
+    if total:
+        post_entry(
+            conn,
+            f"خرید {row['name']}",
+            [(acc(conn, "1200")["id"], total, 0), (pay["id"], 0, total)],
+            "purchase",
+            cur.lastrowid,
+            user_id,
+        )
+    maybe_queue_woo_sync(conn, product_id, None)
+
+
+@app.get("/api/pro")
+def pro_account():
+    require_admin()
+    with connect() as conn:
+        state = pro_state(conn)
+    return jsonify(**state)
+
+
+@app.post("/api/pro/packs")
+def buy_pro_pack():
+    user = require_admin()
+    payload = body_json()
+    pack = str(payload.get("pack") or "")
+    if pack not in PRO_PACKS:
+        raise AppError("بسته پرو نامعتبر است")
+    title, tokens, price_key = PRO_PACKS[pack]
+    with connect() as conn:
+        settings = get_settings(conn)
+        payable = setting_int(settings, price_key)
+        if payable < 1000:
+            raise AppError("حداقل مبلغ درگاه ۱۰۰۰ تومان است")
+        cur = conn.execute(
+            """INSERT INTO pro_credits (pack, tokens, payable, status, user_id, created_at)
+               VALUES (?,?,?,'pending',?,?)""",
+            (pack, tokens, payable, user["id"], iso()),
+        )
+        credit_id = cur.lastrowid
+    try:
+        gateway_name, ref, pay_url = webakery_payment(
+            settings,
+            credit_id,
+            title,
+            payable,
+            user["name"],
+            user["phone"],
+            description=f"اکانت پرو دفترچی، {tokens} توکن خواندن فاکتور",
+        )
+    except Exception:
+        with connect() as conn:
+            conn.execute("UPDATE pro_credits SET status='canceled' WHERE id=? AND status='pending'", (credit_id,))
+        raise
+    with connect() as conn:
+        conn.execute(
+            "UPDATE pro_credits SET gateway=?, gateway_ref=?, pay_url=? WHERE id=?",
+            (gateway_name, ref, pay_url, credit_id),
+        )
+        saved = conn.execute("SELECT * FROM pro_credits WHERE id=?", (credit_id,)).fetchone()
+        state = pro_state(conn)
+    return jsonify(ok=True, payable=payable, credit=dict(saved), pro=state)
+
+
+@app.post("/api/pro/credits/<int:credit_id>/confirm")
+def confirm_pro_credit(credit_id: int):
+    require_admin()
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM pro_credits WHERE id=?", (credit_id,)).fetchone()
+    if not row:
+        raise AppError("بسته پرو پیدا نشد", 404)
+    if row["status"] == "paid":
+        with connect() as conn:
+            return jsonify(ok=True, pro=pro_state(conn))
+    if row["status"] != "pending" or not row["gateway_ref"]:
+        raise AppError("این بسته پرو قابل تأیید نیست")
+    ref = host_zibal_verify(row["gateway_ref"])
+    with connect() as conn:
+        mark_pro_paid(conn, credit_id, ref)
+        state = pro_state(conn)
+    return jsonify(ok=True, pro=state)
+
+
+@app.post("/api/invoices/read")
+def read_invoice_photo():
+    user = require_admin()
+    upload = request.files.get("file")
+    if not upload:
+        raise AppError("عکس فاکتور را انتخاب کنید")
+    blob = upload.read()
+    if len(blob) > 1_500_000:
+        raise AppError("حجم عکس فاکتور باید کمتر از ۱٫۵ مگابایت باشد")
+    ext = sniff_image(blob)
+    if not ext:
+        raise AppError("فرمت عکس باید jpg، png، webp یا gif باشد")
+    mime = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"}[ext]
+    with connect() as conn:
+        require_access(conn)
+        access = ensure_access(conn)
+        if pro_balance(conn) <= 0:
+            raise AppError("برای خواندن عکس فاکتور اکانت Pro لازم است. VIP این بخش را باز نمی‌کند. از لایسنس یک بسته توکن بخرید.", 402)
+    draft = read_invoice_with_ai(blob, mime)
+    with connect() as conn:
+        for line in draft["lines"]:
+            line["product_id"] = suggest_invoice_product(conn, line["name"])
+        usage = spend_pro_tokens(conn, user["id"], draft["tokens"], draft.get("seller") or "فاکتور")
+        draft["usage"] = usage
+        draft["vip"] = bool(access.get("vip"))
+    return jsonify(ok=True, invoice=draft)
+
+
+@app.post("/api/invoices/apply")
+def apply_invoice_photo():
+    user = require_admin()
+    payload = body_json()
+    seller = clean_text(payload.get("seller"), "فروشنده", 80)
+    lines = payload.get("lines") or []
+    if not isinstance(lines, list) or not lines:
+        raise AppError("قلمی برای ثبت نیست")
+    saved = []
+    with connect() as conn:
+        require_access(conn)
+        for raw in lines:
+            if not isinstance(raw, dict):
+                continue
+            name = clean_text(raw.get("name"), "نام کالا", 120, required=True)
+            qty = parse_qty(raw.get("qty"))
+            unit_cost = parse_money(raw.get("unit_price"), "فی", allow_empty=True)
+            product_id = int(raw.get("product_id") or 0)
+            if product_id:
+                row = conn.execute("SELECT id FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
+                if not row:
+                    raise AppError("کالا پیدا نشد", 404)
+            else:
+                cur = conn.execute(
+                    """INSERT INTO products (name, sku, barcode, price, cost, stock, image, tax_code, woo_id, active, created_at, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,NULL,1,?,?)""",
+                    (name, "", "", unit_cost, unit_cost, 0, "", "", iso(), iso()),
+                )
+                product_id = int(cur.lastrowid)
+            record_simple_purchase(conn, user["id"], product_id, qty, unit_cost, seller)
+            saved.append({"product_id": product_id, "name": name, "qty": qty, "unit_price": unit_cost})
+    return jsonify(ok=True, lines=saved)
+
+
 def quick_link_customer(conn, payload: dict) -> dict:
     name = clean_text(payload.get("customer_name"), "نام", 80) or "پرداخت آنلاین"
     phone = norm_phone(payload.get("phone") or payload.get("customer_phone") or "")
@@ -6601,6 +6940,7 @@ def list_licenses():
         sync_licenses_to_host(conn)
         rows = conn.execute("SELECT * FROM licenses ORDER BY id DESC LIMIT 50").fetchall()
         access = ensure_access(conn)
+        pro = pro_state(conn)
     plans = []
     for key, (title, months, price_key) in PLANS.items():
         item = {"id": key, "title": title, "months": months, "price": setting_int(settings, price_key), "vip": False}
@@ -6608,7 +6948,7 @@ def list_licenses():
             item["cap"] = cap
             item["remaining"] = max(0, cap - sold)
         plans.append(item)
-    return jsonify(plans=plans, licenses=[license_out(row) for row in rows], access=access)
+    return jsonify(plans=plans, licenses=[license_out(row) for row in rows], access=access, pro=pro)
 
 
 @app.put("/api/licenses/prices")
@@ -6752,7 +7092,8 @@ def pay_return():
     with connect() as conn:
         row = conn.execute("SELECT * FROM licenses WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
         topup = None if row else conn.execute("SELECT * FROM sms_topups WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
-        sale = None if row or topup else conn.execute("SELECT * FROM sales WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
+        pro = None if row or topup else conn.execute("SELECT * FROM pro_credits WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
+        sale = None if row or topup or pro else conn.execute("SELECT * FROM sales WHERE gateway_ref=? AND status='pending'", (authority,)).fetchone()
         settings = get_settings(conn)
         if row and row["gateway"] != "woocommerce":
             settings = license_gateway_settings(settings)
@@ -6772,6 +7113,11 @@ def pay_return():
                 saved = mark_sms_paid(conn, topup["id"], ref)
                 shop = get_settings(conn).get("shop_name") or ""
             return sms_invoice_page(saved, shop)
+        if pro:
+            ref = host_zibal_verify(pro["gateway_ref"] or "")
+            with connect() as conn:
+                mark_pro_paid(conn, pro["id"], ref)
+            return pay_page("اکانت پرو شارژ شد. توکن‌ها برای خواندن عکس فاکتور آماده‌اند.", True)
         if sale:
             ref = gateway_verify(settings, sale)
             with connect() as conn:
