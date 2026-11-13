@@ -9,6 +9,7 @@ const MORE = [
   ["checks", "چک", "admin"],
   ["accounts", "حسابداری", "admin"],
   ["invoices", "فاکتورها"],
+  ["calendar", "تقویم"],
   ["customers", "مشتریان"],
   ["licenses", "لایسنس", "admin"],
   ["sms", "پیامک", "admin"],
@@ -60,7 +61,12 @@ const state = {
   inventoryLimit: PAGE_SIZE,
   inventoryQuery: "",
   invoiceQuery: "",
+  invoiceDate: "",
   invoices: [],
+  calendar: null,
+  calYear: 0,
+  calMonth: 0,
+  today: null,
   cart: [],
   discountType: "amount",
   discountValue: "",
@@ -411,6 +417,17 @@ const loaders = {
     state.products = stampProducts(products.products);
     state.pro = pro;
   },
+  async calendar() {
+    const today = state.today || {};
+    const year = state.calYear || today.year || "";
+    const month = state.calMonth || today.month || "";
+    const query = year && month ? `?year=${year}&month=${month}` : "";
+    const data = await api(`/api/calendar${query}`);
+    state.calendar = data;
+    state.today = data.today || state.today;
+    state.calYear = data.year;
+    state.calMonth = data.month;
+  },
 };
 
 async function navigate(page) {
@@ -625,7 +642,7 @@ function authHtml() {
     ? `<p class="hint">ورود اولیه: <span class="ltr">${esc(state.bootstrap.phone)}</span> / ${esc(state.bootstrap.password)}</p>`
     : "";
   return `<div class="auth"><form class="card auth-card" data-act="login">
-    <div class="brand"><div class="mark">${logo()}</div><div><strong>دفترچی</strong><span>صندوق و حسابداری فروشگاه</span></div></div>
+    <div class="brand"><div class="mark">${logo()}</div><div><strong>دفترچی</strong><span>${esc(state.bootstrap?.today?.label || "صندوق و حسابداری فروشگاه")}</span></div></div>
     ${authProblem()}
     <div class="field"><label>موبایل یا جیمیل</label><input name="ident" autocomplete="username" required value="${esc(draft.ident || (state.bootstrap?.initial ? state.bootstrap.phone : ""))}"></div>
     <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}"></div>
@@ -755,8 +772,8 @@ function homePage() {
 function modeAllows(page) {
   if (page === "licenses") return true;
   const allow = {
-    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "sms", "settings", "updates"],
-    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "customers", "sms", "settings", "updates"],
+    offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "calendar", "customers", "sms", "settings", "updates"],
+    hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "calendar", "customers", "sms", "settings", "updates"],
     online: ["products", "sms", "settings", "updates"],
   }[state.shopMode];
   if (!allow) return true;
@@ -960,7 +977,8 @@ function paintChrome() {
     ? `<span class="pill ${access.active ? "" : "warn"}">${access.vip ? "لایسنس VIP" : access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
     : "";
   const status = document.getElementById("app-status");
-  if (status) status.innerHTML = `${accessPill}${pill}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="logout">خروج</button>`;
+  const todayPill = state.today?.label ? `<span class="pill date-pill">${esc(state.today.label)}</span>` : "";
+  if (status) status.innerHTML = `${todayPill}${accessPill}${pill}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="logout">خروج</button>`;
   const banner = document.getElementById("banner-host");
   if (banner) {
     banner.innerHTML = [
@@ -1008,12 +1026,60 @@ function invoiceReadHtml(invoice) {
     <p>قابل پرداخت روی عکس <strong class="num">${money(invoice.payable || 0)}</strong></p>
     <button class="btn primary" type="submit">ثبت خرید و افزودن موجودی</button></form>`;
 }
-function invoicesHtml() {
+function filteredInvoices() {
   const query = state.invoiceQuery.trim();
-  const rows = (state.invoices || []).filter((sale) => {
-    if (!query) return true;
-    return `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`.includes(query);
+  const day = String(state.invoiceDate || "").trim();
+  return (state.invoices || []).filter((sale) => {
+    const hay = `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`;
+    if (query && !hay.includes(query)) return false;
+    if (day && !(sale.at_jalali || "").startsWith(day)) return false;
+    return true;
   });
+}
+function jalaliDateField(name, value, required) {
+  return `<div class="jalali-date-wrap"><input class="jalali-date" name="${esc(name)}" value="${esc(value || "")}" placeholder="۱۴۰۴/۰۹/۲۰" ${required ? "required" : ""} autocomplete="off"><button type="button" class="btn" data-act="open-datepicker" data-name="${esc(name)}">تقویم</button></div>`;
+}
+function closeJalaliPicker() {
+  document.getElementById("cal-pop")?.remove();
+}
+function pickerGrid(data, selected) {
+  const head = (data.weekdays || []).map((name) => `<span class="cal-head">${esc(name)}</span>`).join("");
+  const days = (data.weeks || []).flat().map((cell) => {
+    const cls = ["cal-day", cell.in_month ? "" : "out", cell.today ? "today" : "", cell.date === selected ? "selected" : ""].filter(Boolean).join(" ");
+    return `<button type="button" class="${cls}" data-act="pick-day" data-date="${esc(cell.date)}">${num(cell.day)}</button>`;
+  }).join("");
+  return `<div class="cal-weekdays">${head}</div><div class="cal-grid">${days}</div>`;
+}
+async function fillJalaliPicker(pop, year, month, input) {
+  const data = await api(`/api/calendar?year=${year}&month=${month}`);
+  state.today = data.today || state.today;
+  pop.dataset.year = String(data.year);
+  pop.dataset.month = String(data.month);
+  pop.querySelector(".cal-pop-title").textContent = data.label;
+  pop.querySelector(".cal-pop-body").innerHTML = pickerGrid(data, input.value);
+}
+async function openJalaliPicker(input) {
+  closeJalaliPicker();
+  if (!input) return;
+  const wrap = input.closest(".jalali-date-wrap") || input.parentElement;
+  const pop = document.createElement("div");
+  pop.id = "cal-pop";
+  pop.className = "cal-pop";
+  pop.innerHTML = `<div class="cal-nav"><button type="button" class="btn" data-act="picker-month" data-delta="-1">ماه قبل</button><strong class="cal-pop-title"></strong><button type="button" class="btn" data-act="picker-month" data-delta="1">ماه بعد</button></div><div class="cal-pop-body"></div>`;
+  wrap.appendChild(pop);
+  const today = state.today || {};
+  const parts = String(input.value || "").split("/");
+  const year = Number(parts[0]) || today.year;
+  const month = Number(parts[1]) || today.month;
+  try {
+    await fillJalaliPicker(pop, year, month, input);
+  } catch (err) {
+    closeJalaliPicker();
+    toast(err.message || "تقویم باز نشد", { error: true });
+  }
+}
+function invoicesHtml() {
+  const rows = filteredInvoices();
   const pro = state.pro;
   const reader = isAdmin() ? `<section class="card"><h2 class="section-title">خواندن عکس فاکتور</h2>
     <p class="hint">عکس فاکتور چاپی یا دست‌نویس را بگذارید. هوش مصنوعی قلم‌ها را درمی‌آورد. این بخش با VIP باز نمی‌شود و فقط از توکن اکانت Pro کم می‌کند.</p>
@@ -1025,7 +1091,10 @@ function invoicesHtml() {
   </section>` : "";
   return `<div class="stack">${reader}<section class="card"><h2 class="section-title">فاکتورهای ثبت‌شده</h2>
     <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. اگر یک قلم اشتباه خریده شده، همان قلم را حذف کنید. اگر کل سفارش اشتباه است، داخل اصلاح «حذف فاکتور» را بزنید تا موجودی و حساب به قبل از فروش برگردد.</p>
-    <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
+    <div class="grid-2">
+      <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
+      <div class="field"><label>تاریخ شمسی</label><div class="jalali-date-wrap"><input class="jalali-date" id="invoice-date" value="${esc(state.invoiceDate)}" placeholder="همه روزها" autocomplete="off"><button type="button" class="btn" data-act="open-datepicker" data-target="invoice-date">تقویم</button></div></div>
+    </div>
     <div id="invoice-table">${salesTable(rows, true)}</div></section></div>`;
 }
 function editTotals() {
@@ -1095,6 +1164,46 @@ function dashboardHtml() {
   return `<div class="stack"><div class="stats">${cards}</div>
     <section class="card"><h2 class="section-title">${esc(summary.label)}</h2>${bars(summary)}<h3 class="section-title">کالاهای پرفروش</h3>${top}</section>
     <section class="card"><h2 class="section-title">آخرین فروش‌ها</h2>${salesTable(state.sales, true)}</section></div>`;
+}
+function calendarHtml() {
+  const data = state.calendar;
+  if (!data) return "";
+  const head = (data.weekdays || []).map((name) => `<span class="cal-head">${esc(name)}</span>`).join("");
+  const days = (data.weeks || []).flat().map((cell) => {
+    const cls = ["cal-day", cell.in_month ? "" : "out", cell.today ? "today" : "", cell.selected ? "selected" : ""].filter(Boolean).join(" ");
+    const sales = cell.sales ? `<small>${num(cell.sales)} فروش</small>` : "";
+    const checks = cell.checks ? `<small class="warn-text">${num(cell.checks)} چک</small>` : "";
+    const amount = cell.amount ? `<small class="num">${money(cell.amount)}</small>` : "";
+    return `<button type="button" class="${cls}" data-act="cal-day" data-year="${cell.year}" data-month="${cell.month}" data-day="${cell.day}" ${cell.in_month ? "" : "disabled"}>
+      <strong>${num(cell.day)}</strong>${sales}${amount}${checks}
+    </button>`;
+  }).join("");
+  const sales = data.sales?.length
+    ? salesTable(data.sales.map((row) => ({ ...row, customer_name: row.customer_name || "—" })), false)
+    : `<p class="empty">در ${esc(data.selected)} فروشی نیست.</p>`;
+  const checks = (data.checks || []).map((row) => `<li>${esc(row.number)} — ${esc(row.person)} — ${money(row.amount)} — ${row.kind === "out" ? "صادره" : "وارده"}</li>`).join("")
+    || `<p class="empty">سررسید چکی در این روز نیست.</p>`;
+  return `<div class="stack">
+    <section class="card">
+      <div class="cal-nav">
+        <button type="button" class="btn" data-act="cal-month" data-delta="-1">ماه قبل</button>
+        <h2 class="section-title">${esc(data.label)}</h2>
+        <button type="button" class="btn" data-act="cal-month" data-delta="1">ماه بعد</button>
+        <button type="button" class="btn" data-act="cal-today">امروز</button>
+      </div>
+      <p class="hint">تقویم دفترچی شمسی است. شنبه اول هفته است. روز را بزنید تا فروش و چک همان روز بیاید.</p>
+      <div class="cal-weekdays">${head}</div>
+      <div class="cal-grid month">${days}</div>
+    </section>
+    <section class="card">
+      <h2 class="section-title">فروش ${esc(data.selected)} — ${money(data.total || 0)}، ${num(data.count || 0)} فاکتور</h2>
+      ${sales}
+    </section>
+    <section class="card">
+      <h2 class="section-title">چک‌های همین روز</h2>
+      ${data.checks?.length ? `<ul>${checks}</ul>` : checks}
+    </section>
+  </div>`;
 }
 
 function productHaystack(product) {
@@ -1275,7 +1384,7 @@ function checksHtml() {
   return `<div class="stack">${checkAlertBanner()}
     <section class="card"><h2 class="section-title">چک</h2>
       <form data-act="save-check"><div class="grid-2"><div class="field"><label>شماره چک</label><input name="number" required></div><div class="field"><label>طرف</label><input name="person" required></div></div>
-      <div class="grid-2"><div class="field"><label>مبلغ</label><input name="amount" inputmode="numeric" required></div><div class="field"><label>سررسید</label><input name="due_on" placeholder="۱۴۰۴/۰۹/۲۰" required></div></div>
+      <div class="grid-2"><div class="field"><label>مبلغ</label><input name="amount" inputmode="numeric" required></div><div class="field"><label>سررسید شمسی</label>${jalaliDateField("due_on", state.today?.date || "", true)}</div></div>
       <div class="field"><label>نوع</label><select name="kind"><option value="in">وارده؛ بعد از وصول از صندوق به بانک می‌رود</option><option value="out">صادره؛ بعد از وصول از صندوق کم می‌شود</option></select></div>
       <button class="btn primary" type="submit">ثبت چک</button></form>
       <table><thead><tr><th>شماره</th><th>طرف</th><th>مبلغ</th><th>سررسید</th><th>نوع</th><th>وضعیت</th><th></th></tr></thead><tbody>${rows}</tbody></table>
@@ -1684,7 +1793,7 @@ function pageHtml() {
     return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید لایسنس بسته است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">خرید لایسنس</button></section>`;
   }
   const pages = {
-    dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml, invoices: invoicesHtml,
+    dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml, invoices: invoicesHtml, calendar: calendarHtml,
     accounts: accountsHtml, register: registerHtml, licenses: licensesHtml, customers: customersHtml,
     sms: smsHtml, settings: settingsHtml, updates: updatesHtml,
   };
@@ -1825,6 +1934,7 @@ async function onSubmit(event) {
         state.mustChange = result.must_change_password;
         state.access = result.access || null;
         state.shop = result.shop || null;
+        state.today = result.today || state.today;
         readSetup(result.setup);
         hideToast();
         await navigate(homePage());
@@ -1875,6 +1985,7 @@ async function onSubmit(event) {
       state.mustChange = result.must_change_password;
       state.access = result.access || null;
       state.shop = result.shop || null;
+      state.today = result.today || state.today;
       readSetup(result.setup);
       state.authError = "";
       hideToast();
@@ -2249,6 +2360,7 @@ async function submitSale(method, posRef, popup) {
 }
 
 async function onClick(event) {
+  if (!event.target.closest("#cal-pop") && !event.target.closest(".jalali-date-wrap")) closeJalaliPicker();
   const el = event.target.closest("[data-act]");
   if (!el || el.tagName === "FORM") return;
   if (el.closest("form[data-act]") && el.type === "submit") return;
@@ -2350,6 +2462,72 @@ async function onClick(event) {
   if (act === "tour-replay") { await guard(() => replayTour()); return; }
   if (act === "nav") { await guard(() => navigate(el.dataset.page)); return; }
   if (act === "chart") { state.chart = el.dataset.range; render(); return; }
+  if (act === "cal-month") {
+    const delta = Number(el.dataset.delta || 0);
+    let year = state.calYear || state.today?.year;
+    let month = (state.calMonth || state.today?.month || 1) + delta;
+    if (month < 1) { month = 12; year -= 1; }
+    if (month > 12) { month = 1; year += 1; }
+    state.calYear = year;
+    state.calMonth = month;
+    await guard(() => loaders.calendar().then(() => render()));
+    return;
+  }
+  if (act === "cal-today") {
+    state.calYear = state.today?.year || 0;
+    state.calMonth = state.today?.month || 0;
+    await guard(async () => {
+      const data = await api("/api/calendar");
+      state.calendar = data;
+      state.today = data.today || state.today;
+      state.calYear = data.year;
+      state.calMonth = data.month;
+      render();
+    });
+    return;
+  }
+  if (act === "cal-day") {
+    state.calYear = Number(el.dataset.year);
+    state.calMonth = Number(el.dataset.month);
+    await guard(async () => {
+      const data = await api(`/api/calendar?year=${el.dataset.year}&month=${el.dataset.month}&day=${el.dataset.day}`);
+      state.calendar = data;
+      state.today = data.today || state.today;
+      render();
+    });
+    return;
+  }
+  if (act === "open-datepicker") {
+    event.preventDefault();
+    const input = el.dataset.name
+      ? document.querySelector(`[name="${el.dataset.name}"]`)
+      : document.getElementById(el.dataset.target);
+    await openJalaliPicker(input);
+    return;
+  }
+  if (act === "picker-month") {
+    event.preventDefault();
+    const pop = document.getElementById("cal-pop");
+    const input = pop?.parentElement?.querySelector("input.jalali-date");
+    if (!pop || !input) return;
+    let year = Number(pop.dataset.year);
+    let month = Number(pop.dataset.month) + Number(el.dataset.delta || 0);
+    if (month < 1) { month = 12; year -= 1; }
+    if (month > 12) { month = 1; year += 1; }
+    await fillJalaliPicker(pop, year, month, input);
+    return;
+  }
+  if (act === "pick-day") {
+    event.preventDefault();
+    const pop = document.getElementById("cal-pop");
+    const input = pop?.parentElement?.querySelector("input.jalali-date");
+    if (input) {
+      input.value = el.dataset.date;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    closeJalaliPicker();
+    return;
+  }
   if (act === "dismiss") {
     const id = el.dataset.id || "";
     const bag = dismissedNotices();
@@ -2725,14 +2903,11 @@ function onInput(event) {
     const box = document.getElementById("product-table");
     if (box) box.innerHTML = productRows();
   }
-  if (event.target.id === "invoice-query") {
-    state.invoiceQuery = event.target.value;
+  if (event.target.id === "invoice-query" || event.target.id === "invoice-date") {
+    if (event.target.id === "invoice-query") state.invoiceQuery = event.target.value;
+    if (event.target.id === "invoice-date") state.invoiceDate = event.target.value;
     const box = document.getElementById("invoice-table");
-    if (box) {
-      const query = state.invoiceQuery.trim();
-      const rows = (state.invoices || []).filter((sale) => !query || `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`.includes(query));
-      box.innerHTML = salesTable(rows, true);
-    }
+    if (box) box.innerHTML = salesTable(filteredInvoices(), true);
   }
   if (String(event.target.name || "").startsWith("edit-") || event.target.id === "edit-discount") {
     readSaleEdit();
@@ -2849,6 +3024,7 @@ api("/api/auth/me").then(async (me) => {
   if (!me.user) {
     state.bootstrap = await api("/api/auth/bootstrap");
     state.desktopIcon = Boolean(state.bootstrap.desktop_icon);
+    state.today = state.bootstrap.today || me.today || state.today;
     render();
     showUpdated();
     return;
@@ -2857,6 +3033,7 @@ api("/api/auth/me").then(async (me) => {
   state.mustChange = me.must_change_password;
   state.access = me.access || null;
   state.shop = me.shop || null;
+  state.today = me.today || state.today;
   readSetup(me.setup);
   showUpdated();
   const opened = location.hash.replace("#", "");

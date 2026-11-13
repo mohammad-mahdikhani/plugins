@@ -45,6 +45,7 @@ DB_PATH = DATA / "daftarchi.db"
 INITIAL_PHONE = "09120000000"
 INITIAL_PASSWORD = "daftarchi"
 JMONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"]
+JWEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 PLANS = {
     "3m": ("سه ماهه", 3, "price_3m"),
@@ -124,7 +125,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.46"
+APP_VERSION = "1.1.47"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -251,14 +252,49 @@ def iso(dt: datetime | None = None) -> str:
     return (dt or now_dt()).isoformat(timespec="seconds")
 
 
+def parse_when(value) -> datetime:
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value or "").strip()
+        if not text:
+            raise ValueError("empty")
+        if "T" not in text:
+            text = text + "T00:00:00"
+        dt = datetime.fromisoformat(text)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=TEHRAN)
+    return dt
+
+
 def to_jalali(value: str | None) -> str:
     if not value:
         return ""
-    dt = datetime.fromisoformat(value)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=TEHRAN)
-    local = dt.astimezone(TEHRAN).replace(tzinfo=None)
+    local = parse_when(value).astimezone(TEHRAN).replace(tzinfo=None)
     return jdatetime.datetime.fromgregorian(datetime=local).strftime("%Y/%m/%d %H:%M")
+
+
+def to_jalali_date(value: str | None) -> str:
+    text = to_jalali(value)
+    return text.split(" ")[0] if text else ""
+
+
+def jalali_clock(value=None) -> dict:
+    dt = now_dt() if value is None else parse_when(value)
+    local = dt.astimezone(TEHRAN).replace(tzinfo=None)
+    stamp = jdatetime.datetime.fromgregorian(datetime=local)
+    weekday = JWEEKDAYS[stamp.weekday()]
+    return {
+        "year": stamp.year,
+        "month": stamp.month,
+        "day": stamp.day,
+        "weekday": weekday,
+        "date": stamp.strftime("%Y/%m/%d"),
+        "label": f"{weekday} {stamp.day} {JMONTHS[stamp.month - 1]} {stamp.year}",
+        "time": stamp.strftime("%H:%M"),
+        "datetime": stamp.strftime("%Y/%m/%d %H:%M"),
+        "month_name": JMONTHS[stamp.month - 1],
+    }
 
 
 def add_months(dt: datetime, months: int) -> datetime:
@@ -2155,6 +2191,84 @@ def summary_for(conn, kind: str) -> dict:
         "count": len(parsed),
         "points": points,
         "top": [{"name": row["name"], "qty": row["qty"], "total": row["total"]} for row in top_rows],
+    }
+
+
+def shamsi_month(conn, year: int, month: int, selected: int | None = None) -> dict:
+    today = jalali_clock()
+    try:
+        first = jdatetime.date(year, month, 1)
+    except ValueError as exc:
+        raise AppError("ماه شمسی نامعتبر است") from exc
+    first_g = first.togregorian()
+    start = datetime(first_g.year, first_g.month, first_g.day, tzinfo=TEHRAN) - timedelta(days=first.weekday())
+    weeks = []
+    cursor = start
+    for _week in range(6):
+        row = []
+        for _day in range(7):
+            local = cursor.astimezone(TEHRAN)
+            stamp = jdatetime.datetime.fromgregorian(datetime=local.replace(tzinfo=None))
+            nxt = cursor + timedelta(days=1)
+            sales = conn.execute(
+                """SELECT COUNT(*) AS c, COALESCE(SUM(payable),0) AS t
+                   FROM sales WHERE status='paid' AND created_at>=? AND created_at<?""",
+                (iso(cursor), iso(nxt)),
+            ).fetchone()
+            due = local.date().isoformat()
+            checks = conn.execute(
+                "SELECT COUNT(*) AS c FROM checks WHERE status='pending' AND due_on=?",
+                (due,),
+            ).fetchone()["c"]
+            in_month = stamp.year == year and stamp.month == month
+            row.append({
+                "year": stamp.year,
+                "month": stamp.month,
+                "day": stamp.day,
+                "date": stamp.strftime("%Y/%m/%d"),
+                "iso": due,
+                "in_month": in_month,
+                "today": stamp.year == today["year"] and stamp.month == today["month"] and stamp.day == today["day"],
+                "selected": in_month and selected == stamp.day,
+                "sales": int(sales["c"] or 0),
+                "amount": int(sales["t"] or 0),
+                "checks": int(checks or 0),
+            })
+            cursor = nxt
+        weeks.append(row)
+    pick = selected or (today["day"] if year == today["year"] and month == today["month"] else 1)
+    try:
+        chosen = jdatetime.date(year, month, pick)
+    except ValueError:
+        chosen = first
+    chosen_g = chosen.togregorian()
+    day_start = datetime(chosen_g.year, chosen_g.month, chosen_g.day, tzinfo=TEHRAN)
+    day_end = day_start + timedelta(days=1)
+    sales = [
+        {**dict(row), "at_jalali": to_jalali(row["created_at"])}
+        for row in conn.execute(
+            """SELECT id, payable, discount, payment_method, created_at FROM sales
+               WHERE status='paid' AND created_at>=? AND created_at<? ORDER BY id DESC""",
+            (iso(day_start), iso(day_end)),
+        ).fetchall()
+    ]
+    checks = [check_row(row) for row in conn.execute(
+        "SELECT * FROM checks WHERE due_on=? ORDER BY id",
+        (chosen_g.isoformat(),),
+    ).fetchall()]
+    return {
+        "year": year,
+        "month": month,
+        "month_name": JMONTHS[month - 1],
+        "label": f"{JMONTHS[month - 1]} {year}",
+        "weekdays": JWEEKDAYS,
+        "today": today,
+        "selected": chosen.strftime("%Y/%m/%d"),
+        "weeks": weeks,
+        "sales": sales,
+        "checks": checks,
+        "total": sum(row["payable"] for row in sales),
+        "count": len(sales),
     }
 
 
@@ -4315,6 +4429,7 @@ def bootstrap():
         "host_mail": host_mail_ready(),
         "version": APP_VERSION,
         "desktop_icon": desktop_icon_available(),
+        "today": jalali_clock(),
     }
     if flag:
         return jsonify(initial=True, phone=INITIAL_PHONE, password=INITIAL_PASSWORD, **extra)
@@ -4393,6 +4508,7 @@ def login_payload(conn, row) -> dict:
         "access": ensure_access(conn),
         "shop": shop_profile(conn),
         "setup": setup_state(conn),
+        "today": jalali_clock(),
     }
 
 
@@ -4621,6 +4737,7 @@ def me():
         shop=shop,
         setup=setup,
         desktop_icon=desktop_icon_available(),
+        today=jalali_clock(),
     )
 
 
@@ -5609,7 +5726,7 @@ def parse_due(value) -> str:
 
 def check_row(row) -> dict:
     item = dict(row)
-    item["due_jalali"] = to_jalali(row["due_on"] + "T00:00:00")
+    item["due_jalali"] = to_jalali_date(row["due_on"])
     item["at_jalali"] = to_jalali(row["created_at"])
     item["soon"] = row["status"] == "pending" and row["due_on"] <= (now_dt().date() + timedelta(days=3)).isoformat()
     return item
@@ -6711,6 +6828,26 @@ def reports():
     require_user()
     with connect() as conn:
         data = {kind: summary_for(conn, kind) for kind in ("day", "week", "month")}
+    return jsonify(**data)
+
+
+@app.get("/api/calendar")
+def calendar_page():
+    require_user()
+    today = jalali_clock()
+    try:
+        year = int(str(request.args.get("year") or today["year"]).translate(DIGITS))
+        month = int(str(request.args.get("month") or today["month"]).translate(DIGITS))
+        raw_day = str(request.args.get("day") or "").translate(DIGITS).strip()
+        day = int(raw_day) if raw_day else None
+    except ValueError as exc:
+        raise AppError("تاریخ شمسی نامعتبر است") from exc
+    if year < 1300 or year > 1600 or month < 1 or month > 12:
+        raise AppError("ماه شمسی نامعتبر است")
+    if day is not None and (day < 1 or day > 31):
+        raise AppError("روز شمسی نامعتبر است")
+    with connect() as conn:
+        data = shamsi_month(conn, year, month, day)
     return jsonify(**data)
 
 

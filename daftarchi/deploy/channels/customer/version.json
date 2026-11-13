@@ -1,9 +1,9 @@
 {
-  "version": "1.1.46",
+  "version": "1.1.47",
   "channel": "customer",
-  "notes": "هر ورود به برنامه، حتی دوره رایگان، برای پشتیبانی به وب‌بیکری فرستاده می‌شود. رمز عبور فرستاده نمی‌شود.",
+  "notes": "تاریخ و تقویم دفترچی شمسی شد. فروش و چک هر روز روی تقویم جلالی دیده می‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.46-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.47-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",

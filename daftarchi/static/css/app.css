@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.46") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.47") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.46") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.47") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.46") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.47") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -324,6 +324,48 @@ summary { cursor: pointer; font-weight: 600; }
 }
 .tab.active { background: var(--soft); color: var(--accent-ink); font-weight: 600; }
 .banner { margin: 8px 16px 0; }
+.date-pill { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jalali-date-wrap { position: relative; display: flex; gap: 6px; align-items: stretch; }
+.jalali-date-wrap .jalali-date { flex: 1; min-width: 0; }
+.cal-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.cal-nav .section-title { margin: 0 auto; }
+.cal-weekdays, .cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.cal-head { text-align: center; color: var(--muted); font-size: 12px; padding: 4px 0; }
+.cal-day {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  min-height: 64px;
+  padding: 6px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: inherit;
+}
+.cal-grid:not(.month) .cal-day { min-height: 36px; align-items: center; text-align: center; }
+.cal-day small { font-size: 11px; color: var(--muted); }
+.cal-day .warn-text { color: var(--warn); }
+.cal-day.out { opacity: 0.38; }
+.cal-day.today { outline: 2px solid var(--accent); }
+.cal-day.selected { background: var(--soft); }
+.cal-pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(320px, 92vw);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+}
+.cal-pop-title { font-size: 14px; }
 
 @media (max-width: 860px) {
   .appbar { padding-inline: 12px; }
