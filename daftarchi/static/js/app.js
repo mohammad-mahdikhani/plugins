@@ -1637,7 +1637,7 @@ function modalHtml() {
   }
   if (modal.type === "invoice-read" && modal.waiting) inner = `<h2 class="section-title">خواندن فاکتور</h2><p>هوش مصنوعی در حال خواندن عکس است. اگر دست‌نویس باشد هم همان‌جا می‌ماند.</p>`;
   if (modal.type === "invoice-read" && modal.invoice) inner = invoiceReadHtml(modal.invoice);
-  if (modal.type === "pro") inner = `<h2 class="section-title">اکانت Pro</h2><p>${esc(modal.credit?.pack || "")} · ${money(modal.payable)}</p><p class="hint">بعد از پرداخت در زیبال، تأیید را بزنید تا توکن‌ها به موجودی پرو اضافه شود. این توکن لایسنس فروشگاه و VIP نیست.</p><div class="row-actions"><button type="button" class="btn primary" data-act="confirm-pro" data-id="${modal.credit?.id || ""}">تأیید پرداخت</button></div>`;
+  if (modal.type === "pro") inner = `<h2 class="section-title">اکانت Pro</h2><p>${esc(modal.title || "بسته توکن")} · ${money(modal.payable)}</p><p class="hint">صفحه زیبال را باز کنید و پرداخت را تمام کنید. تا وقتی بانک تأیید نکند توکنی اضافه نمی‌شود. این توکن لایسنس فروشگاه و VIP نیست.</p><div class="row-actions">${modal.credit?.pay_url ? `<a class="btn" href="${esc(modal.credit.pay_url)}" target="_blank" rel="noopener">باز کردن زیبال</a>` : ""}<button type="button" class="btn primary" data-act="confirm-pro" data-id="${modal.credit?.id || ""}">پرداخت را انجام دادم</button></div>`;
   if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">تا وقتی کارت‌خوان پرداخت را تأیید نکند، فاکتوری ثبت نمی‌شود.</p>`;
   if (modal.type === "card" && !modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><div class="field"><label>شماره پیگیری رسید</label><input id="pos-ref" class="ltr"></div><button type="button" class="btn primary" data-act="confirm-card">ثبت پرداخت کارت</button>`;
   if (modal.type === "gateway") inner = `<h2 class="section-title">پرداخت در مرورگر</h2><p>کد <span class="ltr">${esc(modal.sale.invoice_code || "")}</span> · فاکتور ${num(modal.sale.id)} · ${money(modal.sale.payable)}</p>${gatewayPanel(modal.sale)}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-sale" data-id="${modal.sale.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-sale" data-id="${modal.sale.id}">لغو</button></div><form data-act="manual-gateway"><input type="hidden" name="id" value="${modal.sale.id}"><div class="field"><label>اگر در پنل درگاه پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
@@ -2409,7 +2409,8 @@ async function onClick(event) {
         }
         if (popup && !popup.closed) popup.location.href = url;
         else location.assign(url);
-        state.modal = { type: "pro", credit: result.credit, payable: result.payable };
+        const pack = (result.pro?.packs || []).find((item) => item.id === result.credit?.pack);
+        state.modal = { type: "pro", credit: result.credit, payable: result.payable, title: pack?.title || "" };
         state.pro = result.pro;
         render();
       } catch (err) {

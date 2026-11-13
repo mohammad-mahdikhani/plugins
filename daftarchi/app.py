@@ -122,7 +122,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.42"
+APP_VERSION = "1.1.43"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -2499,6 +2499,9 @@ def host_pay(action: str, fields: dict) -> dict:
             continue
         if status < 400 and body.get("ok") and body.get("service") == "daftarchi-pay":
             return body
+        # Verify of an unpaid Zibal track is HTTP 409 with result 202, not a dead host.
+        if action == "verify" and body.get("result") in (100, 201, 202, "100", "201", "202"):
+            return body
         # A live pay.php answered. A later 404 page must not replace this error.
         if body.get("service") == "daftarchi-pay" or isinstance(body.get("ok"), bool):
             detail = str(body.get("error") or body.get("message") or f"HTTP {status}")
@@ -2530,9 +2533,9 @@ def host_zibal_verify(track: str) -> str:
     if not str(track or "").strip():
         raise AppError("شناسه پرداخت این لایسنس خالی است")
     body = host_pay("verify", {"trackId": int(track) if str(track).isdigit() else track})
-    if body.get("result") not in (100, 201, "100", "201"):
-        raise AppError("پرداخت هنوز در زیبال تأیید نشده است", 409)
-    return str(body.get("refNumber") or track)
+    if body.get("result") in (100, 201, "100", "201"):
+        return str(body.get("refNumber") or track)
+    raise AppError("پرداخت در زیبال انجام نشده. اول در صفحه زیبال کارت را بکشید، بعد تأیید را بزنید.", 409)
 
 
 def days_left(end: datetime) -> int:
