@@ -1,0 +1,12 @@
+{
+  "customer_no": "ashrafi",
+  "site_id": "ashrafi",
+  "channel": "customer",
+  "label": "اشرافی",
+  "buyer_name": "اشرافی",
+  "unlimited": true,
+  "settings": {
+    "shop_name": "اشرافی",
+    "shop_mode": "offline"
+  }
+}

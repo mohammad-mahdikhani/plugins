@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-16",
+  "label": "کافه VIP",
+  "note": "کسب‌وکار VIP شماره ۱۶",
+  "settings": {
+    "shop_name": "کافه VIP",
+    "wp_url": "https://example-shop-16.ir",
+    "gateway_callback": "https://example-shop-16.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

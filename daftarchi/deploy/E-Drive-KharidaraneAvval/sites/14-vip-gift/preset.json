@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-14",
+  "label": "کادویی VIP",
+  "note": "کسب‌وکار VIP شماره ۱۴",
+  "settings": {
+    "shop_name": "کادویی VIP",
+    "wp_url": "https://example-shop-14.ir",
+    "gateway_callback": "https://example-shop-14.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

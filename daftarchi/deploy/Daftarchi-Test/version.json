@@ -1,0 +1,12 @@
+{
+  "version": "1.1.7-test",
+  "url": "https://webakery.ir/license-server/releases/Daftarchi.exe",
+  "notes": "نسخه کیت تست — نام فروشگاه «فروشگاه تست»، داده جدا، درگاه آزمایشی.",
+  "features": [
+    "نام فروشگاه: فروشگاه تست",
+    "اصلاح موجودی و قالب اکسل",
+    "همگام ووکامرس، QR پرداخت، فاکتور ۸ سانتی‌متری"
+  ],
+  "plugins": [],
+  "site_id": "test-kit"
+}

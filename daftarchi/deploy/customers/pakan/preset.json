@@ -1,0 +1,12 @@
+{
+  "customer_no": "pakan",
+  "site_id": "pakan",
+  "channel": "customer",
+  "label": "فروشگاه پاکان",
+  "buyer_name": "فروشگاه پاکان",
+  "unlimited": true,
+  "settings": {
+    "shop_name": "فروشگاه پاکان",
+    "shop_mode": "offline"
+  }
+}

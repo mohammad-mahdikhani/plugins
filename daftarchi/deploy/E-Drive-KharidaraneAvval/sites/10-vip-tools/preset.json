@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-10",
+  "label": "ابزار VIP",
+  "note": "کسب‌وکار VIP شماره ۱۰",
+  "settings": {
+    "shop_name": "ابزار VIP",
+    "wp_url": "https://example-shop-10.ir",
+    "gateway_callback": "https://example-shop-10.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

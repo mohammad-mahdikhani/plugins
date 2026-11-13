@@ -1,0 +1,13 @@
+{
+  "version": "1.1.7.02",
+  "url": "https://webakery.ir/license-server/releases/Daftarchi.exe",
+  "notes": "نسخه اختصاصی آب‌فروشی VIP — کانال vip-02",
+  "features": [
+    "کانال به‌روزرسانی: vip-02",
+    "کسب‌وکار VIP شماره ۲",
+    "همگام‌سازی فوری ووکامرس، QR پرداخت، فاکتور ۸ سانتی‌متری"
+  ],
+  "plugins": [],
+  "site_id": "vip-02",
+  "shop_name": "آب‌فروشی VIP"
+}

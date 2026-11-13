@@ -1,0 +1,31 @@
+{
+  "customers": [
+    {
+      "no": 1,
+      "site_id": "rst",
+      "channel": "rst",
+      "business": "restaurant",
+      "label": "مشتری اول — رستوران"
+    },
+    {
+      "site_id": "jazayeri",
+      "channel": "customer",
+      "label": "آرقای جزایری"
+    },
+    {
+      "site_id": "atr",
+      "channel": "customer",
+      "label": "عطر فروشی"
+    },
+    {
+      "site_id": "pakan",
+      "channel": "customer",
+      "label": "فروشگاه پاکان"
+    },
+    {
+      "site_id": "ashrafi",
+      "channel": "customer",
+      "label": "اشرافی"
+    }
+  ]
+}

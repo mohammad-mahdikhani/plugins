@@ -1,0 +1,6 @@
+این version-host.json را روی هاست بگذارید:
+
+  public_html/license-server/sites/vip-17/version.json
+
+آدرس خوانده‌شده توسط دفترچی (بعد از تنظیم در هاست):
+  https://webakery.ir/license-server/sites/vip-17/version.json

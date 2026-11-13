@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-01",
+  "label": "وب‌بیکری",
+  "note": "فروشگاه نمونه و پشتیبانی دفترچی",
+  "settings": {
+    "shop_name": "وب‌بیکری",
+    "wp_url": "https://webakery.ir",
+    "gateway_callback": "https://webakery.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}
