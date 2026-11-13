@@ -23,32 +23,61 @@ function daftarchi_signups_rows() {
     return is_array($rows) ? $rows : array();
 }
 
-function daftarchi_signups_keep($row) {
-    $rows = daftarchi_signups_rows();
+function daftarchi_signups_same($row, $old) {
+    $install = (string) ($row['install_id'] ?? '');
+    $old_install = (string) ($old['install_id'] ?? '');
+    if ($install !== '' && $install === $old_install) {
+        return true;
+    }
+    if ($install !== '' && $old_install !== '') {
+        return false;
+    }
     $email = strtolower((string) ($row['email'] ?? ''));
     $phone = (string) ($row['phone'] ?? '');
+    $old_email = strtolower((string) ($old['email'] ?? ''));
+    $old_phone = (string) ($old['phone'] ?? '');
+    return ($email !== '' && $old_email === $email) || ($email === '' && $phone !== '' && $old_phone === $phone);
+}
+
+function daftarchi_signups_keep($row) {
+    $rows = daftarchi_signups_rows();
     $kept = false;
     foreach ($rows as $index => $old) {
-        if (!is_array($old)) {
+        if (!is_array($old) || !daftarchi_signups_same($row, $old)) {
             continue;
         }
-        $old_email = strtolower((string) ($old['email'] ?? ''));
-        $old_phone = (string) ($old['phone'] ?? '');
-        $same = ($email !== '' && $old_email === $email) || ($email === '' && $phone !== '' && $old_phone === $phone);
-        if (!$same) {
-            continue;
+        $merged = $old;
+        foreach ($row as $key => $value) {
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            $merged[$key] = $value;
         }
+        $merged['received_at'] = $row['received_at'] ?? gmdate('c');
         if (!empty($old['created_at'])) {
-            $row['created_at'] = $old['created_at'];
+            $merged['created_at'] = $old['created_at'];
         }
-        if (!empty($old['received_at']) && empty($row['received_at'])) {
-            $row['received_at'] = $old['received_at'];
+        if (!empty($old['first_seen'])) {
+            $merged['first_seen'] = $old['first_seen'];
+        } elseif (empty($merged['first_seen'])) {
+            $merged['first_seen'] = $old['received_at'] ?? $merged['received_at'];
         }
-        $rows[$index] = $row;
+        if (!empty($row['last_login'])) {
+            $merged['last_login'] = $row['last_login'];
+            $merged['login_count'] = (int) ($old['login_count'] ?? 0) + 1;
+        }
+        $rows[$index] = $merged;
+        $row = $merged;
         $kept = true;
         break;
     }
     if (!$kept) {
+        if (empty($row['first_seen'])) {
+            $row['first_seen'] = $row['received_at'] ?? gmdate('c');
+        }
+        if (!isset($row['login_count'])) {
+            $row['login_count'] = !empty($row['last_login']) ? 1 : 0;
+        }
         $rows[] = $row;
     }
     if (count($rows) > 1000) {
@@ -112,6 +141,28 @@ function daftarchi_signups_rest_save($request) {
         'created_at' => mb_substr(sanitize_text_field((string) $request->get_param('created_at')), 0, 40),
         'received_at' => gmdate('c'),
     );
+    $text_fields = array(
+        'shop_mode' => 40,
+        'site_id' => 40,
+        'install_id' => 80,
+        'version' => 20,
+        'access' => 20,
+        'access_title' => 80,
+        'ends_at' => 40,
+        'last_login' => 40,
+    );
+    foreach ($text_fields as $key => $limit) {
+        if ($request->get_param($key) === null || $request->get_param($key) === '') {
+            continue;
+        }
+        $row[$key] = mb_substr(sanitize_text_field((string) $request->get_param($key)), 0, $limit);
+    }
+    foreach (array('active', 'vip', 'days_left', 'products', 'sales', 'customers') as $key) {
+        if ($request->get_param($key) === null) {
+            continue;
+        }
+        $row[$key] = absint($request->get_param($key));
+    }
     $saved = daftarchi_signups_keep($row);
     return new WP_REST_Response(array(
         'ok' => true,
@@ -134,10 +185,7 @@ function daftarchi_signups_rest_delete($request) {
         if (!is_array($row)) {
             continue;
         }
-        if ($email !== '' && strtolower((string) ($row['email'] ?? '')) === $email) {
-            continue;
-        }
-        if ($email === '' && $phone !== '' && (string) ($row['phone'] ?? '') === $phone) {
+        if (daftarchi_signups_same(array('email' => $email, 'phone' => $phone, 'install_id' => (string) $request->get_param('install_id')), $row)) {
             continue;
         }
         $rows[] = $row;
@@ -153,24 +201,35 @@ function daftarchi_signups_page() {
     $rows = array_reverse(daftarchi_signups_rows());
     echo '<div class="wrap">';
     echo '<h1>ثبت‌نام دفترچی</h1>';
-    echo '<p>هر کسی در دفترچی اکانت بسازد، نام و موبایل و جیمیلش این‌جا می‌آید. رمز عبور ذخیره نمی‌شود.</p>';
+    echo '<p>ثبت‌نام و ورود، حتی نسخه رایگان، این‌جا می‌آید. رمز عبور ذخیره نمی‌شود.</p>';
     echo '<table class="widefat striped"><thead><tr>';
-    echo '<th>نام</th><th>موبایل</th><th>جیمیل</th><th>فروشگاه</th><th>تأیید جیمیل</th><th>زمان ثبت</th>';
+    echo '<th>نام</th><th>موبایل</th><th>جیمیل</th><th>فروشگاه</th><th>وضعیت</th><th>کالا / فروش</th><th>نسخه</th><th>آخرین ورود</th>';
     echo '</tr></thead><tbody>';
     if (!$rows) {
-        echo '<tr><td colspan="6">هنوز کسی ثبت‌نام نکرده است.</td></tr>';
+        echo '<tr><td colspan="8">هنوز کسی ثبت‌نام یا وارد نشده است.</td></tr>';
     }
+    $modes = array('trial' => 'رایگان', 'paid' => 'پولی', 'expired' => 'منقضی', 'studio' => 'استودیو');
     foreach ($rows as $row) {
         if (!is_array($row)) {
             continue;
         }
-        $when = (string) ($row['received_at'] ?? $row['created_at'] ?? '');
+        $when = (string) ($row['last_login'] ?? $row['received_at'] ?? $row['created_at'] ?? '');
+        $mode = (string) ($row['access'] ?? '');
+        $status = $modes[$mode] ?? ($row['access_title'] ?? '');
+        if (!empty($row['vip'])) {
+            $status .= ' VIP';
+        }
+        if ($mode === 'trial' && isset($row['days_left'])) {
+            $status .= '، ' . absint($row['days_left']) . ' روز';
+        }
         echo '<tr>';
         echo '<td>' . esc_html((string) ($row['name'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['phone'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['email'] ?? '')) . '</td>';
         echo '<td>' . esc_html((string) ($row['shop'] ?? '')) . '</td>';
-        echo '<td>' . (!empty($row['verified']) ? 'بله' : 'نه') . '</td>';
+        echo '<td>' . esc_html($status) . '</td>';
+        echo '<td>' . esc_html(absint($row['products'] ?? 0) . ' / ' . absint($row['sales'] ?? 0)) . '</td>';
+        echo '<td>' . esc_html((string) ($row['version'] ?? '')) . '</td>';
         echo '<td>' . esc_html($when) . '</td>';
         echo '</tr>';
     }

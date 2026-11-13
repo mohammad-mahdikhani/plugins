@@ -1,9 +1,9 @@
 {
-  "version": "1.1.45",
+  "version": "1.1.46",
   "channel": "customer",
-  "notes": "معماری زنده تست شد: چند فروش هم‌زمان موجودی را منفی نمی‌کند و موقع انتظار کارت‌خوان بقیه فروشگاه باز می‌ماند.",
+  "notes": "هر ورود به برنامه، حتی دوره رایگان، برای پشتیبانی به وب‌بیکری فرستاده می‌شود. رمز عبور فرستاده نمی‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.45-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.46-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",

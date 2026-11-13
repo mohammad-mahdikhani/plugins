@@ -14,11 +14,12 @@ if (!function_exists('daftarchi_admin_parent')) {
             'daftarchi-release' => 'آپدیت',
             'daftarchi-support' => 'پیام‌ها',
             'daftarchi-signups' => 'ثبت‌نام‌ها',
+            'daftarchi-logins' => 'ورودها',
             'daftarchi-licenses' => 'لایسنس‌ها',
             'daftarchi-sms' => 'پیامک',
         );
         echo '<div class="wrap"><h1>دفترچی</h1>';
-        echo '<p>آپدیت، پیام‌ها، ثبت‌نام، لایسنس و پیامک این‌جا یک‌جا هستند.</p><ul>';
+        echo '<p>آپدیت، پیام‌ها، ثبت‌نام، ورود، لایسنس و پیامک این‌جا یک‌جا هستند.</p><ul>';
         foreach ($links as $slug => $label) {
             echo '<li><a href="' . esc_url(admin_url('admin.php?page=' . $slug)) . '">' . esc_html($label) . '</a></li>';
         }

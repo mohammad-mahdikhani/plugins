@@ -124,7 +124,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.45"
+APP_VERSION = "1.1.46"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -159,6 +159,10 @@ HOST_ACCOUNT_URLS = (
     "https://webakery.ir/daftarchi/accounts.php",
 )
 HOST_SIGNUP_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/signup",
+)
+HOST_LOGIN_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/login",
     "https://webakery.ir/wp-json/daftarchi/v1/signup",
 )
 HOST_LICENSE_URLS = (
@@ -2323,6 +2327,27 @@ def explain_host_pay(detail: str) -> str:
     return f"پرداخت از هاست ساخته نشد: {text[:180]}"
 
 
+def ensure_install_id(conn) -> str:
+    row = conn.execute("SELECT value FROM settings WHERE key='install_id'").fetchone()
+    value = str(row["value"] or "").strip() if row else ""
+    if value:
+        return value
+    value = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('install_id', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (value,),
+    )
+    return value
+
+
+def host_safe_item(item: dict) -> dict:
+    payload = dict(item or {})
+    payload.pop("password", None)
+    payload.pop("password_hash", None)
+    return payload
+
+
 def signup_host_item(conn, user) -> dict:
     settings = get_settings(conn)
     return {
@@ -2333,27 +2358,68 @@ def signup_host_item(conn, user) -> dict:
         "shop": settings.get("shop_name") or "",
         "channel": update_channel(),
         "created_at": user["created_at"] or "",
+        "install_id": ensure_install_id(conn),
     }
 
 
-def report_signup(item: dict) -> None:
-    if not item or not (item.get("phone") or item.get("email")):
+def login_host_item(conn, user) -> dict:
+    settings = get_settings(conn)
+    access = ensure_access(conn)
+    products = conn.execute(
+        "SELECT COUNT(*) AS c FROM products WHERE sku IS NULL OR sku<>?",
+        (PAYMENT_PRODUCT_SKU,),
+    ).fetchone()["c"]
+    sales = conn.execute("SELECT COUNT(*) AS c FROM sales WHERE status='paid'").fetchone()["c"]
+    customers = conn.execute("SELECT COUNT(*) AS c FROM customers").fetchone()["c"]
+    return {
+        "name": user["name"] or "",
+        "phone": user["phone"] or "",
+        "email": (user["email"] or "").lower(),
+        "shop": settings.get("shop_name") or "",
+        "shop_mode": settings.get("shop_mode") or "",
+        "site_id": settings.get("site_id") or "",
+        "install_id": ensure_install_id(conn),
+        "channel": update_channel(),
+        "version": APP_VERSION,
+        "access": access.get("mode") or "",
+        "access_title": access.get("title") or "",
+        "active": 1 if access.get("active") else 0,
+        "vip": 1 if access.get("vip") else 0,
+        "days_left": int(access.get("days_left") or 0),
+        "ends_at": access.get("ends_at") or "",
+        "products": int(products or 0),
+        "sales": int(sales or 0),
+        "customers": int(customers or 0),
+        "last_login": iso(),
+        "verified": int(user["email_verified"] or 0) if user["email"] else int(user["phone_verified"] or 0),
+        "created_at": user["created_at"] or "",
+    }
+
+
+def report_host_event(action: str, item: dict, urls: tuple[str, ...], label: str) -> None:
+    if not item or not (item.get("phone") or item.get("email") or item.get("install_id")):
         return
-    payload = {"key": HOST_MAIL_KEY, "action": "signup", **item}
-    if "password" in payload:
-        payload.pop("password", None)
-    for url in HOST_SIGNUP_URLS:
+    payload = {"key": HOST_MAIL_KEY, "action": action, **host_safe_item(item)}
+    for url in urls:
         try:
             status, body = http_request("POST", url, payload=payload, timeout=6)
         except AppError as exc:
-            log.warning("signup host %s: %s", url, exc)
+            log.warning("%s host %s: %s", label, url, exc)
             continue
         except Exception:
-            log.exception("signup host %s", url)
+            log.exception("%s host %s", label, url)
             continue
         if status < 400 and isinstance(body, dict) and body.get("ok"):
             return
-    log.warning("signup was not stored on webakery")
+    log.warning("%s was not stored on webakery", label)
+
+
+def report_signup(item: dict) -> None:
+    report_host_event("signup", item, HOST_SIGNUP_URLS, "signup")
+
+
+def report_login(item: dict) -> None:
+    report_host_event("login", item, HOST_LOGIN_URLS, "login")
 
 
 def push_signup(conn, user) -> None:
@@ -2361,6 +2427,13 @@ def push_signup(conn, user) -> None:
         report_signup(signup_host_item(conn, user))
     except Exception:
         log.exception("signup report")
+
+
+def push_login(conn, user) -> None:
+    try:
+        report_login(login_host_item(conn, user))
+    except Exception:
+        log.exception("login report")
 
 
 def host_account(action: str, fields: dict) -> dict:
@@ -4274,15 +4347,8 @@ def login():
                 needs_verify=True,
                 ident=row["email"],
             )
-        user = public_user(row)
-        flag = get_settings(conn).get("must_change_password") == "1"
-        access = ensure_access(conn)
-        shop = shop_profile(conn)
-        setup = setup_state(conn)
-    session.clear()
-    session["uid"] = row["id"]
-    session.permanent = True
-    return jsonify(user=user, must_change_password=flag, access=access, shop=shop, setup=setup)
+        packed = login_payload(conn, row)
+    return finish_login(packed)
 
 
 def send_phone_code(conn, user_id: int, phone: str, purpose: str) -> dict:
@@ -4319,6 +4385,7 @@ def accept_phone_code(conn, user, code: str, channel: str) -> None:
 
 
 def login_payload(conn, row) -> dict:
+    push_login(conn, row)
     return {
         "uid": row["id"],
         "user": public_user(row),
@@ -4465,6 +4532,7 @@ def register():
         conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
         fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
         push_signup(conn, fresh)
+        push_login(conn, fresh)
         flag = get_settings(conn).get("must_change_password") == "1"
         user = public_user(fresh)
     session.clear()
