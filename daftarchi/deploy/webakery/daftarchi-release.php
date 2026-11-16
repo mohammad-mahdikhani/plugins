@@ -107,6 +107,17 @@ function daftarchi_release_menu() {
     );
 }
 
+function daftarchi_release_key_ok($request = null) {
+    $key = '';
+    if ($request) {
+        $key = (string) $request->get_param('key');
+    }
+    if ($key === '' && isset($_REQUEST['key'])) {
+        $key = (string) wp_unslash($_REQUEST['key']);
+    }
+    return $key !== '' && hash_equals('daftarchi-webakery-mail', $key);
+}
+
 function daftarchi_release_store_file($field, $channel, $version, $suffix, $allowed) {
     if (empty($_FILES[$field]['name'])) {
         return '';
@@ -315,8 +326,8 @@ function daftarchi_release_route() {
         ),
         array(
             'methods' => 'POST',
-            'permission_callback' => function () {
-                return current_user_can('manage_options');
+            'permission_callback' => function ($request) {
+                return current_user_can('manage_options') || daftarchi_release_key_ok($request);
             },
             'callback' => 'daftarchi_release_rest_publish',
         ),

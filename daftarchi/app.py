@@ -125,7 +125,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.47"
+APP_VERSION = "1.1.48"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -334,6 +334,54 @@ def check_pw(password: str, stored: str) -> bool:
     salt, digest = stored.split("$", 1)
     check = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 60_000).hex()
     return secrets.compare_digest(check, digest)
+
+
+def _password_fernet():
+    from cryptography.fernet import Fernet
+
+    key = base64.urlsafe_b64encode(hashlib.sha256(str(app.secret_key).encode()).digest())
+    return Fernet(key)
+
+
+def secret_token(password: str) -> str:
+    return _password_fernet().encrypt(str(password).encode()).decode()
+
+
+def read_secret(token: str) -> str:
+    return _password_fernet().decrypt(str(token).encode()).decode()
+
+
+def write_password(conn, user_id: int, password: str) -> None:
+    conn.execute(
+        "UPDATE users SET password_hash=?, password_keep=? WHERE id=?",
+        (hash_pw(password), secret_token(password), int(user_id)),
+    )
+
+
+def current_password(user) -> str | None:
+    token = ""
+    try:
+        token = str(user["password_keep"] or "")
+    except (KeyError, IndexError, TypeError):
+        token = ""
+    if token:
+        try:
+            return read_secret(token)
+        except Exception:
+            pass
+    stored = str(user["password_hash"] or "")
+    if stored and check_pw(INITIAL_PASSWORD, stored):
+        return INITIAL_PASSWORD
+    return None
+
+
+def ensure_current_password(conn, user) -> str:
+    found = current_password(user)
+    if found:
+        return found
+    fresh = secrets.token_hex(4)
+    write_password(conn, user["id"], fresh)
+    return fresh
 
 
 def norm_phone(value: str) -> str:
@@ -1828,6 +1876,24 @@ def send_gmail_code(conn, _settings: dict, recipient: str, user_id: int, purpose
     )
 
 
+def send_password_mail(conn, user) -> None:
+    email = str(user["email"] or "").strip().lower()
+    if not email:
+        raise AppError("برای این حساب جیمیل ثبت نشده")
+    store_code(conn, user["id"], "email")
+    password = ensure_current_password(conn, user)
+    subject = "رمز ورود دفترچی"
+    text = (
+        f"رمز ورود دفترچی شما:\n{password}\n"
+        "اگر این درخواست برای شما نبود، همین حالا رمز را عوض کنید."
+    )
+    send_host_mail(email, subject, text)
+    conn.execute(
+        "INSERT INTO notifications (channel, recipient, body, status, detail, created_at) VALUES ('email',?,?,?,?,?)",
+        (email, "رمز ورود دفترچی\nنامه با رمز فعلی به جیمیل فرستاده شد", "sent", "هاست وب‌بیکری", iso()),
+    )
+
+
 def version_tuple(value: str) -> tuple[int, ...]:
     parts = []
     for piece in re.split(r"[^\d]+", str(value or "").strip()):
@@ -2459,6 +2525,7 @@ def host_safe_item(item: dict) -> dict:
     payload = dict(item or {})
     payload.pop("password", None)
     payload.pop("password_hash", None)
+    payload.pop("password_keep", None)
     return payload
 
 
@@ -3623,11 +3690,22 @@ def init_db():
         user_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
         if "phone_verified" not in user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 1")
+        if "password_keep" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN password_keep TEXT")
         if not conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             conn.execute(
-                "INSERT INTO users (name, phone, email, password_hash, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?)",
-                ("مدیر", INITIAL_PHONE, None, hash_pw(INITIAL_PASSWORD), "admin", 1, iso()),
+                "INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                ("مدیر", INITIAL_PHONE, None, hash_pw(INITIAL_PASSWORD), secret_token(INITIAL_PASSWORD), "admin", 1, iso()),
             )
+        else:
+            for row in conn.execute("SELECT id, password_hash, password_keep FROM users"):
+                if row["password_keep"]:
+                    continue
+                if check_pw(INITIAL_PASSWORD, row["password_hash"]):
+                    conn.execute(
+                        "UPDATE users SET password_keep=? WHERE id=?",
+                        (secret_token(INITIAL_PASSWORD), row["id"]),
+                    )
         if not conn.execute("SELECT 1 FROM accounts LIMIT 1").fetchone():
             for code, name, kind in SYSTEM_ACCOUNTS:
                 conn.execute(
@@ -4501,15 +4579,19 @@ def accept_phone_code(conn, user, code: str, channel: str) -> None:
 
 def login_payload(conn, row) -> dict:
     push_login(conn, row)
-    return {
+    flag = get_settings(conn).get("must_change_password") == "1"
+    packed = {
         "uid": row["id"],
         "user": public_user(row),
-        "must_change_password": get_settings(conn).get("must_change_password") == "1",
+        "must_change_password": flag,
         "access": ensure_access(conn),
         "shop": shop_profile(conn),
         "setup": setup_state(conn),
         "today": jalali_clock(),
     }
+    if flag and check_pw(INITIAL_PASSWORD, row["password_hash"]):
+        packed["initial_password"] = INITIAL_PASSWORD
+    return packed
 
 
 def finish_login(payload: dict):
@@ -4532,10 +4614,11 @@ def register_phone(payload: dict):
             settings = get_settings(conn)
             others = conn.execute("SELECT COUNT(*) AS c FROM users WHERE phone<>?", (INITIAL_PHONE,)).fetchone()["c"]
             role = "admin" if settings.get("must_change_password") == "1" and others == 0 else "cashier"
+            secret = secrets.token_urlsafe(18)
             cur = conn.execute(
-                """INSERT INTO users (name, phone, email, password_hash, role, email_verified, phone_verified, created_at)
-                   VALUES (?,?,?,?,?,1,0,?)""",
-                (phone, phone, None, hash_pw(secrets.token_urlsafe(18)), role, iso()),
+                """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, phone_verified, created_at)
+                   VALUES (?,?,?,?,?,?,1,0,?)""",
+                (phone, phone, None, hash_pw(secret), secret_token(secret), role, iso()),
             )
             user_id = cur.lastrowid
             fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
@@ -4627,17 +4710,18 @@ def register():
             reopen = False
             if existing:
                 conn.execute(
-                    "UPDATE users SET name=?, phone=?, password_hash=? WHERE id=?",
-                    (name, phone, hash_pw(password), existing["id"]),
+                    "UPDATE users SET name=?, phone=? WHERE id=?",
+                    (name, phone, existing["id"]),
                 )
+                write_password(conn, existing["id"], password)
                 user_id = existing["id"]
             else:
                 others = conn.execute("SELECT COUNT(*) AS c FROM users WHERE phone<>?", (INITIAL_PHONE,)).fetchone()["c"]
                 role = "admin" if settings.get("must_change_password") == "1" and others == 0 else "cashier"
                 cur = conn.execute(
-                    """INSERT INTO users (name, phone, email, password_hash, role, email_verified, created_at)
-                       VALUES (?,?,?,?,?,0,?)""",
-                    (name, phone, email, hash_pw(password), role, iso()),
+                    """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, created_at)
+                       VALUES (?,?,?,?,?,?,0,?)""",
+                    (name, phone, email, hash_pw(password), secret_token(password), role, iso()),
                 )
                 user_id = cur.lastrowid
         if not reopen:
@@ -4654,7 +4738,10 @@ def register():
     session.clear()
     session["uid"] = user_id
     session.permanent = True
-    return jsonify(ok=True, email=email, needs_verify=False, delivery="local", user=user, must_change_password=flag)
+    extra = {}
+    if flag and check_pw(INITIAL_PASSWORD, fresh["password_hash"]):
+        extra["initial_password"] = INITIAL_PASSWORD
+    return jsonify(ok=True, email=email, needs_verify=False, delivery="local", user=user, must_change_password=flag, **extra)
 
 
 @app.post("/api/auth/verify")
@@ -4730,15 +4817,18 @@ def me():
         access = ensure_access(conn) if user else None
         shop = shop_profile(conn) if user else None
         setup = setup_state(conn) if user else None
-    return jsonify(
-        user=public_user(user) if user else None,
-        must_change_password=flag if user else False,
-        access=access,
-        shop=shop,
-        setup=setup,
-        desktop_icon=desktop_icon_available(),
-        today=jalali_clock(),
-    )
+    packed = {
+        "user": public_user(user) if user else None,
+        "must_change_password": flag if user else False,
+        "access": access,
+        "shop": shop,
+        "setup": setup,
+        "desktop_icon": desktop_icon_available(),
+        "today": jalali_clock(),
+    }
+    if user and flag and check_pw(INITIAL_PASSWORD, user["password_hash"]):
+        packed["initial_password"] = INITIAL_PASSWORD
+    return jsonify(**packed)
 
 
 @app.post("/api/auth/password")
@@ -4752,9 +4842,18 @@ def change_password():
     if not check_pw(current, user["password_hash"]):
         raise AppError("رمز فعلی نادرست است")
     with connect() as conn:
-        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_pw(new_password), user["id"]))
+        write_password(conn, user["id"], new_password)
         clear_initial_secret(conn, user)
     return jsonify(ok=True)
+
+
+@app.post("/api/auth/password/mail")
+def mail_password():
+    user = require_user()
+    with connect() as conn:
+        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        send_password_mail(conn, fresh)
+    return jsonify(ok=True, delivery="email", sent_password=True, detail="رمز به جیمیل فرستاده شد")
 
 
 @app.post("/api/auth/forgot")
@@ -4766,19 +4865,15 @@ def forgot():
         if not user:
             raise AppError("کاربری با این مشخصات پیدا نشد")
         settings = get_settings(conn)
-        if "@" in ident:
-            if not user["email"]:
-                raise AppError("برای این حساب جیمیل ثبت نشده")
-            send_gmail_code(conn, settings, user["email"], user["id"], "reset")
-            status, detail, channel = "sent", "جیمیل", "email"
-            code = None
-        else:
-            code = store_code(conn, user["id"], "sms")
-            text = f"کد بازیابی رمز دفترچی: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
-            status, detail = deliver_sms(conn, settings, user["phone"], text)
-            channel = "sms"
+        if user["email"]:
+            send_password_mail(conn, user)
+            return jsonify(ok=True, delivery="email", sent_password=True, preview_code=None, detail="رمز به جیمیل فرستاده شد")
+        code = store_code(conn, user["id"], "sms")
+        text = f"کد بازیابی رمز دفترچی: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
+        status, detail = deliver_sms(conn, settings, user["phone"], text)
+        channel = "sms"
     external = status == "sent"
-    return jsonify(ok=True, delivery=channel if external else "internal", preview_code=None if external else code, detail=detail)
+    return jsonify(ok=True, delivery=channel if external else "internal", sent_password=False, preview_code=None if external else code, detail=detail)
 
 
 @app.post("/api/auth/reset")
@@ -4803,7 +4898,7 @@ def reset_password():
         if not row or row["expires_at"] < iso() or not secrets.compare_digest(row["code_hash"], digest):
             raise AppError("کد نادرست یا منقضی است")
         conn.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
-        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_pw(new_password), user["id"]))
+        write_password(conn, user["id"], new_password)
         clear_initial_secret(conn, user)
     return jsonify(ok=True)
 
@@ -4839,8 +4934,8 @@ def create_user():
         if email and conn.execute("SELECT 1 FROM users WHERE lower(email)=?", (email,)).fetchone():
             raise AppError("این ایمیل قبلاً ثبت شده")
         cur = conn.execute(
-            "INSERT INTO users (name, phone, email, password_hash, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?)",
-            (name, phone, email or None, hash_pw(password), role, 1, iso()),
+            "INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?,?)",
+            (name, phone, email or None, hash_pw(password), secret_token(password), role, 1, iso()),
         )
         row = conn.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
         push_signup(conn, row)

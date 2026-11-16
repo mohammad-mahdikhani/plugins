@@ -41,6 +41,8 @@ const PAGE_SIZE = 60;
 const state = {
   user: null,
   mustChange: false,
+  initialPassword: "",
+  passwordPrompted: false,
   bootstrap: null,
   authView: "login",
   recovery: null,
@@ -632,9 +634,9 @@ function authHtml() {
     return `<div class="auth"><form class="card auth-card" data-act="forgot">
       <div class="brand"><div class="mark">${logo()}</div><div><strong>فراموشی رمز</strong><span>با جیمیل یا موبایل</span></div></div>
       ${authProblem()}
-      <p class="hint">اگر جیمیل بدهید، کد بازیابی از هاست وب‌بیکری به همان جیمیل می‌رود.</p>
+      <p class="hint">اگر جیمیل این حساب ثبت شده باشد، همان رمز فعلی به آن جیمیل می‌رود.</p>
       <div class="field"><label>موبایل یا جیمیل</label><input name="ident" required value="${esc(draft.ident || "")}"></div>
-      <button class="btn primary block" type="submit">دریافت کد</button>
+      <button class="btn primary block" type="submit">ارسال رمز</button>
       <button class="btn block" type="button" data-act="show-login">بازگشت</button>
     </form></div>`;
   }
@@ -1781,9 +1783,18 @@ function modalHtml() {
       </div>`;
   }
   if (modal.type === "sale-edit") inner = saleEditHtml();
-  if (modal.type === "password") inner = `<form data-act="change-password"><h2 class="section-title">تغییر رمز</h2><div class="field"><label>رمز فعلی</label><input type="password" name="current" required></div><div class="field"><label>رمز جدید</label><input type="password" name="password" minlength="6" required></div><button class="btn primary" type="submit">ذخیره</button></form>
+  if (modal.type === "password") {
+    const first = state.mustChange && Boolean(state.initialPassword);
+    const shown = first ? esc(state.initialPassword || "") : "";
+    inner = `<form data-act="change-password"><h2 class="section-title">${first ? "تغییر رمز اولیه" : "تغییر رمز"}</h2>
+      <p class="hint">${first ? "رمز اولیه را می‌بینید. همین را عوض کنید." : "اگر رمز را فراموش کرده‌اید، به جیمیل همین حساب فرستاده می‌شود."}</p>
+      <div class="field"><label>رمز فعلی</label><input class="ltr" type="${first ? "text" : "password"}" name="current" required value="${shown}" autocomplete="off"></div>
+      <div class="field"><label>رمز جدید</label><input type="password" name="password" minlength="6" required></div>
+      <button class="btn primary" type="submit">ذخیره</button></form>
+      ${first ? "" : `<button type="button" class="btn" data-act="mail-password">رمز را به جیمیل بفرست</button>`}
     <form data-act="attach-email"><h2 class="section-title">ورود با جیمیل</h2><p class="hint">همین جیمیل را ذخیره کنید و بعد با آن وارد شوید.</p><div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" value="${esc(state.user.email || "")}" required placeholder="name@gmail.com"></div><button class="btn primary" type="submit">ذخیره جیمیل</button></form>
     <form data-act="verify-email"><div class="field"><label>کد ۶ رقمی جیمیل</label><input class="ltr" name="code" inputmode="numeric" required></div><button class="btn" type="submit">تأیید جیمیل</button></form>`;
+  }
   const wide = modal.type === "receipt" || modal.type === "sale-edit" || modal.type === "sms-invoice" || modal.type === "invoice-read" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
   return `<div class="modal-back" data-act="close-modal"><div class="modal card ${wide}" data-act="stop"><div class="row-actions"><button type="button" class="btn" data-act="close-modal">بستن</button></div>${inner}</div></div>`;
 }
@@ -1804,6 +1815,10 @@ function render() {
   if (!state.user) {
     $app().innerHTML = authHtml();
     return;
+  }
+  if (state.mustChange && state.initialPassword && !state.passwordPrompted && !state.modal) {
+    state.modal = { type: "password" };
+    state.passwordPrompted = true;
   }
   const shell = document.querySelector(".webapp");
   if (!shell || shell.dataset.user !== String(state.user.id) || shell.dataset.mode !== state.shopMode) $app().innerHTML = webShell();
@@ -1932,6 +1947,7 @@ async function onSubmit(event) {
         const result = await api("/api/auth/login", { method: "POST", body: data });
         state.user = result.user;
         state.mustChange = result.must_change_password;
+        state.initialPassword = result.initial_password || "";
         state.access = result.access || null;
         state.shop = result.shop || null;
         state.today = result.today || state.today;
@@ -1975,6 +1991,7 @@ async function onSubmit(event) {
       } else {
         state.user = result.user;
         state.mustChange = result.must_change_password;
+        state.initialPassword = result.initial_password || "";
         hideToast();
         await navigate("dashboard");
       }
@@ -1983,6 +2000,7 @@ async function onSubmit(event) {
       const result = await api(path, { method: "POST", body: data });
       state.user = result.user;
       state.mustChange = result.must_change_password;
+      state.initialPassword = result.initial_password || "";
       state.access = result.access || null;
       state.shop = result.shop || null;
       state.today = result.today || state.today;
@@ -2079,6 +2097,12 @@ async function onSubmit(event) {
       render();
     } else if (act === "forgot") {
       const result = await api("/api/auth/forgot", { method: "POST", body: { ident: data.ident } });
+      if (result.sent_password) {
+        state.authView = "login";
+        toast(result.detail || "رمز به جیمیل فرستاده شد");
+        render();
+        return;
+      }
       state.recovery = { ident: data.ident, code: result.preview_code || "", delivery: result.delivery, detail: result.detail };
       state.authView = "reset";
       render();
@@ -2107,6 +2131,7 @@ async function onSubmit(event) {
     } else if (act === "change-password") {
       await api("/api/auth/password", { method: "POST", body: data });
       state.mustChange = false;
+      state.initialPassword = "";
       state.modal = null;
       toast("رمز عوض شد");
       render();
@@ -2622,6 +2647,13 @@ async function onClick(event) {
     return;
   }
   if (act === "password-modal") { state.modal = { type: "password" }; render(); return; }
+  if (act === "mail-password") {
+    await guard(async () => {
+      const result = await api("/api/auth/password/mail", { method: "POST" });
+      toast(result.detail || "رمز به جیمیل فرستاده شد");
+    });
+    return;
+  }
   if (act === "report-error") {
     await guard(() => sendScreenToSupport());
     return;
@@ -3031,6 +3063,7 @@ api("/api/auth/me").then(async (me) => {
   }
   state.user = me.user;
   state.mustChange = me.must_change_password;
+  state.initialPassword = me.initial_password || "";
   state.access = me.access || null;
   state.shop = me.shop || null;
   state.today = me.today || state.today;

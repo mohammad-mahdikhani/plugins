@@ -1,11 +1,11 @@
 {
-  "version": "1.1.47",
+  "version": "1.1.48",
   "channel": "customer",
-  "notes": "تاریخ و تقویم دفترچی شمسی شد. فروش و چک هر روز روی تقویم جلالی دیده می‌شود.",
+  "notes": "در عوض کردن رمز اول، رمز اولیه دیده می‌شود. اگر بعداً فراموش شود به جیمیل همان کاربر می‌رود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.47-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.48-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-13T15:56:24+00:00"
+  "published_at": "2026-11-16T08:57:44+00:00"
 }
