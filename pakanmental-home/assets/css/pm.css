@@ -344,6 +344,13 @@ html.admin-bar .pm-site--has-hero .pm-header.is-scrolled {
   z-index: 150;
 }
 
+html.pm-drawer-open .pm-header,
+html.pm-mega-open .pm-header,
+.pm-header:has(.pm-mega.is-open),
+.pm-header:has(.pm-drawer.is-open) {
+  z-index: 100000;
+}
+
 .pm-mega__trigger::after {
   content: "";
   display: inline-block;
@@ -850,6 +857,12 @@ html.pm-drawer-open {
 
 .pm-drawer.is-open {
   display: block;
+}
+
+html.pm-drawer-open .pm-drawer__backdrop,
+html.pm-drawer-open .pm-drawer__panel,
+html.pm-mega-open .pm-mega__panel {
+  z-index: 100000;
 }
 
 .pm-drawer__backdrop {
