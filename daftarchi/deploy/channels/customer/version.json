@@ -1,11 +1,11 @@
 {
-  "version": "1.1.48",
+  "version": "1.1.49",
   "channel": "customer",
-  "notes": "در عوض کردن رمز اول، رمز اولیه دیده می‌شود. اگر بعداً فراموش شود به جیمیل همان کاربر می‌رود.",
+  "notes": "اگر کالا بایگانی شده باشد، همان بارکد را در فرم کالا می‌شود ذخیره کرد.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.48-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.49-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-16T08:57:44+00:00"
+  "published_at": "2026-11-16T11:28:55+00:00"
 }

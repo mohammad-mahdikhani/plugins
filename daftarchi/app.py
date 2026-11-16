@@ -125,7 +125,7 @@ GATEWAYS = {"zarinpal", "idpay", "zibal"}
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.48"
+APP_VERSION = "1.1.49"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -471,6 +471,71 @@ def barcode_taken(conn, code: str, except_id: int | None = None) -> bool:
     if row and (except_id is None or int(row["id"]) != except_id):
         return True
     return conn.execute("SELECT 1 FROM product_variations WHERE barcode=?", (code,)).fetchone() is not None
+
+
+def free_archived_codes(conn, barcode: str | None, sku: str | None, except_id: int | None = None) -> None:
+    skip = int(except_id or 0)
+    if barcode:
+        conn.execute(
+            "UPDATE products SET barcode=NULL WHERE barcode=? AND active=0 AND id<>?",
+            (barcode, skip),
+        )
+        conn.execute(
+            """UPDATE product_variations SET barcode=NULL
+               WHERE barcode=? AND EXISTS (
+                 SELECT 1 FROM products p
+                 WHERE p.id=product_variations.product_id
+                   AND (p.active=0 OR product_variations.active=0)
+                   AND p.id<>?
+               )""",
+            (barcode, skip),
+        )
+    if sku:
+        conn.execute(
+            "UPDATE products SET sku=NULL WHERE sku=? AND active=0 AND id<>?",
+            (sku, skip),
+        )
+        conn.execute(
+            """UPDATE product_variations SET sku=NULL
+               WHERE sku=? AND EXISTS (
+                 SELECT 1 FROM products p
+                 WHERE p.id=product_variations.product_id
+                   AND (p.active=0 OR product_variations.active=0)
+                   AND p.id<>?
+               )""",
+            (sku, skip),
+        )
+
+
+def active_code_taken(conn, barcode: str | None, sku: str | None, except_id: int | None = None) -> bool:
+    skip = int(except_id or 0)
+    if barcode:
+        if conn.execute(
+            "SELECT 1 FROM products WHERE barcode=? AND active=1 AND id<>?",
+            (barcode, skip),
+        ).fetchone():
+            return True
+        if conn.execute(
+            """SELECT 1 FROM product_variations v
+               JOIN products p ON p.id=v.product_id
+               WHERE v.barcode=? AND p.active=1 AND v.active=1 AND p.id<>?""",
+            (barcode, skip),
+        ).fetchone():
+            return True
+    if sku:
+        if conn.execute(
+            "SELECT 1 FROM products WHERE sku=? AND active=1 AND id<>?",
+            (sku, skip),
+        ).fetchone():
+            return True
+        if conn.execute(
+            """SELECT 1 FROM product_variations v
+               JOIN products p ON p.id=v.product_id
+               WHERE v.sku=? AND p.active=1 AND v.active=1 AND p.id<>?""",
+            (sku, skip),
+        ).fetchone():
+            return True
+    return False
 
 
 def mint_store_barcode(conn, except_id: int | None = None) -> str:
@@ -5037,6 +5102,7 @@ def create_product():
         existing = match_product(conn, barcode, sku)
         if existing and existing["active"]:
             raise AppError("این بارکد یا کد قبلاً برای کالای دیگری ثبت شده")
+        free_archived_codes(conn, barcode, sku, existing["id"] if existing else None)
         if existing:
             conn.execute(
                 """UPDATE products SET name=?, sku=?, barcode=?, price=?, cost=?, stock=?, image=COALESCE(?, image),
@@ -5080,6 +5146,9 @@ def update_product(pid: int):
         barcode = clean_code(payload["barcode"], "بارکد") if "barcode" in payload else row["barcode"]
         if not barcode and str(payload.get("assign_barcode") or "") in {"1", "true", "True"}:
             barcode = mint_store_barcode(conn, pid)
+        free_archived_codes(conn, barcode, sku, pid)
+        if active_code_taken(conn, barcode, sku, pid):
+            raise AppError("این بارکد یا کد قبلاً برای کالای دیگری ثبت شده")
         tax_code = clean_tax_code(payload["tax_code"]) if "tax_code" in payload else row["tax_code"]
         image = clean_image(payload["image"]) if "image" in payload else row["image"]
         variable = product_kind(row) == "variable"
@@ -5319,6 +5388,12 @@ def save_imported_products(user, parsed):
                 existing = locate_import(by_barcode, by_sku, by_name, by_sig, item)
                 if existing and existing["id"] > 0:
                     new_stock = item["stock"] if item["stock"] is not None else existing["stock"]
+                    free_archived_codes(
+                        conn,
+                        item["barcode"] or existing["barcode"],
+                        item["sku"] or existing["sku"],
+                        existing["id"],
+                    )
                     conn.execute(
                         """UPDATE products SET name=?, sku=?, barcode=?, price=?, cost=?, stock=?, image=COALESCE(?, image),
                            tax_code=COALESCE(?, tax_code), active=1, updated_at=? WHERE id=?""",
@@ -5335,6 +5410,7 @@ def save_imported_products(user, parsed):
                     ids.append(existing["id"])
                 else:
                     initial = item["stock"] or 0
+                    free_archived_codes(conn, item["barcode"], item["sku"], None)
                     cur = conn.execute(
                         """INSERT INTO products (name, sku, barcode, price, cost, stock, image, tax_code, woo_id, active, created_at, updated_at)
                            VALUES (?,?,?,?,?,?,?,?,NULL,1,?,?)""",

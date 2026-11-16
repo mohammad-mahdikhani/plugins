@@ -1718,6 +1718,7 @@ function productForm() {
   return `<form data-act="save-product"><h2 class="section-title">${product.id ? "ویرایش کالا" : "کالای جدید"}</h2>
     <input type="hidden" name="id" value="${product.id || ""}">
     <div class="field"><label>بارکد</label><input class="ltr" name="barcode" data-barcode="product" autocomplete="off" placeholder="بارکد را با بارکدخوان بگیرید" value="${esc(product.barcode || "")}"><button type="button" class="btn" data-act="make-barcode">ساخت بارکد</button></div>
+    <p class="hint">اگر این بارکد مال کالای بایگانی‌شده باشد، همین‌جا عوضش کنید یا همان را بگذارید و ذخیره کنید.</p>
     <div class="field"><label>نام کالا</label><input name="name" value="${esc(product.name || "")}" required></div>
     <div class="grid-2">
       <div class="field"><label>قیمت خرید، تومان</label><input name="cost" inputmode="numeric" autocomplete="off" placeholder="اختیاری" value="${cost}"></div>
