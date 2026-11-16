@@ -30,6 +30,7 @@
 
   function setOpen(open) {
     root.classList.toggle("is-open", open);
+    document.documentElement.classList.toggle("pm-mega-open", open);
     trigger.setAttribute("aria-expanded", open ? "true" : "false");
     if (open) {
       panel.removeAttribute("hidden");
