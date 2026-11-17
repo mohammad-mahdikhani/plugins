@@ -19,6 +19,19 @@ const MORE = [
 const NAV = [...PRIMARY, ...MORE];
 const TITLES = Object.fromEntries(NAV.map(([id, title]) => [id, title]));
 const PAY = { cash: "نقد", card: "کارت", gateway: "درگاه وب‌بیکری", credit: "نسیه" };
+const THEMES = [["light", "روشن"], ["dark", "تیره"], ["sand", "کرم"], ["forest", "سبز"]];
+function themeId(value) {
+  const text = String(value || state.settings?.ui_theme || state.shop?.theme || state.bootstrap?.theme || "").trim();
+  return THEMES.some((row) => row[0] === text) ? text : "light";
+}
+function applyTheme(value) {
+  const id = themeId(value);
+  document.documentElement.dataset.theme = id;
+  const color = { light: "#16315f", dark: "#101722", sand: "#8a5a2b", forest: "#1f6b3a" }[id];
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
+  try { localStorage.setItem("daftarchi-theme", id); } catch { /* ignore */ }
+  return id;
+}
 function payQrBlock(url) {
   if (!url) return "";
   const src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=6&data=${encodeURIComponent(url)}`;
@@ -1665,7 +1678,13 @@ function settingsHtml() {
       <label class="check"><input type="checkbox" name="moadian_sandbox" ${checked("moadian_sandbox")}>ارسال آزمایشی</label>
     </details>`;
   const desk = `<section class="card"><h2 class="section-title">برنامه و ورود</h2><div class="row-actions">${desktopIconButton(false)}<button type="button" class="btn" data-act="password-modal">رمز</button></div></section>`;
-  const parts = [desk, modeCard].filter(Boolean);
+  const currentTheme = themeId(s.ui_theme);
+  const themeCard = `<section class="card"><h2 class="section-title">ظاهر برنامه</h2>
+    <p class="hint">تم تیره و بقیه رنگ‌ها از همین‌جا عوض می‌شود.</p>
+    <input type="hidden" name="ui_theme" value="${esc(currentTheme)}">
+    <div class="theme-picks">${THEMES.map(([id, label]) => `<button type="button" class="theme-pick ${id === currentTheme ? "on" : ""}" data-act="pick-theme" data-theme="${id}"><span class="theme-swatch ${id}"></span>${label}</button>`).join("")}</div>
+  </section>`;
+  const parts = [desk, themeCard, modeCard].filter(Boolean);
   if (mode === "online") parts.push(woo);
   else if (mode === "offline") parts.push(invoice, pos, extra);
   else if (mode === "hybrid") parts.push(invoice, woo, pos, extra);
@@ -1813,6 +1832,7 @@ function pageHtml() {
   return draw ? draw() : "";
 }
 function render() {
+  applyTheme();
   if (!state.user) {
     $app().innerHTML = authHtml();
     return;
@@ -2277,7 +2297,8 @@ async function saveSettings(form) {
     if (box) data[key] = box.checked ? "1" : "0";
   }
   state.settings = (await api("/api/settings", { method: "PUT", body: data })).settings;
-  state.shop = { name: state.settings.shop_name || "دفترچی", logo: state.settings.shop_logo || "" };
+  state.shop = { name: state.settings.shop_name || "دفترچی", logo: state.settings.shop_logo || "", theme: state.settings.ui_theme || "light" };
+  applyTheme(state.settings.ui_theme);
   toast("تنظیمات ذخیره شد");
   render();
 }
@@ -2482,6 +2503,17 @@ async function onClick(event) {
     return;
   }
   if (act === "pick-mode") { await guard(() => chooseMode(el.dataset.mode)); return; }
+  if (act === "pick-theme") {
+    await guard(async () => {
+      const id = applyTheme(el.dataset.theme);
+      const saved = await api("/api/settings", { method: "PUT", body: { ui_theme: id } });
+      state.settings = saved.settings;
+      if (state.shop) state.shop.theme = id;
+      toast("تم عوض شد");
+      render();
+    });
+    return;
+  }
   if (act === "tour-next") { await guard(() => goTour(1)); return; }
   if (act === "tour-back") { await guard(() => goTour(-1)); return; }
   if (act === "tour-skip") { await guard(() => finishTour()); return; }
@@ -3058,6 +3090,7 @@ api("/api/auth/me").then(async (me) => {
     state.bootstrap = await api("/api/auth/bootstrap");
     state.desktopIcon = Boolean(state.bootstrap.desktop_icon);
     state.today = state.bootstrap.today || me.today || state.today;
+    applyTheme(state.bootstrap.theme);
     render();
     showUpdated();
     return;
@@ -3067,6 +3100,7 @@ api("/api/auth/me").then(async (me) => {
   state.initialPassword = me.initial_password || "";
   state.access = me.access || null;
   state.shop = me.shop || null;
+  applyTheme(state.shop?.theme);
   state.today = me.today || state.today;
   readSetup(me.setup);
   showUpdated();

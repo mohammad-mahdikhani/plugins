@@ -114,6 +114,7 @@ DEFAULT_SETTINGS = {
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "woo_auto_sync": "1",
+    "ui_theme": "light",
 }
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
@@ -122,10 +123,11 @@ SERVER_THREADS = 16
 SERVER_CHANNEL_TIMEOUT = 180
 POS_PROVIDERS = {"manual", "saman", "behpardakht", "parsian", "irankish", "sepehr", "asanpardakht", "pardakhtnovin"}
 GATEWAYS = {"zarinpal", "idpay", "zibal"}
+UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.49"
+APP_VERSION = "1.1.50"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -3418,6 +3420,8 @@ def save_settings(conn, payload: dict):
             stored = str(value or "").strip()
             if stored not in {"", "offline", "hybrid", "online"}:
                 raise AppError("نوع فروشگاه نامعتبر است")
+        elif key == "ui_theme":
+            stored = clean_theme(value)
         elif key == "shop_logo":
             text = str(value or "").strip()
             stored = clean_image(text) if text else ""
@@ -4551,9 +4555,18 @@ def support_send():
     return jsonify(ok=True, id=message_id, sent=delivery in {"telegram", "host"}, delivery=delivery, detail=detail)
 
 
+def clean_theme(value) -> str:
+    text = str(value or "").strip().lower()
+    return text if text in UI_THEMES else "light"
+
+
 def shop_profile(conn) -> dict:
     settings = get_settings(conn)
-    return {"name": settings.get("shop_name") or "دفترچی", "logo": settings.get("shop_logo") or ""}
+    return {
+        "name": settings.get("shop_name") or "دفترچی",
+        "logo": settings.get("shop_logo") or "",
+        "theme": clean_theme(settings.get("ui_theme")),
+    }
 
 
 def setup_state(conn) -> dict:
@@ -4573,6 +4586,7 @@ def bootstrap():
         "version": APP_VERSION,
         "desktop_icon": desktop_icon_available(),
         "today": jalali_clock(),
+        "theme": clean_theme(settings.get("ui_theme")),
     }
     if flag:
         return jsonify(initial=True, phone=INITIAL_PHONE, password=INITIAL_PASSWORD, **extra)
