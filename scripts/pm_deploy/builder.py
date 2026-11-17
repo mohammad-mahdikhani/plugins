@@ -18,6 +18,7 @@ URLS = {
     "blog": f"{SITE}/%d9%85%d8%ac%d9%84%d9%87/",
     "product_demo": f"{SITE}/%d9%86%d9%85%d9%88%d9%86%d9%87-%d9%85%d8%ad%d8%b5%d9%88%d9%84/",
     "account": f"{SITE}/my-account/",
+    "orders": f"{SITE}/my-account/orders/",
     "checkout": f"{SITE}/checkout/",
 }
 
@@ -241,11 +242,15 @@ def header(active: str) -> str:
             </div>
           </div>
           {seg("blog", "مجله")}
+          <a class="pm-seg__link{' is-active' if active == 'account' else ''}" href="{URLS["orders"]}" data-pm-account="nav">حساب کاربری</a>
         </div>
       </nav>
       <a class="pm-header__logo" href="{URLS["home"]}" aria-label="پاکن منتال">
         <span class="pm-header__logo-glow" aria-hidden="true"></span>
         {logo_picture()}
+      </a>
+      <a class="pm-header__icon-btn pm-header__account pm-mobile-only" href="{URLS["orders"]}" data-pm-account="mobile" aria-label="سفارش‌های من">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M6 20v-1a6 6 0 0 1 12 0v1"/></svg>
       </a>
       {cart_btn("pm-mobile-only pm-header__cart-mobile")}
       <div class="pm-header__tools pm-desktop-only">
@@ -257,6 +262,9 @@ def header(active: str) -> str:
           <input id="pm-search-input" class="pm-search__input" type="search" name="q" placeholder="جستجوی محصول…" autocomplete="off" enterkeyhint="search" />
           <div class="pm-search__results" hidden></div>
         </div>
+        <a class="pm-header__icon-btn pm-header__account" href="{URLS["orders"]}" data-pm-account="tools" aria-label="سفارش‌های من">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M6 20v-1a6 6 0 0 1 12 0v1"/></svg>
+        </a>
         {cart_btn("")}
       </div>
     </div>
@@ -283,7 +291,8 @@ def header(active: str) -> str:
         <a class="pm-drawer__link{' is-active' if active == 'shop' else ''}" href="{URLS["shop"]}">فروشگاه</a>
         {seg("blog", "مجله")}
         <a class="pm-drawer__link" href="{URLS["cart"]}" data-pm-cart-open>سبد خرید</a>
-        <a class="pm-drawer__link" href="{URLS["account"]}">حساب کاربری</a>
+        <a class="pm-drawer__link" href="{URLS["account"]}" data-pm-account="drawer">حساب کاربری</a>
+        <a class="pm-drawer__link" href="{URLS["orders"]}" data-pm-account="orders">سفارش‌های من</a>
       </nav>
       <div class="pm-drawer__cats">
         <p class="pm-drawer__cats-title">دسته‌بندی‌ها</p>
@@ -320,6 +329,13 @@ def footer() -> str:
       <ul class="pm-footer__links">
         <li><a href="{URLS["blog"]}">مقالات</a></li>
         <li><a href="{URLS["home"]}">صفحه اصلی</a></li>
+      </ul>
+    </div>
+    <div class="pm-footer__col pm-footer__account" data-pm-account-col>
+      <h2 class="pm-footer__title">حساب کاربری</h2>
+      <ul class="pm-footer__links">
+        <li><a href="{URLS["orders"]}">سفارش‌های من</a></li>
+        <li><a href="{URLS["account"]}">جزئیات حساب</a></li>
       </ul>
     </div>
     <div class="pm-footer__col pm-footer__enamad">
