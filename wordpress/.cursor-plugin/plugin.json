@@ -1,0 +1,40 @@
+{
+  "name": "wordpress",
+  "displayName": "WordPress (nahal.website)",
+  "version": "1.0.0",
+  "description": "Read and update nahal.website through Easy MCP AI: posts, pages, media, menus, Rank Math, and WP Rocket.",
+  "author": {
+    "name": "mohammad"
+  },
+  "homepage": "https://nahal.website",
+  "repository": "https://github.com/mohammad-mahdikhani/plugins",
+  "license": "MIT",
+  "logo": "assets/logo.svg",
+  "keywords": [
+    "wordpress",
+    "nahal",
+    "mcp",
+    "easy-mcp-ai",
+    "rank-math",
+    "wp-rocket"
+  ],
+  "category": "integrations",
+  "tags": [
+    "wordpress",
+    "mcp",
+    "content"
+  ],
+  "variables": {
+    "type": "object",
+    "properties": {
+      "WORDPRESS_API_TOKEN": {
+        "type": "string",
+        "title": "WordPress API token",
+        "description": "Easy MCP AI API token for nahal.website (Easy MCP AI → Connections → API tokens). Sent as Authorization: Bearer. The value starts with wpmcp_ and is shown only once when the token is created."
+      }
+    },
+    "required": ["WORDPRESS_API_TOKEN"]
+  },
+  "mcpServers": "./mcp.json",
+  "skills": "./skills/"
+}
