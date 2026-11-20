@@ -75,6 +75,7 @@ const state = {
   passwordPrompted: false,
   bootstrap: null,
   authView: "login",
+  billingPeriod: "3m",
   recovery: null,
   pendingEmail: "",
   verifyNote: "",
@@ -715,6 +716,9 @@ function authProblem() {
   if (!state.authError) return "";
   return `<p class="form-error">${esc(state.authError)}</p>`;
 }
+function authBackLink() {
+  return `<p class="auth-links"><button type="button" class="text-link" data-act="show-login">بازگشت به ورود</button></p>`;
+}
 function authHtml() {
   const draft = state.authDraft || {};
   if (state.authView === "verify") {
@@ -724,9 +728,11 @@ function authHtml() {
       ${authProblem()}
       <div class="field"><label>جیمیل</label><input class="ltr" name="ident" value="${esc(state.pendingEmail || draft.ident || "")}" required></div>
       <div class="field"><label>کد ۶ رقمی</label><input class="ltr" name="code" inputmode="numeric" autocomplete="one-time-code" required></div>
-      <button class="btn primary block" type="submit">تأیید حساب</button>
-      <button class="btn block" type="button" data-act="resend-verify">ارسال دوباره کد</button>
-      <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
+      <div class="auth-actions">
+        <button class="btn primary block" type="submit">تأیید حساب</button>
+        <button class="btn quiet block" type="button" data-act="resend-verify">ارسال دوباره کد</button>
+      </div>
+      ${authBackLink()}
     </form></div>`;
   }
   if (state.authView === "phone-verify" || state.authView === "phone-enter") {
@@ -738,9 +744,11 @@ function authHtml() {
       ${state.phoneCode ? `<p><strong class="num">${esc(state.phoneCode)}</strong></p>` : ""}
       <div class="field"><label>موبایل</label><input class="ltr" name="phone" required value="${esc(state.pendingPhone || draft.phone || "")}"></div>
       <div class="field"><label>کد ۶ رقمی</label><input class="ltr" name="code" inputmode="numeric" autocomplete="one-time-code" required value="${esc(state.phoneCode || "")}"></div>
-      <button class="btn primary block" type="submit">${entering ? "ورود" : "تأیید شماره"}</button>
-      <button class="btn block" type="button" data-act="${entering ? "resend-phone-login" : "resend-phone"}">ارسال دوباره کد</button>
-      <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
+      <div class="auth-actions">
+        <button class="btn primary block" type="submit">${entering ? "ورود" : "تأیید شماره"}</button>
+        <button class="btn quiet block" type="button" data-act="${entering ? "resend-phone-login" : "resend-phone"}">ارسال دوباره کد</button>
+      </div>
+      ${authBackLink()}
     </form></div>`;
   }
   if (state.authView === "phone-login") {
@@ -749,8 +757,10 @@ function authHtml() {
       <p class="hint">فقط شماره‌ای که قبلاً ثبت و تأیید شده کد ورود می‌گیرد.</p>
       ${authProblem()}
       <div class="field"><label>موبایل</label><input class="ltr" name="phone" required placeholder="09..." value="${esc(draft.phone || draft.ident || "")}"></div>
-      <button class="btn primary block" type="submit">دریافت کد</button>
-      <button class="btn block" type="button" data-act="show-login">بازگشت</button>
+      <div class="auth-actions">
+        <button class="btn primary block" type="submit">دریافت کد</button>
+      </div>
+      ${authBackLink()}
     </form></div>`;
   }
   if (state.authView === "register") {
@@ -763,8 +773,8 @@ function authHtml() {
       <div class="field"><label>رمز</label><input type="password" name="password" minlength="6" required value="${esc(draft.password || "")}"></div>
       <div class="auth-actions">
         <button class="btn primary block" type="submit">ثبت‌نام</button>
-        <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
       </div>
+      ${authBackLink()}
     </form></div>`;
   }
   if (state.authView === "reset") {
@@ -777,8 +787,10 @@ function authHtml() {
       <input type="hidden" name="ident" value="${esc(recovery.ident || "")}">
       <div class="field"><label>کد ۶ رقمی</label><input class="ltr" name="code" value="${esc(recovery.code || "")}" required></div>
       <div class="field"><label>رمز جدید</label><input type="password" name="password" minlength="6" required></div>
-      <button class="btn primary block" type="submit">ثبت رمز جدید</button>
-      <button class="btn block" type="button" data-act="show-login">بازگشت</button>
+      <div class="auth-actions">
+        <button class="btn primary block" type="submit">ثبت رمز جدید</button>
+      </div>
+      ${authBackLink()}
     </form></div>`;
   }
   if (state.authView === "forgot") {
@@ -787,8 +799,10 @@ function authHtml() {
       ${authProblem()}
       <p class="hint">اگر جیمیل این حساب ثبت شده باشد، همان رمز فعلی به آن جیمیل می‌رود.</p>
       <div class="field"><label>موبایل یا جیمیل</label><input name="ident" required value="${esc(draft.ident || "")}"></div>
-      <button class="btn primary block" type="submit">ارسال رمز</button>
-      <button class="btn block" type="button" data-act="show-login">بازگشت</button>
+      <div class="auth-actions">
+        <button class="btn primary block" type="submit">ارسال رمز</button>
+      </div>
+      ${authBackLink()}
     </form></div>`;
   }
   return `<div class="auth"><form class="card auth-card" data-act="login">
@@ -798,7 +812,7 @@ function authHtml() {
     <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}"></div>
     <div class="auth-actions">
       <button class="btn primary block" type="submit">ورود</button>
-      <button class="btn block" type="button" data-act="show-register">ثبت‌نام</button>
+      <button class="btn quiet block" type="button" data-act="show-register">ثبت‌نام</button>
     </div>
     <p class="auth-links"><button type="button" class="text-link" data-act="show-forgot">رمز را فراموش کرده‌ام</button></p>
     ${updateBanner()}
@@ -1770,19 +1784,84 @@ function accessCard(access) {
   }
   return `<section class="card access-card"><span>مهلت رایگان</span><h2>۷ روز رایگان تمام شده</h2><p class="hint">برای ادامه کار، روی یکی از طرح‌ها بزنید. صفحه زیبال باز می‌شود.</p></section>`;
 }
+function shopFeatureList(items) {
+  return `<ul class="shop-plan-features">${items.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
+}
+function periodOff(monthly, price, months) {
+  const full = Number(monthly || 0) * Number(months || 0);
+  if (!full || !price || price >= full) return 0;
+  return Math.round((1 - price / full) * 100);
+}
 function licensesHtml() {
   const data = state.licenses;
   if (!data) return "";
-  const plans = data.plans.map((plan) => `<button type="button" class="plan buy" data-act="pick-plan" data-plan="${plan.id}"><span>${withVip(plan.title, plan.vip)}</span>${plan.discount_percent ? `<del class="num">${money(plan.list_price)}</del><span class="pill">${num(plan.discount_percent)}٪ تخفیف</span>` : ""}<em class="num">${money(plan.price)}</em>${plan.description ? `<small class="plan-description">${esc(plan.description)}</small>` : ""}<span class="buy-label">خرید</span>${plan.remaining != null ? `<span>باقی‌مانده ${num(plan.remaining)} از ${num(plan.cap)}</span>` : ""}</button>`).join("");
+  const period = ["1m", "3m", "12m"].includes(state.billingPeriod) ? state.billingPeriod : "3m";
+  const byId = Object.fromEntries((data.plans || []).map((plan) => [plan.id, plan]));
   const pro = data.pro || { tokens: 0, packs: [] };
-  const packs = (pro.packs || []).map((pack) => `<button type="button" class="plan buy" data-act="buy-pro" data-pack="${pack.id}"><span>${esc(pack.title)}</span><em class="num">${money(pack.price)}</em><span class="buy-label">${num(pack.tokens)} توکن</span></button>`).join("");
-  return `<div class="stack">${accessCard(data.access)}${data.campaign?.active || data.campaign?.upcoming ? `<section class="card campaign-note"><h2 class="section-title">۵۰٪ تخفیف ویژهٔ ۵ آذر ۱۴۰۵</h2><p>${data.campaign.active ? "تخفیف امروز روی مبلغ پرداختی همهٔ طرح‌ها اعمال شده است." : "فقط در روز ۵ آذر، قیمت همهٔ طرح‌ها نصف می‌شود."} از ۰۰:۰۰ تا پایان روز به وقت ایران.</p></section>` : ""}<div class="plans">${plans}</div>
-    <section class="card"><h2 class="section-title">اکانت Pro، فقط خواندن عکس فاکتور</h2>
-      <p class="hint">خواندن عکس از گپ‌جی‌پی‌تی وب‌بیکری است. هر حساب روزی یک فاکتور رایگان دارد. VIP این بخش را باز نمی‌کند. فاکتورهای بعدی از توکن Pro کم می‌شوند.</p>
-      <p>توکن مانده: <strong class="num">${num(pro.tokens || 0)}</strong>${pro.invoice_free ? " · سهمیه رایگان امروز باقی است" : ""}</p>
-      <div class="plans">${packs}</div>
+  const packs = Object.fromEntries((pro.packs || []).map((pack) => [pack.id, pack]));
+  const monthly = byId["1m"]?.price || 0;
+  const echo = byId[period];
+  const plus = byId["50y"];
+  const proPack = packs[{ "1m": "pro10", "3m": "pro50", "12m": "pro200" }[period]];
+  const echoMonths = { "1m": 1, "3m": 3, "12m": 12 }[period];
+  const echoOff = periodOff(monthly, echo?.price, echoMonths);
+  const periods = [
+    ["1m", "ماهانه", 0],
+    ["3m", "سه‌ماهه", periodOff(monthly, byId["3m"]?.price, 3)],
+    ["12m", "سالانه", periodOff(monthly, byId["12m"]?.price, 12)],
+  ];
+  const echoCard = `<article class="shop-plan">
+    <h3>اکو</h3>
+    <p class="shop-plan-kicker">فروشگاه حضوری</p>
+    ${echo?.discount_percent ? `<del class="num">${money(echo.list_price)}</del>` : ""}
+    <p class="shop-plan-price"><strong class="num">${money(echo?.price || 0)}</strong><span>${esc(echo?.title || "")}</span></p>
+    ${echoOff ? `<p class="shop-plan-off">${num(echoOff)}٪ نسبت به ماهانه</p>` : ""}
+    <button type="button" class="btn block" data-act="pick-plan" data-plan="${esc(echo?.id || period)}">خرید بسته اکو</button>
+    ${shopFeatureList([
+      "صندوق، فاکتور، انبار و حسابداری",
+      "کارت‌خوان و چاپ رسید",
+      "بکاپ روزانه روی همین رایانه",
+      "روزی یک فاکتور رایگان با گپ‌جی‌پی‌تی",
+      "پیامک با شارژ جدا از وب‌بیکری",
+    ])}
+  </article>`;
+  const plusCard = `<article class="shop-plan featured">
+    <span class="shop-plan-badge">بسته پیشنهادی</span>
+    <h3>پلاس</h3>
+    <p class="shop-plan-kicker">حضوری، سایت و شخصی‌سازی</p>
+    ${plus?.discount_percent ? `<del class="num">${money(plus.list_price)}</del>` : ""}
+    <p class="shop-plan-price"><strong class="num">${money(plus?.price || 0)}</strong><span>${esc(plus?.title || "پنجاه‌ساله")}</span></p>
+    ${plus?.remaining != null ? `<span class="pill">باقی ${num(plus.remaining)} از ${num(plus.cap)}</span>` : ""}
+    <button type="button" class="btn primary block" data-act="pick-plan" data-plan="50y" ${plus?.remaining === 0 ? "disabled" : ""}>خرید بسته پلاس</button>
+    ${shopFeatureList([
+      "همه امکانات اکو تا پنجاه سال",
+      "شخصی‌سازی اپ متناسب با فروشگاه",
+      "اتصال ووکامرس و همگام موجودی و قیمت سایت",
+      "سفارش‌های سایت داخل برنامه",
+      "ظرفیت محدود طرح پنجاه‌ساله",
+    ])}
+  </article>`;
+  const proCard = `<article class="shop-plan">
+    <h3>پرو</h3>
+    <p class="shop-plan-kicker">خواندن عکس فاکتور</p>
+    <p class="shop-plan-price"><strong class="num">${money(proPack?.price || 0)}</strong><span>${num(proPack?.tokens || 0)} توکن</span></p>
+    <p class="hint">مانده ${num(pro.tokens || 0)}${pro.invoice_free ? " · سهمیه رایگان امروز باقی است" : ""}</p>
+    <button type="button" class="btn block" data-act="buy-pro" data-pack="${esc(proPack?.id || "pro50")}">خرید بسته پرو</button>
+    ${shopFeatureList([
+      "خواندن عکس فاکتور چاپی و دست‌نویس",
+      "تطبیق فی خرید و فروش با کالاهای برنامه و سایت",
+      "توکن جدا از لایسنس فروشگاه",
+      "VIP این بخش را باز نمی‌کند",
+      "مدل گپ‌جی‌پی‌تی روی وب‌بیکری",
+    ])}
+  </article>`;
+  return `<div class="stack">${accessCard(data.access)}${data.campaign?.active || data.campaign?.upcoming ? `<section class="card campaign-note"><h2 class="section-title">۵۰٪ تخفیف ویژهٔ ۵ آذر ۱۴۰۵</h2><p>${data.campaign.active ? "تخفیف امروز روی مبلغ پرداختی همهٔ طرح‌ها اعمال شده است." : "فقط در روز ۵ آذر، قیمت همهٔ طرح‌ها نصف می‌شود."} از ۰۰:۰۰ تا پایان روز به وقت ایران.</p></section>` : ""}
+    <section class="shop-store">
+      <h2 class="shop-store-title">خرید و ارتقا بسته</h2>
+      <div class="seg shop-periods">${periods.map(([id, label, off]) => `<button type="button" class="${period === id ? "on" : ""}" data-act="pick-period" data-period="${id}">${label}${off ? `<small>${num(off)}٪ تخفیف</small>` : ""}</button>`).join("")}</div>
+      <div class="shop-plans">${echoCard}${plusCard}${proCard}</div>
+      <p class="hint">مدت فقط قیمت اکو و اندازه بسته پرو را عوض می‌کند. امکانات هر بسته فرق دارد. شش‌ماهه در قیمت‌های پایین همین صفحه است. پرداخت در زیبال وب‌بیکری است و وارد صندوق فروشگاه نمی‌شود.</p>
     </section>
-    <p class="hint">روی طرح بزنید تا صفحه زیبال باز شود. مبلغ وارد صندوق فروشگاه نمی‌شود. نام، موبایل و طرح خریدار روی هاست وب‌بیکری هم می‌ماند؛ پرداخت و فعال‌سازی از طریق وب‌بیکری انجام می‌شود.</p>
       <details><summary>قیمت‌ها و ظرفیت پنجاه‌ساله</summary><form data-act="save-prices"><div class="grid-2">
         ${[["price_1m", "یک ماهه"], ["price_3m", "سه ماهه"], ["price_6m", "شش ماهه"], ["price_12m", "یک ساله"], ["price_50y", "پنجاه ساله"], ["cap_50y", "ظرفیت پنجاه ساله"], ["price_pro10", "پرو ۱۰ هزار توکن"], ["price_pro50", "پرو ۵۰ هزار توکن"], ["price_pro200", "پرو ۲۰۰ هزار توکن"]].map(([key, label]) => {
           const plan = data.plans.find((item) => item.id === { price_1m: "1m", price_3m: "3m", price_6m: "6m", price_12m: "12m", price_50y: "50y" }[key]);
@@ -3053,6 +3132,11 @@ async function onClick(event) {
       if (result.topup?.invoice_code) state.modal = { type: "sms-invoice", topup: result.topup };
       render();
     });
+    return;
+  }
+  if (act === "pick-period") {
+    state.billingPeriod = el.dataset.period || "3m";
+    render();
     return;
   }
   if (act === "pick-plan") {

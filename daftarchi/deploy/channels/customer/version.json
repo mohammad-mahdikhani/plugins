@@ -1,9 +1,9 @@
 {
-  "version": "1.1.63",
+  "version": "1.1.64",
   "channel": "customer",
-  "notes": "ارسال و شارژ پیامک از ملی‌پیامک وب‌بیکری. ورود با موبایل فقط بعد از کد تأیید. خواندن فاکتور با گپ‌جی‌پی‌تی؛ روزی یک فاکتور رایگان و تطبیق قیمت خرید/فروش.",
+  "notes": "دکمه‌های ورود با فاصله زبان طراحی جدا می‌شوند. خرید لایسنس سه بسته اکو، پلاس و پرو با امکانات متفاوت است.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.63-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.64-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
