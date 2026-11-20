@@ -1,11 +1,11 @@
 {
-  "version": "1.1.58",
+  "version": "1.1.59",
   "channel": "customer",
-  "notes": "بارکد EAN-13 برای هر فاکتور فروش و خرید روی رسید چاپ می‌شود و با اسکن همان فاکتور باز می‌شود. فروش گرمی عطر حفظ شد.",
+  "notes": "با زدن کارت‌خوان مبلغ به دستگاه می‌رود؛ بعد از کشیدن کارت و رمز، تأیید روی صفحه می‌آید و فاکتور فقط با صدور فاکتور ثبت می‌شود. بارکد فاکتور و فروش گرمی حفظ شد.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.58-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.59-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-20T10:47:15+00:00"
+  "published_at": "2026-11-20T11:33:18+00:00"
 }

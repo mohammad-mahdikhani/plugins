@@ -129,7 +129,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.58"
+APP_VERSION = "1.1.59"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -7258,6 +7258,8 @@ def create_sale():
         sess = require_open(conn) if method != "gateway" else open_session(conn)
         if method != "gateway" and not sess:
             raise AppError("صندوق بسته است. از صفحه صندوق آن را باز کنید.")
+        if method == "card" and (get_settings(conn).get("pos_host") or "").strip() and not pos_ref:
+            raise AppError("فاکتور کارت فقط بعد از تأیید کارت‌خوان صادر می‌شود")
         items, subtotal = load_cart(conn, payload.get("items"))
         discount = calc_discount(subtotal, dtype, payload.get("discount_value"))
         customer = walk_in_customer(conn, payload, method == "credit")
@@ -7523,6 +7525,8 @@ def card_reader_target(host: str, port_text: str) -> tuple[str, int]:
             host = host[len(prefix):]
     host = host.split("/")[0].strip()
     port = int(str(port_text or "0").translate(DIGITS) or "0")
+    if port == 0:
+        port = 1362
     if not 1 <= port <= 65535:
         raise AppError("پورت نامعتبر است")
     if not host:
@@ -7627,11 +7631,14 @@ def charge_pardakht_novin(host: str, port: int, amount_toman: int) -> dict:
         raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
     message = pna_sale_message(amount_toman * 10).encode("ascii")
     try:
-        sock = socket.create_connection((host, port), timeout=8)
+        sock = socket.create_connection((host, port), timeout=12)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     except socket.gaierror as exc:
         raise AppError("آدرس کارت‌خوان پیدا نشد. سفارشی ثبت نشد") from exc
     except OSError as exc:
-        raise AppError(f"کارت‌خوان در {host}:{port} پاسخ نداد. سفارشی ثبت نشد") from exc
+        raise AppError(
+            f"کارت‌خوان در {host}:{port} پاسخ نداد. برنامه پرداخت نوین باید روی همین شبکه روشن باشد و پورت ۱۳۶۲ ذخیره شده باشد. سفارشی ثبت نشد"
+        ) from exc
     chunks: list[bytes] = []
     try:
         sock.settimeout(PNA_SWIPE_SECONDS + 15)
@@ -7674,15 +7681,9 @@ def pos_prepare():
         settings = get_settings(conn)
     host = (settings.get("pos_host") or "").strip()
     if not host:
-        return jsonify(ok=True, mode="manual", message="کارت‌خوان تنظیم نشده؛ پرداخت کارت به‌صورت دستی و با شماره پیگیری ثبت می‌شود.")
-    try:
-        host, _port = probe_card_reader(host, settings.get("pos_port") or "0")
-    except AppError as exc:
-        return jsonify(ok=False, mode="network", message=str(exc))
-    provider = settings.get("pos_provider") or "manual"
-    if provider == "pardakhtnovin":
-        return jsonify(ok=True, mode="network", message=f"ارتباط با {host} برقرار است. هنگام فروش، مبلغ به همین کارت‌خوان می‌رود و مشتری فقط کارت و رمز را وارد می‌کند.")
-    return jsonify(ok=True, mode="network", message=f"ارتباط با {host} برقرار شد. شماره پیگیری رسید را وارد کنید.")
+        raise AppError("آدرس کارت‌خوان در تنظیمات ذخیره نشده است. شرکت را «پرداخت نوین» بگذارید، IP و پورت ۱۳۶۲ را بنویسید و ذخیره کنید.")
+    host, port = probe_card_reader(host, settings.get("pos_port") or "1362")
+    return jsonify(ok=True, mode="network", host=host, port=port, message=f"ارتباط با {host}:{port} برقرار است. هنگام فروش، مبلغ به همین کارت‌خوان می‌رود و مشتری فقط کارت و رمز را وارد می‌کند.")
 
 
 @app.post("/api/pos/pay")
@@ -7694,13 +7695,12 @@ def pos_pay():
         raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
     with connect() as conn:
         settings = get_settings(conn)
-    provider = settings.get("pos_provider") or "manual"
     host = (settings.get("pos_host") or "").strip()
-    if provider != "pardakhtnovin" or not host:
-        return jsonify(ok=True, sent=False, mode="manual", message="شماره پیگیری رسید را وارد کنید.")
-    host, port = card_reader_target(host, settings.get("pos_port") or "0")
+    if not host:
+        raise AppError("آدرس کارت‌خوان در تنظیمات ذخیره نشده است. شرکت را «پرداخت نوین» بگذارید، IP و پورت ۱۳۶۲ را بنویسید و ذخیره کنید.")
+    host, port = card_reader_target(host, settings.get("pos_port") or "1362")
     paid = charge_pardakht_novin(host, port, amount)
-    return jsonify(ok=True, sent=True, mode="device", ref=paid["ref"], message="پرداخت روی کارت‌خوان تأیید شد")
+    return jsonify(ok=True, sent=True, mode="device", ref=paid["ref"], message="پرداخت روی کارت‌خوان تأیید شد. اگر فاکتور را می‌خواهید، صدور فاکتور را بزنید.")
 
 
 @app.get("/api/reports/summary")
@@ -8832,7 +8832,7 @@ def test_setting(kind: str):
                 raise AppError("ووکامرس فهرست کالا نداد", 502)
             message = "اتصال ووکامرس برقرار است"
         elif kind == "pos":
-            host, port = probe_card_reader(settings.get("pos_host") or "", settings.get("pos_port") or "0")
+            host, port = probe_card_reader(settings.get("pos_host") or "", settings.get("pos_port") or "1362")
             message = f"ارتباط با {host}:{port} برقرار شد"
         elif kind == "sms":
             phone = mobile_number(posted.get("manager_phone") or settings.get("manager_phone") or "", required=False)

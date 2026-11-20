@@ -965,12 +965,12 @@ const TOURS = {
   offline: [
     { page: "pos", tour: "barcode", title: "فروش حضوری", body: "بارکد را بگیرید یا روی کالا بزنید تا به سبد بیاید." },
     { page: "pos", tour: "buyer", title: "خریدار", body: "نام، فامیل و موبایل اختیاری است. اگر بنویسید در مشتریان حضوری می‌ماند." },
-    { page: "pos", tour: "pay", title: "ثبت و چاپ", body: "نقد یا کارت‌خوان را بزنید. فاکتور باز می‌شود؛ از «تنظیم ابعاد چاپ» اندازهٔ پرینتر را انتخاب کنید و چاپ را بزنید." },
+    { page: "pos", tour: "pay", title: "ثبت و چاپ", body: "کالا را که انتخاب کردید، کارت‌خوان را بزنید تا مبلغ روی دستگاه بیاید. مشتری کارت می‌کشد و رمز می‌زند. بعد از تأیید روی همین صفحه، اگر فاکتور می‌خواهید صدور فاکتور را بزنید." },
     { page: "register", tour: "nav-register", title: "صندوق", body: "قبل از اولین فروش، صندوق را باز کنید. آخر شیفت همین‌جا بسته می‌شود." },
     { page: "settings", tour: "pos-card", title: "کارت‌خوان", body: "شرکت دستگاه، آدرس و شماره پایانه را بنویسید و آزمایش اتصال را بزنید." },
   ],
   hybrid: [
-    { page: "pos", tour: "pay", title: "فروش حضوری", body: "نقد، کارت‌خوان یا نسیه. فاکتور بعد از ثبت چاپ می‌شود." },
+    { page: "pos", tour: "pay", title: "فروش حضوری", body: "کارت‌خوان مبلغ را به دستگاه می‌فرستد. فاکتور فقط بعد از تأیید پرداخت صادر می‌شود." },
     { page: "products", tour: "nav-products", title: "کالاها", body: "کالا را اینجا بسازید یا از ووکامرس بگیرید تا صندوق و سایت یکی باشند." },
     { page: "settings", tour: "woo", title: "اتصال سایت", body: "آدرس سایت و کلید REST ووکامرس را ذخیره کنید. همگام‌سازی قیمت و موجودی روشن بماند." },
   ],
@@ -1963,7 +1963,7 @@ function settingsHtml() {
       <div class="grid-2">${field("pos_host", "آدرس یا IP")}${field("pos_port", "پورت")}</div>
       ${field("pos_terminal", "شماره پایانه")}
       <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش اتصال</button>
-      <p class="hint">برای پرداخت نوین، آدرس و پورت ۱۳۶۲ را ذخیره کنید. با زدن کارت‌خوان، مبلغ فاکتور به دستگاه می‌رود و مشتری فقط کارت می‌کشد و رمز می‌زند. فاکتور بعد از تأیید دستگاه ثبت می‌شود.</p>
+      <p class="hint">شرکت را «پرداخت نوین» بگذارید، IP همان رایانه‌ای که برنامه پرداخت نوین روی آن است (اغلب 127.0.0.1) و پورت ۱۳۶۲ را بنویسید، بعد ذخیره کنید. با زدن کارت‌خوان روی صندوق، مبلغ به دستگاه می‌رود؛ فاکتور فقط بعد از تأیید پرداخت و زدن صدور فاکتور ثبت می‌شود.</p>
     </section>`;
   const extra = `<details><summary>تنظیمات بیشتر</summary>
       <h2 class="section-title">درگاه پرداخت</h2>
@@ -2082,9 +2082,10 @@ function modalHtml() {
   if (modal.type === "invoice-read" && modal.waiting) inner = `<h2 class="section-title">خواندن فاکتور</h2><p>هوش مصنوعی در حال خواندن عکس است. اگر دست‌نویس باشد هم همان‌جا می‌ماند.</p>`;
   if (modal.type === "invoice-read" && modal.invoice) inner = invoiceReadHtml(modal.invoice);
   if (modal.type === "pro") inner = `<h2 class="section-title">اکانت Pro</h2><p>${esc(modal.title || "بسته توکن")} · ${money(modal.payable)}</p><p class="hint">صفحه زیبال را باز کنید و پرداخت را تمام کنید. تا وقتی بانک تأیید نکند توکنی اضافه نمی‌شود. این توکن لایسنس فروشگاه و VIP نیست.</p><div class="row-actions">${modal.credit?.pay_url ? `<a class="btn" href="${esc(modal.credit.pay_url)}" target="_blank" rel="noopener">باز کردن زیبال</a>` : ""}<button type="button" class="btn primary" data-act="confirm-pro" data-id="${modal.credit?.id || ""}">پرداخت را انجام دادم</button></div>`;
-  if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">تا وقتی کارت‌خوان پرداخت را تأیید نکند، فاکتوری ثبت نمی‌شود.</p>`;
+  if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">مبلغ روی دستگاه است. مشتری کارت را می‌کشد و رمز را روی دستگاه می‌زند. تا تأیید نیاید فاکتور صادر نمی‌شود.</p>`;
   if (modal.type === "credit") inner = `<form data-act="credit-payment"><h2 class="section-title">نسیه / چک</h2><p class="hint">موبایل مشتری لازم است. چک تا زمان وصول به‌عنوان طلب مشتری ثبت می‌شود.</p><div class="field"><label>نوع تسویه</label><select id="credit-kind" name="credit_kind"><option value="credit">نسیه</option><option value="check">چک</option></select></div><div id="check-payment-fields" hidden><div class="field"><label>شماره چک</label><input name="check_number" maxlength="40"></div><div class="field"><label>سررسید (شمسی)</label><input name="check_due" placeholder="۱۴۰۵/۰۹/۲۰" autocomplete="off"></div></div><button type="submit" class="btn primary">ثبت فروش</button></form>`;
-  if (modal.type === "card" && !modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><div class="field"><label>شماره پیگیری رسید (اختیاری)</label><input id="pos-ref" class="ltr"></div><p class="hint">پس از دیدن پرداخت موفق روی دستگاه، ثبت پرداخت را بزنید. اتصال دستگاه به دفترچی لازم نیست.</p><div class="row-actions"><button type="button" class="btn primary" data-act="confirm-card">ثبت پرداخت کارت</button><button type="button" class="btn" data-act="send-pos-device">ارسال مبلغ به دستگاه (اختیاری)</button></div>`;
+  if (modal.type === "card" && modal.approved) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "پرداخت روی کارت‌خوان تأیید شد.")}</p>${modal.ref ? `<p class="ltr">پیگیری ${esc(modal.ref)}</p>` : ""}<p class="hint">اگر فاکتور را می‌خواهید، صدور فاکتور را بزنید. بدون این دکمه فاکتوری ثبت نمی‌شود.</p><div class="row-actions"><button type="button" class="btn primary" data-act="confirm-card">صدور فاکتور</button><button type="button" class="btn" data-act="close-modal">بستن بدون فاکتور</button></div>`;
+  if (modal.type === "card" && !modal.waiting && !modal.approved) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "کارت‌خوان وصل نشد.")}</p><p class="hint">فاکتوری ثبت نشد. آدرس را در تنظیمات ذخیره کنید و دوباره کارت‌خوان را بزنید.</p>`;
   if (modal.type === "gateway") inner = `<h2 class="section-title">پرداخت در مرورگر</h2><p>کد <span class="ltr">${esc(modal.sale.invoice_code || "")}</span> · فاکتور ${num(modal.sale.id)} · ${money(modal.sale.payable)}</p>${gatewayPanel(modal.sale)}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-sale" data-id="${modal.sale.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-sale" data-id="${modal.sale.id}">لغو</button></div><form data-act="manual-gateway"><input type="hidden" name="id" value="${modal.sale.id}"><div class="field"><label>اگر در پنل درگاه پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
   if (modal.type === "pay-link") {
     const sale = modal.sale;
@@ -2702,6 +2703,28 @@ async function openSaleEdit(id) {
   };
   render();
 }
+async function sendCartToCardReader() {
+  const amount = cartSubtotal() - cartDiscount();
+  if (amount <= 0) return toast("مبلغ باید بیشتر از صفر باشد");
+  state.modal = { type: "card", waiting: true, approved: false, message: "مبلغ به کارت‌خوان فرستاده شد. مبلغ را روی دستگاه ببینید، کارت را بکشید و رمز را بزنید." };
+  render();
+  let paid;
+  try {
+    paid = await api("/api/pos/pay", { method: "POST", body: { amount } });
+  } catch (err) {
+    state.modal = { type: "card", waiting: false, approved: false, message: err.message || "کارت‌خوان پرداخت را تأیید نکرد", ok: false };
+    render();
+    throw err;
+  }
+  if (!paid.sent) {
+    state.modal = { type: "card", waiting: false, approved: false, message: paid.message || "کارت‌خوان وصل نشد", ok: false };
+    render();
+    return;
+  }
+  state.modal = { type: "card", waiting: false, approved: true, ref: paid.ref || "", message: paid.message || "پرداخت روی کارت‌خوان تأیید شد." };
+  render();
+}
+
 async function submitSale(method, posRef, popup) {
   const buyer = buyerFields();
   if (!buyer || !state.cart.length) {
@@ -3110,30 +3133,13 @@ async function onClick(event) {
       if (!buyerFields()) return;
       if (!state.cart.length) return toast("سبد خالی است");
       if (el.dataset.method === "card") {
-        state.modal = { type: "card", waiting: false, message: "مبلغ را روی کارت‌خوان وارد کنید و پس از پرداخت، فروش را ثبت کنید." }; render();
+        await sendCartToCardReader();
       } else if (el.dataset.method === "credit") {
         state.modal = { type: "credit" }; render();
       } else await submitSale(el.dataset.method, "");
-    } else if (act === "send-pos-device") {
-        const amount = cartSubtotal() - cartDiscount();
-        state.modal = { type: "card", waiting: true, message: "مبلغ به کارت‌خوان فرستاده می‌شود. کارت را بکشید و رمز را بزنید." };
-        render();
-        let paid;
-        try {
-          paid = await api("/api/pos/pay", { method: "POST", body: { amount } });
-        } catch (err) {
-          state.modal = { type: "card", waiting: false, message: err.message || "کارت‌خوان پرداخت را تأیید نکرد", ok: false };
-          render();
-          throw err;
-        }
-        if (!paid.sent) {
-          state.modal = { type: "card", waiting: false, message: paid.message, ok: paid.ok };
-          render();
-          return;
-        }
-        await submitSale("card", paid.ref || "");
     } else if (act === "confirm-card") {
-      await submitSale("card", document.getElementById("pos-ref")?.value || "");
+      if (!state.modal || state.modal.type !== "card" || !state.modal.approved) return toast("اول پرداخت روی دستگاه تأیید شود");
+      await submitSale("card", state.modal.ref || "");
     } else if (act === "perfume-weight") {
       const input = document.getElementById("perfume-grams"); if (input) input.value = el.dataset.weight;
       window.DaftarchiPerfume.refresh(state.modal, "weight");
