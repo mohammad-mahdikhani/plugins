@@ -76,6 +76,7 @@ const state = {
   bootstrap: null,
   authView: "login",
   billingPeriod: "3m",
+  proPackId: "pro50",
   recovery: null,
   pendingEmail: "",
   verifyNote: "",
@@ -1173,7 +1174,9 @@ function paintChrome() {
     : "";
   const access = state.access;
   const accessPill = access
-    ? `<span class="pill ${access.active ? "" : "warn"}">${access.vip ? "لایسنس VIP" : access.mode === "paid" ? "لایسنس فعال" : access.active ? `${num(access.days_left)} روز رایگان` : "مهلت رایگان تمام شد"}</span>`
+    ? (access.active
+      ? `<span class="pill">${access.vip ? "لایسنس VIP" : access.mode === "paid" ? "لایسنس فعال" : `${num(access.days_left)} روز رایگان`}</span>`
+      : `<button type="button" class="pill warn" data-act="nav" data-page="licenses">مهلت رایگان تمام شد</button>`)
     : "";
   const status = document.getElementById("app-status");
   const todayPill = state.today?.label ? `<span class="pill date-pill">${esc(state.today.label)}</span>` : "";
@@ -1782,7 +1785,7 @@ function accessCard(access) {
   if (access.active) {
     return `<section class="card access-card"><span>استفاده رایگان</span><h2>۷ روز رایگان فعال است</h2><p class="days">${num(access.days_left)} روز مانده</p><p class="hint">تا ${esc(access.ends_jalali)}. هر وقت خواستید روی یک طرح بزنید.</p></section>`;
   }
-  return `<section class="card access-card"><span>مهلت رایگان</span><h2>۷ روز رایگان تمام شده</h2><p class="hint">برای ادامه کار، روی یکی از طرح‌ها بزنید. صفحه زیبال باز می‌شود.</p></section>`;
+  return `<section class="card access-card"><span>مهلت رایگان</span><h2>۷ روز رایگان تمام شده</h2><p class="hint">یکی از نسخه‌های ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله یا پنجاه‌ساله را بخرید. صفحه زیبال باز می‌شود.</p></section>`;
 }
 function shopFeatureList(items) {
   return `<ul class="shop-plan-features">${items.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
@@ -1795,21 +1798,25 @@ function periodOff(monthly, price, months) {
 function licensesHtml() {
   const data = state.licenses;
   if (!data) return "";
-  const period = ["1m", "3m", "12m"].includes(state.billingPeriod) ? state.billingPeriod : "3m";
+  const echoPeriods = [
+    ["1m", "ماهانه", 1],
+    ["3m", "سه‌ماهه", 3],
+    ["6m", "شش‌ماهه", 6],
+    ["12m", "سالانه", 12],
+  ];
+  const period = echoPeriods.some(([id]) => id === state.billingPeriod) ? state.billingPeriod : "3m";
   const byId = Object.fromEntries((data.plans || []).map((plan) => [plan.id, plan]));
   const pro = data.pro || { tokens: 0, packs: [] };
-  const packs = Object.fromEntries((pro.packs || []).map((pack) => [pack.id, pack]));
+  const packList = pro.packs || [];
+  const packs = Object.fromEntries(packList.map((pack) => [pack.id, pack]));
   const monthly = byId["1m"]?.price || 0;
   const echo = byId[period];
   const plus = byId["50y"];
-  const proPack = packs[{ "1m": "pro10", "3m": "pro50", "12m": "pro200" }[period]];
-  const echoMonths = { "1m": 1, "3m": 3, "12m": 12 }[period];
+  const packId = packList.some((pack) => pack.id === state.proPackId) ? state.proPackId : (packList[1]?.id || packList[0]?.id || "pro50");
+  const proPack = packs[packId];
+  const echoMonths = echoPeriods.find(([id]) => id === period)?.[2] || 3;
   const echoOff = periodOff(monthly, echo?.price, echoMonths);
-  const periods = [
-    ["1m", "ماهانه", 0],
-    ["3m", "سه‌ماهه", periodOff(monthly, byId["3m"]?.price, 3)],
-    ["12m", "سالانه", periodOff(monthly, byId["12m"]?.price, 12)],
-  ];
+  const periods = echoPeriods.map(([id, label, months]) => [id, label, id === "1m" ? 0 : periodOff(monthly, byId[id]?.price, months)]);
   const echoCard = `<article class="shop-plan">
     <h3>اکو</h3>
     <p class="shop-plan-kicker">فروشگاه حضوری</p>
@@ -1845,8 +1852,9 @@ function licensesHtml() {
     <h3>پرو</h3>
     <p class="shop-plan-kicker">خواندن عکس فاکتور</p>
     <p class="shop-plan-price"><strong class="num">${money(proPack?.price || 0)}</strong><span>${num(proPack?.tokens || 0)} توکن</span></p>
+    <div class="seg shop-versions">${packList.map((pack) => `<button type="button" class="${pack.id === packId ? "on" : ""}" data-act="pick-pro-pack" data-pack="${pack.id}">${num(pack.tokens)}</button>`).join("")}</div>
     <p class="hint">مانده ${num(pro.tokens || 0)}${pro.invoice_free ? " · سهمیه رایگان امروز باقی است" : ""}</p>
-    <button type="button" class="btn block" data-act="buy-pro" data-pack="${esc(proPack?.id || "pro50")}">خرید بسته پرو</button>
+    <button type="button" class="btn block" data-act="buy-pro" data-pack="${esc(proPack?.id || packId)}">خرید بسته پرو</button>
     ${shopFeatureList([
       "خواندن عکس فاکتور چاپی و دست‌نویس",
       "تطبیق فی خرید و فروش با کالاهای برنامه و سایت",
@@ -1860,7 +1868,7 @@ function licensesHtml() {
       <h2 class="shop-store-title">خرید و ارتقا بسته</h2>
       <div class="seg shop-periods">${periods.map(([id, label, off]) => `<button type="button" class="${period === id ? "on" : ""}" data-act="pick-period" data-period="${id}">${label}${off ? `<small>${num(off)}٪ تخفیف</small>` : ""}</button>`).join("")}</div>
       <div class="shop-plans">${echoCard}${plusCard}${proCard}</div>
-      <p class="hint">مدت فقط قیمت اکو و اندازه بسته پرو را عوض می‌کند. امکانات هر بسته فرق دارد. شش‌ماهه در قیمت‌های پایین همین صفحه است. پرداخت در زیبال وب‌بیکری است و وارد صندوق فروشگاه نمی‌شود.</p>
+      <p class="hint">نسخه‌های لایسنس فروشگاه: ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله و پنجاه‌ساله. بسته پرو جداست و سه اندازه توکن دارد. امکانات اکو و پلاس و پرو فرق می‌کند. پرداخت در زیبال وب‌بیکری است و وارد صندوق فروشگاه نمی‌شود.</p>
     </section>
       <details><summary>قیمت‌ها و ظرفیت پنجاه‌ساله</summary><form data-act="save-prices"><div class="grid-2">
         ${[["price_1m", "یک ماهه"], ["price_3m", "سه ماهه"], ["price_6m", "شش ماهه"], ["price_12m", "یک ساله"], ["price_50y", "پنجاه ساله"], ["cap_50y", "ظرفیت پنجاه ساله"], ["price_pro10", "پرو ۱۰ هزار توکن"], ["price_pro50", "پرو ۵۰ هزار توکن"], ["price_pro200", "پرو ۲۰۰ هزار توکن"]].map(([key, label]) => {
@@ -2249,7 +2257,7 @@ function modalHtml() {
 
 function pageHtml() {
   if (state.access && !state.access.active && state.page !== "licenses" && state.page !== "settings" && state.page !== "updates") {
-    return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید لایسنس بسته است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">خرید لایسنس</button></section>`;
+    return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید یکی از نسخه‌ها بسته است. ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله و پنجاه‌ساله روی صفحه لایسنس است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">دیدن نسخه‌ها</button></section>`;
   }
   const pages = {
     dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml, invoices: invoicesHtml, calendar: calendarHtml,
@@ -3136,6 +3144,11 @@ async function onClick(event) {
   }
   if (act === "pick-period") {
     state.billingPeriod = el.dataset.period || "3m";
+    render();
+    return;
+  }
+  if (act === "pick-pro-pack") {
+    state.proPackId = el.dataset.pack || "pro50";
     render();
     return;
   }

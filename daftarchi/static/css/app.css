@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.64") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.65") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.64") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.65") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.64") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.65") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -311,10 +311,11 @@ tr.selected { background: var(--soft); }
 .qty { display: inline-flex; align-items: center; gap: 6px; }
 .qty button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--lift); }
 
-.pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: var(--soft); color: var(--accent-ink); }
+.pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: var(--soft); color: var(--accent-ink); border: 0; }
 .pill.warn { background: #ffedd5; color: var(--warn); }
 .pill.danger { background: #ffe4e6; color: var(--danger); }
 .pill.update { background: var(--accent); color: #fff; border: 0; cursor: pointer; }
+button.pill { font: inherit; cursor: pointer; min-height: 0; box-shadow: none; }
 .banner {
   background: #fff7ed;
   border: 1px solid #fed7aa;
@@ -724,7 +725,8 @@ summary { cursor: pointer; font-weight: 600; }
 
 .shop-store { text-align: center; padding: 8px 0 4px; }
 .shop-store-title { font-size: 28px; letter-spacing: -0.04em; margin: 4px 0 18px; }
-.shop-periods { width: min(440px, 100%); margin: 0 auto 20px; }
+.shop-periods { width: min(560px, 100%); margin: 0 auto 20px; }
+.shop-versions { margin: 0; }
 .shop-periods button { display: grid; gap: 2px; min-height: 44px; }
 .shop-periods small { display: block; font-size: 11px; color: var(--accent); }
 .shop-plans {

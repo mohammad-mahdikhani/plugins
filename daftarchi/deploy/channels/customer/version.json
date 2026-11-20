@@ -1,9 +1,9 @@
 {
-  "version": "1.1.64",
+  "version": "1.1.65",
   "channel": "customer",
-  "notes": "دکمه‌های ورود با فاصله زبان طراحی جدا می‌شوند. خرید لایسنس سه بسته اکو، پلاس و پرو با امکانات متفاوت است.",
+  "notes": "همه نسخه‌های لایسنس روی صفحه خرید است: ماهانه تا پنجاه‌ساله و سه اندازه توکن پرو.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.64-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.65-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
