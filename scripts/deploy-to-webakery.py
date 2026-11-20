@@ -17,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ZIP_PATH = ROOT / "web-bakery" / "schema-nova-1.0.0.zip"
+ZIP_PATH = ROOT / "web-bakery" / "schema-nova-1.1.zip"
 SITE = os.environ.get("WEBAKERY_URL", "https://webakery.ir").rstrip("/")
 USER = os.environ.get("WEBAKERY_WP_USER", "").strip()
 PASSWORD = os.environ.get("WEBAKERY_WP_APPLICATION_PASSWORD", "").strip()
@@ -60,7 +60,7 @@ def upload_zip() -> dict:
         f"{SITE}/wp-json/wp/v2/media",
         data=payload,
         headers={
-            "Content-Disposition": 'attachment; filename="schema-nova-1.0.0.zip"',
+            "Content-Disposition": 'attachment; filename="schema-nova-1.1.zip"',
             "Content-Type": "application/zip",
         },
     )
@@ -70,7 +70,7 @@ PAGE_HTML = """
 <div class="wb-schema-nova" dir="rtl">
   <h2>هوش‌اسکیما | Schema Nova</h2>
   <p>افزونه اسکیمای JSON-LD مطابق مستندات گوگل، برای هر قالبی. تایتل و متا را هم می‌تواند بر اساس اینتنت جستجو از API آنالیتیکس به‌روز کند.</p>
-  <p><a class="elementor-button" href="{source_url}" download>دانلود schema-nova-1.0.0.zip</a></p>
+  <p><a class="elementor-button" href="{source_url}" download>دانلود schema-nova-1.1.zip</a></p>
   <ol>
     <li>افزونه‌ها → افزودن → بارگذاری افزونه → انتخاب همین ZIP</li>
     <li>فعال کنید؛ منوی هوش‌اسکیما در پیشخوان می‌آید</li>
@@ -108,7 +108,7 @@ def maybe_product(source_url: str) -> dict | None:
         "catalog_visibility": "visible",
         "short_description": "اسکیمای JSON-LD کامل + تایتل هوشمند بر اساس سرپ.",
         "description": "دانلود رایگان افزونه هوش‌اسکیما برای وردپرس.",
-        "downloads": [{"name": "schema-nova-1.0.0.zip", "file": source_url}],
+        "downloads": [{"name": "schema-nova-1.1.zip", "file": source_url}],
         "download_limit": -1,
         "download_expiry": -1,
     }

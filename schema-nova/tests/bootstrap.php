@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('ABSPATH', __DIR__ . '/');
-define('SCHEMA_NOVA_VERSION', '1.0.0');
+define('SCHEMA_NOVA_VERSION', '1.1');
 define('SCHEMA_NOVA_DIR', dirname(__DIR__) . '/');
 define('SCHEMA_NOVA_URL', 'http://example.com/wp-content/plugins/schema-nova/');
 define('SCHEMA_NOVA_FILE', SCHEMA_NOVA_DIR . 'schema-nova.php');

@@ -1,10 +1,10 @@
-=== هوش‌اسکیما | Schema Nova ===
-Contributors: schemanova
+=== Schema Nova ===
+Contributors: webakery
 Tags: schema, json-ld, seo, rich results, search console
 Requires at least: 6.0
-Tested up to: 6.7
+Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,6 +38,10 @@ Connect Google Search Console, GA4, or any Analytics-like REST API. Every few da
 5. Leave the optimizer in Suggest mode until you trust the proposals.
 
 == Changelog ==
+
+= 1.1 =
+* Author set to webakery.ir.
+* Cleaner WordPress install zip.
 
 = 1.0.0 =
 * First release.
