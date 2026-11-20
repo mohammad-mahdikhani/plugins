@@ -48,10 +48,11 @@ JMONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرد
 JWEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 PLANS = {
+    "1m": ("یک ماهه", 1, "price_1m"),
     "3m": ("سه ماهه", 3, "price_3m"),
     "6m": ("شش ماهه", 6, "price_6m"),
     "12m": ("یک ساله", 12, "price_12m"),
-    "50y": ("پنجاه ساله", 600, "price_50y"),
+    "50y": ("پنجاه‌ساله با شخصی‌سازی", 600, "price_50y"),
 }
 HEADER_MAP = {
     "name": "name", "نام": "name", "عنوان": "name", "نام کالا": "name", "نام محصول": "name", "عنوان کالا": "name",
@@ -92,10 +93,11 @@ DEFAULT_SETTINGS = {
     "low_stock": "5",
     "smtp_user": "",
     "smtp_password": "",
-    "price_3m": "6000000",
+    "price_1m": "6000000",
+    "price_3m": "8000000",
     "price_6m": "12000000",
-    "price_12m": "15000000",
-    "price_50y": "15000000",
+    "price_12m": "16000000",
+    "price_50y": "18000000",
     "cap_50y": "50",
     "price_pro10": "150000",
     "price_pro50": "600000",
@@ -127,7 +129,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.51"
+APP_VERSION = "1.1.58"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -600,8 +602,13 @@ CODE_RE = re.compile(r"[a-z]{2,}(?:[-/]\d{1,4})?|\d{5,12}")
 WOO_BATCH = 20
 
 
+@functools.lru_cache(maxsize=128)
+def word_pattern(word: str) -> re.Pattern:
+    return re.compile(rf"(?<![\w]){re.escape(word)}(?![\w])")
+
+
 def word_in(text: str, word: str) -> bool:
-    return re.search(rf"(?<![\w]){re.escape(word)}(?![\w])", text) is not None
+    return word_pattern(word).search(text) is not None
 
 
 def measure_token(raw: str) -> str:
@@ -641,6 +648,11 @@ def product_family(text: str) -> str:
     ):
         return "water"
     return ""
+
+
+@functools.lru_cache(maxsize=32768)
+def catalog_product_family(name: str) -> str:
+    return product_family(name_key(name))
 
 
 @functools.lru_cache(maxsize=8192)
@@ -796,7 +808,7 @@ def current_user():
     if not uid:
         return None
     with connect() as conn:
-        row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (uid,)).fetchone()
     return row
 
 
@@ -1121,8 +1133,8 @@ def locate_scan(conn, code: str):
 
 
 def match_product(conn, barcode: str | None, sku: str | None):
-    by_barcode = conn.execute("SELECT * FROM products WHERE barcode=?", (barcode,)).fetchone() if barcode else None
-    by_sku = conn.execute("SELECT * FROM products WHERE sku=?", (sku,)).fetchone() if sku else None
+    by_barcode = conn.execute("SELECT * FROM products WHERE barcode=? AND active>=0", (barcode,)).fetchone() if barcode else None
+    by_sku = conn.execute("SELECT * FROM products WHERE sku=? AND active>=0", (sku,)).fetchone() if sku else None
     if by_barcode and by_sku and by_barcode["id"] != by_sku["id"]:
         raise AppError("بارکد و کد به دو کالای متفاوت مربوط است")
     return by_barcode or by_sku
@@ -1183,19 +1195,23 @@ def product_dict(row, threshold: int, variations: list | None = None) -> dict:
     return {
         "id": row["id"],
         "name": row["name"],
-        "family": product_marks(row["name"])["family"],
+        "family": catalog_product_family(row["name"]),
         "sku": row["sku"] or "",
         "barcode": row["barcode"] or "",
         "price": row["price"],
+        "price_per_gram": int(row["price_per_gram"] or 0) if "price_per_gram" in row.keys() else 0,
         "cost": row["cost"],
         "stock": row["stock"],
         "image": row["image"] or "",
         "woo_id": row["woo_id"],
         "active": row["active"],
+        "created_at": row["created_at"],
         "tax_code": row["tax_code"] or "",
         "type": kind,
+        "categories": product_terms(row, "categories"),
+        "brands": product_terms(row, "brands"),
         "variations": variations,
-        "low": low,
+        "low": False if "price_per_gram" in row.keys() and row["price_per_gram"] else low,
     }
 
 
@@ -1208,13 +1224,101 @@ def present_product(conn, row, threshold: int) -> dict:
     return present_products(conn, [row], threshold)[0]
 
 
+def save_perfume_rate(conn, product_id, payload):
+    if "price_per_gram" not in payload:
+        return
+    value = payload["price_per_gram"]
+    rate = parse_money(value, "قیمت هر گرم عطر", allow_empty=True)
+    if rate > 10**10:
+        raise AppError("قیمت هر گرم عطر بیش از حد مجاز است")
+    conn.execute("UPDATE products SET price_per_gram=? WHERE id=?", (rate or None, product_id))
+
+
+def weighted_item(item):
+    return "weight_grams" in item.keys() and bool(item["weight_grams"])
+
+
+def perfume_quote(row, payload):
+    if not isinstance(payload, dict):
+        raise AppError("وزن یا مبلغ عطر را وارد کنید")
+    rate = int(row["price_per_gram"] or 0)
+    if rate <= 0:
+        raise AppError("ابتدا قیمت هر گرم این عطر را در ویرایش کالا ثبت کنید")
+    if "expected_rate" in payload and parse_money(payload["expected_rate"], "نرخ هر گرم") != rate:
+        raise AppError("قیمت هر گرم عطر تغییر کرده است؛ وزن و مبلغ را دوباره محاسبه کنید.", 409)
+    basis = payload.get("basis") or "weight"
+    text = str(payload.get("input") or "").translate(DIGITS).strip().replace(",", "").replace("٬", "").replace("٫", ".")
+    if len(text) > 40:
+        raise AppError("وزن یا مبلغ عطر بیش از حد مجاز است")
+    if basis == "weight":
+        if not re.fullmatch(r"[0-9]+(?:\.[0-9]{1,9})?", text):
+            raise AppError("وزن را به گرم و حداکثر با ۹ رقم اعشار وارد کنید")
+        grams = Decimal(text)
+        if not Decimal("0.001") <= grams <= Decimal("100000"):
+            raise AppError("وزن باید بین ۰٫۰۰۱ و ۱۰۰٬۰۰۰ گرم باشد")
+        amount = int((grams * rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+        approximate = False
+    elif basis == "amount":
+        if not re.fullmatch(r"[0-9]+", text):
+            raise AppError("مبلغ عطر را به تومان و بدون اعشار وارد کنید")
+        amount = parse_money(text, "مبلغ عطر")
+        precise = Decimal(amount) / Decimal(rate)
+        grams = precise.quantize(Decimal("0.000000001"), rounding=ROUND_HALF_UP)
+        approximate = grams * rate != amount
+    else:
+        raise AppError("نوع محاسبهٔ عطر نامعتبر است")
+    if not Decimal("0.001") <= grams <= Decimal("100000") or not 1 <= amount <= 10**12:
+        raise AppError("وزن باید بین ۰٫۰۰۱ و ۱۰۰٬۰۰۰ گرم و مبلغ بیشتر از صفر باشد")
+    weight = format(grams, "f").rstrip("0").rstrip(".") if "." in format(grams, "f") else format(grams, "f")
+    return {"basis": basis, "input": text, "grams": weight, "rate": rate, "amount": amount, "approximate": approximate}
+
+
+def load_perfume_lines(conn, raw_items):
+    result = []
+    for raw in raw_items:
+        try:
+            pid = int(raw.get("product_id") or 0)
+        except (ValueError, TypeError):
+            raise AppError("عطر نامعتبر است")
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+        if not row or is_payment_product(row):
+            raise AppError("عطر پیدا نشد")
+        if raw.get("variation_id"):
+            raise AppError("محاسبهٔ گرمی برای نام اصلی عطر ثبت می‌شود؛ نوع کالا را خالی بگذارید")
+        quote = perfume_quote(row, raw["perfume"])
+        qty = parse_qty(raw.get("qty"))
+        name = f"{row['name']} — {'حدود ' if quote['approximate'] else ''}{quote['grams']} گرم"
+        result.append({"product_id": pid, "variation_id": None, "name": name, "qty": qty,
+                       "unit_price": quote["amount"], "unit_cost": 0, "line_total": quote["amount"] * qty,
+                       "weight_grams": quote["grams"], "weight_basis": quote["basis"], "rate_per_gram": quote["rate"]})
+    return result
+
+
+@app.post("/api/products/<int:pid>/perfume/quote")
+def quote_perfume(pid):
+    require_user()
+    payload = body_json()
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+        if not row or is_payment_product(row):
+            raise AppError("عطر پیدا نشد", 404)
+        quote = perfume_quote(row, payload)
+    return jsonify(quote=quote)
+
+
 def load_cart(conn, items) -> tuple[list[dict], int]:
     if not isinstance(items, list) or not items:
         raise AppError("سبد خالی است")
+    if len(items) > 500:
+        raise AppError("تعداد ردیف‌های فاکتور بیش از حد مجاز است")
+    weighted = []
     merged: dict[tuple[int, int], int] = {}
     for raw in items:
         if not isinstance(raw, dict):
             raise AppError("قلم کالا نامعتبر است")
+        if "perfume" in raw:
+            weighted.append(raw)
+            continue
         try:
             pid = int(raw.get("product_id") or 0)
             variation_id = int(raw.get("variation_id") or 0)
@@ -1222,8 +1326,8 @@ def load_cart(conn, items) -> tuple[list[dict], int]:
             raise AppError("کالا نامعتبر است")
         key = (pid, variation_id)
         merged[key] = merged.get(key, 0) + parse_qty(raw.get("qty"))
-    result = []
-    subtotal = 0
+    result = load_perfume_lines(conn, weighted)
+    subtotal = sum(item["line_total"] for item in result)
     for (pid, variation_id), qty in merged.items():
         row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
         if not row:
@@ -1293,6 +1397,9 @@ def insert_sale(conn, user_id: int, customer: dict, items: list[dict], subtotal:
                 item["unit_price"], item["unit_cost"], item["line_total"],
             ),
         )
+        if item.get("weight_grams"):
+            conn.execute("UPDATE sale_items SET weight_grams=?, weight_basis=?, rate_per_gram=? WHERE id=?",
+                         (item["weight_grams"], item["weight_basis"], item["rate_per_gram"], conn.execute("SELECT last_insert_rowid()").fetchone()[0]))
     return sale_id
 
 
@@ -1333,6 +1440,8 @@ def line_variation(conn, item):
 
 
 def ensure_line_stock(conn, item):
+    if weighted_item(item):
+        return
     row = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
     if not row:
         raise AppError(f"کالای «{item['name']}» دیگر در سیستم نیست")
@@ -1354,6 +1463,8 @@ def ensure_line_stock(conn, item):
 
 
 def restore_line_stock(conn, item, user_id: int, sale_id: int) -> None:
+    if weighted_item(item):
+        return
     row = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
     if not row:
         raise AppError(f"کالای «{item['name']}» دیگر در سیستم نیست")
@@ -1422,6 +1533,8 @@ def commit_sale_effects(conn, sale_id: int, user_id: int, memo: str) -> list[str
         alerts.extend(take_line_stock(conn, item, user_id, sale_id, threshold))
     post_entry(conn, memo, sale_book_lines(conn, sale, items), "sale", sale_id, user_id)
     for item in items:
+        if weighted_item(item):
+            continue
         vid = int(item["variation_id"] or 0) or None
         maybe_queue_woo_sync(conn, int(item["product_id"]), vid)
     return alerts
@@ -1507,6 +1620,8 @@ def load_edit_cart(conn, items, old_items) -> tuple[list[dict], int]:
 
 
 def take_line_stock(conn, item, user_id: int, sale_id: int, threshold: int) -> list[str]:
+    if weighted_item(item):
+        return []
     row = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
     if is_payment_product(row):
         return []
@@ -2185,7 +2300,7 @@ def pattern_values(conn, sale: dict, items: list, settings: dict) -> dict:
 
 
 def shop_sms_identity(conn) -> tuple[str, str]:
-    shop = conn.execute("SELECT phone FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    shop = conn.execute("SELECT phone FROM users WHERE role='admin' AND deleted_at IS NULL ORDER BY id LIMIT 1").fetchone()
     settings = get_settings(conn)
     return (shop["phone"] if shop else ""), (settings.get("shop_name") or "")
 
@@ -2334,8 +2449,8 @@ def clear_initial_secret(conn, user):
         conn.execute("UPDATE settings SET value='0' WHERE key='must_change_password'")
 
 
-def range_bounds(kind: str) -> tuple[datetime, datetime]:
-    now = now_dt()
+def range_bounds(kind: str, as_of: datetime | None = None) -> tuple[datetime, datetime]:
+    now = (as_of or now_dt()).astimezone(TEHRAN)
     if kind == "day":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         return start, start + timedelta(days=1)
@@ -2354,57 +2469,116 @@ def range_bounds(kind: str) -> tuple[datetime, datetime]:
     raise AppError("بازه نامعتبر است")
 
 
-def summary_for(conn, kind: str) -> dict:
-    start, end = range_bounds(kind)
-    rows = conn.execute(
-        """SELECT id, payable, discount, created_at FROM sales
-           WHERE status='paid' AND created_at>=? AND created_at<?""",
-        (iso(start), iso(end)),
-    ).fetchall()
-    parsed = []
+def report_change(current: int, previous: int) -> dict:
+    return {"difference": current - previous,
+            "percent": round((current - previous) * 100 / abs(previous), 1) if previous else (0 if current == 0 else None)}
+
+
+def report_window(conn, start: datetime, end: datetime, kind: str, finance: bool) -> dict:
+    rows = conn.execute("""SELECT id,payable,discount,created_at,payment_method FROM sales
+        WHERE status='paid' AND julianday(created_at)>=julianday(?) AND julianday(created_at)<julianday(?)""",
+                        (iso(start), iso(end))).fetchall()
+    point_count = 24 if kind == "day" else 7 if kind == "week" else 31
+    points = [{"total": 0, "count": 0, "inflow": 0, "outflow": 0} for _ in range(point_count)]
+    hours = [{"hour": hour, "total": 0, "count": 0} for hour in range(24)]
+    payments, totals = {}, {"total": 0, "count": len(rows), "discount": 0, "units": 0}
+    def slot(value):
+        local = parse_when(value).astimezone(TEHRAN)
+        return local.hour if kind == "day" else (local.date() - start.date()).days
+    sale_totals = {}
     for row in rows:
-        parsed.append((datetime.fromisoformat(row["created_at"]), int(row["payable"]), int(row["discount"])))
-    points = []
-    if kind == "day":
-        buckets = [(hour, start + timedelta(hours=hour), start + timedelta(hours=hour + 1)) for hour in range(24)]
-    elif kind == "week":
-        names = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
-        buckets = [(names[i], start + timedelta(days=i), start + timedelta(days=i + 1)) for i in range(7)]
+        value = int(row["payable"])
+        sale_totals[row["id"]] = value
+        totals["total"] += value
+        totals["discount"] += int(row["discount"])
+        bucket = slot(row["created_at"])
+        if 0 <= bucket < len(points):
+            points[bucket]["total"] += value
+            points[bucket]["count"] += 1
+        hour = parse_when(row["created_at"]).astimezone(TEHRAN).hour
+        hours[hour]["total"] += value
+        hours[hour]["count"] += 1
+        method = row["payment_method"]
+        payment = payments.setdefault(method, {"method": method, "total": 0, "count": 0})
+        payment["total"] += value
+        payment["count"] += 1
+    # Allocate invoice discounts in integer tomans; product totals add up to net invoices.
+    lines = conn.execute("""SELECT si.id,si.sale_id,si.product_id,si.name,si.qty,si.line_total,p.name AS product_name
+        FROM sale_items si JOIN sales s ON s.id=si.sale_id LEFT JOIN products p ON p.id=si.product_id
+        WHERE s.status='paid' AND julianday(s.created_at)>=julianday(?) AND julianday(s.created_at)<julianday(?)
+        ORDER BY si.sale_id,si.id""", (iso(start), iso(end))).fetchall()
+    invoices = {}
+    for line in lines:
+        invoices.setdefault(line["sale_id"], []).append(line)
+    products = {}
+    for sale_id, items in invoices.items():
+        gross = sum(int(item["line_total"]) for item in items)
+        payable = sale_totals[sale_id]
+        allocated = [divmod(int(item["line_total"]) * payable, gross) if gross else (0, 0) for item in items]
+        remaining = payable - sum(value[0] for value in allocated) if gross else 0
+        extra = set(sorted(range(len(items)), key=lambda i: (-allocated[i][1], items[i]["id"]))[:remaining])
+        for i, item in enumerate(items):
+            product = products.setdefault(item["product_id"], {"product_id": item["product_id"],
+                "name": item["product_name"] or item["name"], "qty": 0, "total": 0})
+            product["qty"] += int(item["qty"])
+            totals["units"] += int(item["qty"])
+            product["total"] += allocated[i][0] + int(i in extra)
+    totals["average"] = round(totals["total"] / totals["count"]) if totals["count"] else 0
+    flow = {"inflow": 0, "outflow": 0, "net": 0} if finance else None
+    if finance:
+        # Net each journal entry across cash, bank and payment gateway accounts.
+        # Internal cash-to-bank transfers must not inflate both receipts and payments.
+        entries = conn.execute("""SELECT e.id,e.created_at,SUM(l.debit-l.credit) AS movement
+            FROM journal_entries e JOIN journal_lines l ON l.entry_id=e.id JOIN accounts a ON a.id=l.account_id
+            WHERE a.code IN ('1000','1010','1020') AND julianday(e.created_at)>=julianday(?)
+              AND julianday(e.created_at)<julianday(?) GROUP BY e.id,e.created_at""", (iso(start), iso(end))).fetchall()
+        for entry in entries:
+            value = int(entry["movement"])
+            direction = "inflow" if value >= 0 else "outflow"
+            flow[direction] += abs(value)
+            bucket = slot(entry["created_at"])
+            if 0 <= bucket < len(points):
+                points[bucket][direction] += abs(value)
+        flow["net"] = flow["inflow"] - flow["outflow"]
+    return {**totals, "points": points, "hours": hours, "payments": list(payments.values()), "products": products, "cashflow": flow}
+
+
+def summary_for(conn, kind: str, finance: bool = False, as_of: datetime | None = None) -> dict:
+    now = (as_of or now_dt()).astimezone(TEHRAN)
+    start, end = range_bounds(kind, now)
+    cutoff = min(end, now + timedelta(seconds=1))
+    if kind in {"day", "week"}:
+        previous_start = start - timedelta(days=1 if kind == "day" else 7)
     else:
-        buckets = []
-        cursor = start
-        while cursor < end:
-            nxt = cursor + timedelta(days=1)
-            local = cursor.astimezone(TEHRAN).replace(tzinfo=None)
-            buckets.append((jdatetime.datetime.fromgregorian(datetime=local).day, cursor, nxt))
-            cursor = nxt
-    for label, bucket_start, bucket_end in buckets:
-        total = sum(pay for stamp, pay, _disc in parsed if bucket_start <= stamp < bucket_end)
-        points.append({"label": label, "total": total})
-    local = start.astimezone(TEHRAN).replace(tzinfo=None)
-    jalali = jdatetime.datetime.fromgregorian(datetime=local)
-    label = f"{jalali.day} {JMONTHS[jalali.month - 1]} {jalali.year}"
-    if kind == "week":
-        label = f"هفته از {label}"
-    elif kind == "month":
-        label = f"{JMONTHS[jalali.month - 1]} {jalali.year}"
-    top_rows = conn.execute(
-        """SELECT si.name AS name, SUM(si.qty) AS qty, SUM(si.line_total) AS total
-           FROM sale_items si JOIN sales s ON s.id = si.sale_id
-           WHERE s.status='paid' AND s.created_at>=? AND s.created_at<?
-           GROUP BY si.product_id, IFNULL(si.variation_id, 0), si.name
-           ORDER BY total DESC LIMIT 5""",
-        (iso(start), iso(end)),
-    ).fetchall()
-    return {
-        "range": kind,
-        "label": label,
-        "total": sum(pay for _s, pay, _d in parsed),
-        "discount": sum(disc for _s, _p, disc in parsed),
-        "count": len(parsed),
-        "points": points,
-        "top": [{"name": row["name"], "qty": row["qty"], "total": row["total"]} for row in top_rows],
-    }
+        jalali = jdatetime.datetime.fromgregorian(datetime=start.replace(tzinfo=None))
+        year, month = (jalali.year - 1, 12) if jalali.month == 1 else (jalali.year, jalali.month - 1)
+        previous_start = jdatetime.datetime(year, month, 1).togregorian().replace(tzinfo=TEHRAN)
+    previous_end = min(start, previous_start + (cutoff - start))
+    current = report_window(conn, start, cutoff, kind, finance)
+    previous = report_window(conn, previous_start, previous_end, kind, finance)
+    labels = list(range(24)) if kind == "day" else JWEEKDAYS if kind == "week" else list(range(1, (end - start).days + 1))
+    points = [{"label": label, **current["points"][i], "previous": previous["points"][i]["total"],
+               "previous_count": previous["points"][i]["count"], "previous_inflow": previous["points"][i]["inflow"],
+               "previous_outflow": previous["points"][i]["outflow"]} for i, label in enumerate(labels)]
+    products = current.pop("products")
+    previous_products = previous.pop("products")
+    ranked = []
+    for product_id, product in products.items():
+        before = previous_products.get(product_id, {"total": 0, "qty": 0})
+        ranked.append({**product, "previous_total": before["total"], "previous_qty": before["qty"],
+                       "change": report_change(product["total"], before["total"])})
+    ranked.sort(key=lambda item: (-item["total"], -item["qty"], item["product_id"]))
+    hours = [{**point, "previous": previous["hours"][i]["total"], "previous_count": previous["hours"][i]["count"]}
+             for i, point in enumerate(current["hours"])]
+    jstart = jdatetime.datetime.fromgregorian(datetime=start.replace(tzinfo=None))
+    label = f"{JMONTHS[jstart.month - 1]} {jstart.year}" if kind == "month" else f"{'هفته از ' if kind == 'week' else ''}{jstart.day} {JMONTHS[jstart.month - 1]} {jstart.year}"
+    previous_summary = {key: previous[key] for key in ("total", "count", "discount", "units", "average", "cashflow")}
+    return {**current, "range": kind, "label": label, "points": points, "hours": hours, "top": ranked[:10],
+            "top_quantity": sorted(ranked, key=lambda item: (-item["qty"], -item["total"], item["product_id"]))[:10],
+            "previous": previous_summary, "changes": {key: report_change(current[key], previous[key]) for key in ("total", "count", "units", "average")},
+            "peak_hours": sorted([hour for hour in hours if hour["count"]], key=lambda hour: (-hour["total"], -hour["count"], hour["hour"]))[:3],
+            "start": iso(start), "end": iso(cutoff), "previous_start": iso(previous_start), "previous_end": iso(previous_end),
+            "as_of": to_jalali(iso(now)), "comparison_note": "مقایسه تا همین زمان از دورهٔ قبل؛ ماه شمسی و شروع هفته از شنبه. ماه کوتاه‌تر تا پایان همان ماه محاسبه می‌شود."}
 
 
 def shamsi_month(conn, year: int, month: int, selected: int | None = None) -> dict:
@@ -2785,7 +2959,7 @@ def host_account(action: str, fields: dict) -> dict:
 
 
 def license_host_item(conn, row) -> dict:
-    shop = conn.execute("SELECT phone FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    shop = conn.execute("SELECT phone FROM users WHERE role='admin' AND deleted_at IS NULL ORDER BY id LIMIT 1").fetchone()
     return {
         "shop_phone": shop["phone"] if shop else "",
         "local_id": int(row["id"]),
@@ -2840,7 +3014,7 @@ def store_license_on_host(conn, row) -> bool:
 
 
 def sms_host_item(conn, row) -> dict:
-    shop = conn.execute("SELECT phone FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    shop = conn.execute("SELECT phone FROM users WHERE role='admin' AND deleted_at IS NULL ORDER BY id LIMIT 1").fetchone()
     settings = get_settings(conn)
     return {
         "shop_phone": shop["phone"] if shop else "",
@@ -2985,7 +3159,7 @@ def seed_paid_license(conn, buyer_name: str, plan: str = "50y") -> None:
     ).fetchone()
     if paid:
         return
-    admin = conn.execute("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    admin = conn.execute("SELECT id FROM users WHERE role='admin' AND deleted_at IS NULL ORDER BY id LIMIT 1").fetchone()
     user_id = int(admin["id"]) if admin else None
     name = clean_text(buyer_name, "خریدار", 80) or "خریدار"
     start = now.replace(microsecond=0)
@@ -3214,16 +3388,65 @@ def put_site_stock(settings: dict, path: str, quantity: int, extra: dict | None 
     return body
 
 
-def woo_item(row) -> dict:
+def product_terms(row, key: str) -> list[dict]:
+    try:
+        value = json.loads(row[key] or "[]") if key in row.keys() else []
+    except (ValueError, TypeError):
+        return []
+    return [item for item in value if isinstance(item, dict) and isinstance(item.get("id"), int) and item["id"] > 0] if isinstance(value, list) else []
+
+
+def english_product_slug(row) -> str:
+    text = re.sub(r"[^a-z0-9]+", "-", str(row["name"] or "").lower()).strip("-")
+    return (text[:65].rstrip("-") if text else "product") + "-" + str(row["id"])
+
+
+def save_product_terms(conn, product_id: int, payload: dict) -> set[str]:
+    changed = set()
+    for key in ("categories", "brands"):
+        if key not in payload:
+            continue
+        values = payload[key]
+        if not isinstance(values, list) or len(values) > 100:
+            raise AppError("فهرست دسته‌بندی یا برند نامعتبر است")
+        clean, seen = [], set()
+        for item in values:
+            if not isinstance(item, dict) or isinstance(item.get("id"), bool):
+                raise AppError("شناسه دسته‌بندی یا برند نامعتبر است")
+            try:
+                term_id = int(str(item.get("id") or ""))
+            except (TypeError, ValueError):
+                raise AppError("شناسه دسته‌بندی یا برند نامعتبر است")
+            if term_id <= 0:
+                raise AppError("شناسه دسته‌بندی یا برند نامعتبر است")
+            if term_id not in seen:
+                clean.append({"id": term_id, "name": clean_text(item.get("name"), "نام دسته‌بندی یا برند", 120)})
+                seen.add(term_id)
+        conn.execute(f"UPDATE products SET {key}=? WHERE id=?", (json.dumps(clean, ensure_ascii=False), product_id))
+        changed.add(key)
+    return changed
+
+
+def remember_product_terms(conn, product_id: int, remote: dict) -> None:
+    for key in ("categories", "brands"):
+        if key in remote and isinstance(remote[key], list):
+            terms = [{"id": item["id"], "name": str(item.get("name") or "")[:120]} for item in remote[key]
+                     if isinstance(item, dict) and isinstance(item.get("id"), int) and item["id"] > 0]
+            conn.execute(f"UPDATE products SET {key}=? WHERE id=?", (json.dumps(terms, ensure_ascii=False), product_id))
+
+
+def woo_item(row, taxonomy_fields=None) -> dict:
     item = {
         "name": row["name"],
         "type": "simple",
         "regular_price": str(row["price"]),
-        "status": "publish",
         **woo_stock_fields(row["stock"]),
     }
     if row["sku"]:
         item["sku"] = row["sku"]
+    for key in taxonomy_fields or ():
+        if key in {"categories", "brands"} and key in row.keys() and row[key] is not None:
+            item[key] = [{"id": term["id"]} for term in product_terms(row, key)]
     meta = []
     if row["barcode"]:
         meta.append({"key": "barcode", "value": row["barcode"]})
@@ -3237,22 +3460,46 @@ def woo_item(row) -> dict:
     return item
 
 
-def publish_saved_product(conn, product_id: int) -> str:
+def publish_saved_product(conn, product_id: int, variation_ids: list[int] | None = None, taxonomy_fields=None) -> str:
     row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
-    if not row or is_payment_product(row) or product_kind(row) == "variable":
+    if not row or is_payment_product(row):
         return report_woo_stock(conn, product_id)
+    if "price_per_gram" in row.keys() and row["price_per_gram"]:
+        return "نرخ گرمی عطر در دفترچی ذخیره شد؛ محاسبه و فروش گرمی قیمت و موجودی سایت را تغییر نمی‌دهد."
     settings = get_settings(conn)
     if not woo_auto_ready(settings):
         return "کالا در دفترچی ذخیره شد. برای رفتن به سایت، آدرس و کلید ووکامرس را در تنظیمات بگذارید."
     try:
+        if product_kind(row) == "variable":
+            if not row["woo_id"]:
+                return "تغییرات در دفترچی ذخیره شد؛ برای اتصال نوع‌های کالا، ابتدا کالا را از ووکامرس دریافت کنید."
+            # Prices and counts belong to each variation, not the parent product.
+            parent_payload = {key: value for key, value in woo_item(row, taxonomy_fields).items()
+                              if key not in {"type", "regular_price", "manage_stock", "stock_quantity", "stock_status"}}
+            conn.commit()
+            _code, remote = woo_request(settings, "PUT", f"products/{int(row['woo_id'])}", payload=parent_payload)
+            if isinstance(remote, dict):
+                remember_product_terms(conn, product_id, remote)
+            if variation_ids is None:
+                push_product_row_to_woo(settings, conn, product_id)
+            else:
+                for variation_id in variation_ids:
+                    push_product_row_to_woo(settings, conn, product_id, variation_id)
+            return "تغییرات کالا و نوع‌های آن در دفترچی و سایت ذخیره شد."
         if row["woo_id"]:
+            if taxonomy_fields:
+                body = {key: value for key, value in woo_item(row, taxonomy_fields).items() if key in taxonomy_fields}
+                _code, remote = woo_request(settings, "PUT", f"products/{int(row['woo_id'])}", payload=body)
+                if isinstance(remote, dict):
+                    remember_product_terms(conn, product_id, remote)
             push_product_row_to_woo(settings, conn, product_id)
             return "کالا ذخیره شد و روی سایت هم به‌روز شد."
-        _status, body = woo_request(settings, "POST", "products", payload=woo_item(row))
+        _status, body = woo_request(settings, "POST", "products", payload={**woo_item(row, {"categories", "brands"}), "status": "publish", "slug": english_product_slug(row)})
         if not isinstance(body, dict) or not body.get("id"):
             message = body.get("message") if isinstance(body, dict) else "پاسخ سایت نامعتبر بود"
             return f"کالا در دفترچی ماند، اما به سایت نرفت: {message}"
         conn.execute("UPDATE products SET woo_id=?, updated_at=? WHERE id=?", (int(body["id"]), iso(), product_id))
+        remember_product_terms(conn, product_id, body)
         return "کالا ذخیره شد و در سایت هم ساخته شد."
     except AppError as exc:
         return f"کالا در دفترچی ماند، اما به سایت نرفت: {exc}"
@@ -3329,7 +3576,9 @@ def push_product_row_to_woo(settings: dict, conn, product_id: int, variation_id:
         return
     if not row["woo_id"]:
         return
-    put_site_stock(settings, f"products/{int(row['woo_id'])}", int(row["stock"] or 0), woo_item(row))
+    remote = put_site_stock(settings, f"products/{int(row['woo_id'])}", int(row["stock"] or 0), woo_item(row))
+    if isinstance(remote, dict):
+        remember_product_terms(conn, product_id, remote)
     conn.execute("UPDATE products SET updated_at=? WHERE id=?", (iso(), product_id))
 
 
@@ -3453,7 +3702,7 @@ def save_settings(conn, payload: dict):
             continue
         if key in BOOL_KEYS:
             stored = "1" if str(value) in {"1", "true", "True", "on"} else "0"
-        elif key in {"price_3m", "price_6m", "price_12m", "price_50y", "price_pro10", "price_pro50", "price_pro200"}:
+        elif key in {"price_1m", "price_3m", "price_6m", "price_12m", "price_50y", "price_pro10", "price_pro50", "price_pro200"}:
             stored = str(parse_money(value, "قیمت لایسنس"))
         elif key in {"cap_50y", "low_stock"}:
             stored = str(parse_money(value, key, allow_empty=True))
@@ -3809,6 +4058,9 @@ def init_db():
               created_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
+            CREATE INDEX IF NOT EXISTS idx_sales_report_time ON sales(julianday(created_at));
+            CREATE INDEX IF NOT EXISTS idx_journal_report_time ON journal_entries(julianday(created_at));
+            CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
             CREATE INDEX IF NOT EXISTS idx_sales_session ON sales(session_id);
             CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
             """
@@ -3841,6 +4093,8 @@ def init_db():
             conn.execute("ALTER TABLE users ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 1")
         if "password_keep" not in user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN password_keep TEXT")
+        if "deleted_at" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN deleted_at TEXT")
         if not conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             conn.execute(
                 "INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?,?)",
@@ -3872,9 +4126,11 @@ def init_db():
         if merchant_row and merchant_row["value"] == ZIBAL_LICENSE_MERCHANT and gateway_row and gateway_row["value"] != "zibal":
             conn.execute("UPDATE settings SET value='zibal' WHERE key='gateway'")
             conn.execute("UPDATE settings SET value='0' WHERE key='gateway_sandbox'")
-        price_50 = conn.execute("SELECT value FROM settings WHERE key='price_50y'").fetchone()
-        if price_50 and str(price_50["value"]).strip() == "12000000":
-            conn.execute("UPDATE settings SET value='15000000' WHERE key='price_50y'")
+        # Apply the owner's new base prices once to existing installations, without rewriting sold licenses.
+        if not conn.execute("SELECT 1 FROM settings WHERE key='pricing_revision_14050905'").fetchone():
+            for key in ("price_1m", "price_3m", "price_6m", "price_12m", "price_50y"):
+                conn.execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", (key, DEFAULT_SETTINGS[key]))
+            conn.execute("INSERT INTO settings(key,value) VALUES('pricing_revision_14050905','1')")
         have = {row["name"] for row in conn.execute("PRAGMA table_info(licenses)")}
         if "status" not in have:
             conn.execute("ALTER TABLE licenses ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'")
@@ -3891,6 +4147,9 @@ def init_db():
             conn.execute("ALTER TABLE products ADD COLUMN tax_code TEXT")
         if "product_type" not in product_cols:
             conn.execute("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'")
+        for column in ("categories", "brands"):
+            if column not in product_cols:
+                conn.execute(f"ALTER TABLE products ADD COLUMN {column} TEXT")
         sale_item_cols = {row["name"] for row in conn.execute("PRAGMA table_info(sale_items)")}
         if "variation_id" not in sale_item_cols:
             conn.execute("ALTER TABLE sale_items ADD COLUMN variation_id INTEGER")
@@ -3914,6 +4173,19 @@ def init_db():
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_barcode ON sales(barcode)")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_barcode ON purchases(barcode)")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_invoice_code ON purchases(invoice_code)")
+        for column, definition in (("moadian_requested", "INTEGER NOT NULL DEFAULT 0"), ("credit_kind", "TEXT")):
+            if column not in sale_cols:
+                conn.execute(f"ALTER TABLE sales ADD COLUMN {column} {definition}")
+        if "price_per_gram" not in {row["name"] for row in conn.execute("PRAGMA table_info(products)")}:
+            conn.execute("ALTER TABLE products ADD COLUMN price_per_gram INTEGER")
+        item_cols = {row["name"] for row in conn.execute("PRAGMA table_info(sale_items)")}
+        for column, definition in (("weight_grams", "TEXT"), ("weight_basis", "TEXT"), ("rate_per_gram", "INTEGER")):
+            if column not in item_cols:
+                conn.execute(f"ALTER TABLE sale_items ADD COLUMN {column} {definition}")
+        check_cols = {row["name"] for row in conn.execute("PRAGMA table_info(checks)")}
+        if "sale_id" not in check_cols:
+            conn.execute("ALTER TABLE checks ADD COLUMN sale_id INTEGER")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_checks_sale ON checks(sale_id) WHERE sale_id IS NOT NULL")
         if "revised_at" not in sale_cols:
             conn.execute("ALTER TABLE sales ADD COLUMN revised_at TEXT")
         note_cols = {row["name"] for row in conn.execute("PRAGMA table_info(notifications)")}
@@ -4359,6 +4631,17 @@ def read_studio_manifest() -> dict:
     return last
 
 
+def local_release_history() -> list[dict]:
+    try:
+        body = json.loads((panel_root() / "version.json").read_text(encoding="utf-8-sig"))
+        history = body.get("history") or []
+        return [{"version": str(item.get("version") or "")[:40],
+                 "changes": [str(text)[:1000] for text in item.get("changes", [])[:100]]}
+                for item in history[:30] if isinstance(item, dict) and isinstance(item.get("changes"), list)]
+    except (OSError, ValueError, TypeError):
+        return []
+
+
 def panel_update_status() -> dict:
     current = APP_VERSION
     remote = read_studio_manifest()
@@ -4369,7 +4652,8 @@ def panel_update_status() -> dict:
         "current": current,
         "latest": latest,
         "update": newer,
-        "notes": str(body.get("notes") or "")[:400],
+        "notes": str(body.get("notes") or "")[:12000],
+        "history": local_release_history(),
         "app_url": str(body.get("app_url") or ""),
         "full_url": str(body.get("full_url") or ""),
         "mac_url": str(body.get("mac_url") or ""),
@@ -4657,6 +4941,8 @@ def shop_profile(conn) -> dict:
         "name": settings.get("shop_name") or "دفترچی",
         "logo": settings.get("shop_logo") or "",
         "theme": clean_theme(settings.get("ui_theme")),
+        "site_connected": bool(woo_auto_ready(settings)),
+        "moadian_enabled": settings.get("moadian_enabled") == "1",
     }
 
 
@@ -4679,7 +4965,11 @@ def bootstrap():
         "today": jalali_clock(),
         "theme": clean_theme(settings.get("ui_theme")),
     }
-    if flag:
+    if (
+        flag
+        and request.remote_addr in {"127.0.0.1", "::1"}
+        and request.host.split(":", 1)[0] in {"localhost", "127.0.0.1"}
+    ):
         return jsonify(initial=True, phone=INITIAL_PHONE, password=INITIAL_PASSWORD, **extra)
     return jsonify(initial=False, **extra)
 
@@ -4791,7 +5081,7 @@ def register_phone(payload: dict):
                 (phone, phone, None, hash_pw(secret), secret_token(secret), role, iso()),
             )
             user_id = cur.lastrowid
-            fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
             push_signup(conn, fresh)
         result = send_phone_code(conn, user_id, phone, "verify")
     return jsonify(**result)
@@ -4807,7 +5097,7 @@ def verify_phone():
             raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 404)
         accept_phone_code(conn, user, payload.get("code"), "phone")
         conn.execute("UPDATE users SET phone_verified=1 WHERE id=?", (user["id"],))
-        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user["id"],)).fetchone()
         clear_initial_secret(conn, fresh)
         push_signup(conn, fresh)
         packed = login_payload(conn, fresh)
@@ -4842,7 +5132,7 @@ def phone_login_enter():
         if not user or not int(user["phone_verified"] or 0):
             raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 404)
         accept_phone_code(conn, user, payload.get("code"), "login")
-        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user["id"],)).fetchone()
         packed = login_payload(conn, fresh)
     return finish_login(packed)
 
@@ -4896,11 +5186,11 @@ def register():
                 user_id = cur.lastrowid
         if not reopen:
             send_gmail_code(conn, settings, email, user_id, "verify")
-            fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
             push_signup(conn, fresh)
             return jsonify(ok=True, email=email, needs_verify=True, delivery="email")
         conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
-        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
         push_signup(conn, fresh)
         push_login(conn, fresh)
         flag = get_settings(conn).get("must_change_password") == "1"
@@ -4936,7 +5226,7 @@ def verify_email():
             raise AppError("کد نادرست یا منقضی است")
         conn.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
         conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user["id"],))
-        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user["id"],)).fetchone()
         clear_initial_secret(conn, fresh)
         push_signup(conn, fresh)
     return jsonify(ok=True)
@@ -5009,6 +5299,8 @@ def change_password():
     new_password = str(payload.get("password") or "")
     if len(new_password) < 6 or len(new_password) > 100:
         raise AppError("رمز جدید باید حداقل ۶ حرف باشد")
+    if new_password == INITIAL_PASSWORD:
+        raise AppError("رمز جدید باید با رمز اولیه فرق داشته باشد")
     if not check_pw(current, user["password_hash"]):
         raise AppError("رمز فعلی نادرست است")
     with connect() as conn:
@@ -5021,7 +5313,7 @@ def change_password():
 def mail_password():
     user = require_user()
     with connect() as conn:
-        fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user["id"],)).fetchone()
         send_password_mail(conn, fresh)
     return jsonify(ok=True, delivery="email", sent_password=True, detail="رمز به جیمیل فرستاده شد")
 
@@ -5077,7 +5369,7 @@ def reset_password():
 def list_users():
     require_admin()
     with connect() as conn:
-        rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
+        rows = conn.execute("SELECT * FROM users WHERE deleted_at IS NULL ORDER BY id").fetchall()
     return jsonify(users=[public_user(row) for row in rows])
 
 
@@ -5107,7 +5399,7 @@ def create_user():
             "INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, created_at) VALUES (?,?,?,?,?,?,?,?)",
             (name, phone, email or None, hash_pw(password), secret_token(password), role, 1, iso()),
         )
-        row = conn.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (cur.lastrowid,)).fetchone()
         push_signup(conn, row)
     return jsonify(user=public_user(row))
 
@@ -5115,26 +5407,36 @@ def create_user():
 @app.delete("/api/users/<int:uid>")
 def delete_user(uid: int):
     admin = require_admin()
-    if int(admin["id"]) == uid:
-        raise AppError("کاربر واردشده را نمی‌توان حذف کرد")
     with connect() as conn:
-        row = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (uid,)).fetchone()
         if not row:
             raise AppError("کاربر پیدا نشد", 404)
         if row["role"] == "admin":
+            if check_pw(INITIAL_PASSWORD, row["password_hash"]):
+                raise AppError("برای حذف حساب مدیر اولیه، ابتدا رمز اولیهٔ آن را تغییر دهید")
             others = conn.execute(
-                "SELECT COUNT(*) AS c FROM users WHERE role='admin' AND id<>?",
+                "SELECT COUNT(*) AS c FROM users WHERE role='admin' AND deleted_at IS NULL AND id<>?",
                 (uid,),
             ).fetchone()["c"]
             if others < 1:
                 raise AppError("آخرین مدیر را نمی‌توان حذف کرد")
-        conn.execute("DELETE FROM users WHERE id=?", (uid,))
-    return jsonify(ok=True)
+        # Retain the historical user id so a future account cannot inherit old sessions or accounting records.
+        conn.execute("UPDATE users SET deleted_at=?, phone=?, email=NULL, password_hash=?, password_keep=NULL WHERE id=?",
+                     (iso(), "deleted-" + uuid.uuid4().hex, hash_pw(secrets.token_urlsafe(32)), uid))
+    own_account = int(admin["id"]) == uid
+    if own_account:
+        session.clear()
+    return jsonify(ok=True, logged_out=own_account)
 
 
 @app.get("/api/products")
 def list_products():
     require_user()
+    active = 1
+    if request.args.get("archived") == "1":
+        require_admin()
+        active = 0
     query = str(request.args.get("q") or "").strip()
     with connect() as conn:
         threshold = setting_int(get_settings(conn), "low_stock")
@@ -5143,15 +5445,15 @@ def list_products():
             rows = conn.execute(
                 """SELECT DISTINCT p.* FROM products p
                    LEFT JOIN product_variations v ON v.product_id=p.id AND v.active=1
-                   WHERE p.active=1 AND (
+                   WHERE p.active=? AND (
                      p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?
                      OR v.label LIKE ? OR v.sku LIKE ? OR v.barcode LIKE ?
                    )
                    ORDER BY p.name""",
-                (like, like, like, like, like, like),
+                (active, like, like, like, like, like, like),
             ).fetchall()
         else:
-            rows = conn.execute("SELECT * FROM products WHERE active=1 ORDER BY name").fetchall()
+            rows = conn.execute("SELECT * FROM products WHERE active=? ORDER BY name", (active,)).fetchall()
         products = present_products(conn, rows, threshold)
     return jsonify(products=products)
 
@@ -5262,7 +5564,9 @@ def create_product():
             if stock:
                 log_stock(conn, product_id, "adjust", stock, 0, stock, "موجودی اولیه", user["id"])
         threshold = setting_int(get_settings(conn), "low_stock")
-        note = publish_saved_product(conn, product_id)
+        save_perfume_rate(conn, product_id, payload)
+        taxonomy_fields = save_product_terms(conn, product_id, payload)
+        note = publish_saved_product(conn, product_id, taxonomy_fields=taxonomy_fields)
         row = conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
         product = present_product(conn, row, threshold)
     return jsonify(product=product, woo_sync_note=note)
@@ -5290,9 +5594,15 @@ def update_product(pid: int):
         tax_code = clean_tax_code(payload["tax_code"]) if "tax_code" in payload else row["tax_code"]
         image = clean_image(payload["image"]) if "image" in payload else row["image"]
         variable = product_kind(row) == "variable"
+        changed_variations = None
         if variable:
+            if "variations" not in payload and (price != row["price"] or stock != row["stock"]):
+                raise AppError("برای کالای چندنوعی، قیمت و موجودی هر نوع را جداگانه وارد کنید.")
+            changed_variations = save_product_variations(conn, pid, payload.get("variations", []), user["id"])
             price = row["price"]
             stock = row["stock"]
+        elif "variations" in payload:
+            raise AppError("این کالا چندنوعی نیست.")
         conn.execute(
             """UPDATE products SET name=?, sku=?, barcode=?, price=?, cost=?, stock=?, image=?, tax_code=?, updated_at=? WHERE id=?""",
             (name, sku, barcode, price, cost, stock, image, tax_code, iso(), pid),
@@ -5304,21 +5614,127 @@ def update_product(pid: int):
         if variable:
             variable_parent_stock(conn, pid)
         threshold = setting_int(get_settings(conn), "low_stock")
-        note = publish_saved_product(conn, pid)
+        save_perfume_rate(conn, pid, payload)
+        taxonomy_fields = save_product_terms(conn, pid, payload)
+        note = publish_saved_product(conn, pid, changed_variations, taxonomy_fields=taxonomy_fields)
         updated = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
         product = present_product(conn, updated, threshold)
     return jsonify(product=product, woo_sync_note=note)
 
 
+def save_product_variations(conn, product_id: int, posted, user_id: int) -> list[int]:
+    if not isinstance(posted, list) or len(posted) > 2000:
+        raise AppError("فهرست نوع‌های کالا نامعتبر است.")
+    changed = []
+    seen = set()
+    for item in posted:
+        if not isinstance(item, dict) or isinstance(item.get("id"), bool):
+            raise AppError("نوع کالا نامعتبر است.")
+        try:
+            variation_id = int(str(item.get("id") or ""))
+        except (TypeError, ValueError):
+            raise AppError("شناسه نوع کالا نامعتبر است.")
+        if variation_id in seen:
+            raise AppError("یک نوع کالا دوبار ارسال شده است.")
+        seen.add(variation_id)
+        row = conn.execute("SELECT * FROM product_variations WHERE id=? AND product_id=? AND active=1",
+                           (variation_id, product_id)).fetchone()
+        if not row:
+            raise AppError("نوع انتخاب‌شده متعلق به این کالا نیست یا بایگانی شده است.", 404)
+        price = parse_money(item["price"], f"قیمت {row['label']}") if "price" in item else row["price"]
+        stock = parse_money(item["stock"], f"موجودی {row['label']}") if "stock" in item else row["stock"]
+        if price == row["price"] and stock == row["stock"]:
+            continue
+        conn.execute("UPDATE product_variations SET price=?,stock=?,in_stock=? WHERE id=?",
+                     (price, stock, int(stock > 0) if stock is not None else row["in_stock"], variation_id))
+        if price != row["price"]:
+            log_stock(conn, product_id, "price", 0, row["price"], price, f"تغییر قیمت · {row['label']}", user_id)
+        if stock != row["stock"]:
+            old_stock = int(row["stock"] or 0)
+            log_stock(conn, product_id, "adjust", stock - old_stock, old_stock, stock, f"تعدیل موجودی · {row['label']}", user_id)
+        changed.append(variation_id)
+    return changed
+
+
 @app.delete("/api/products/<int:pid>")
+@app.post("/api/products/<int:pid>/archive")
 def archive_product(pid: int):
     require_admin()
     with connect() as conn:
-        row = conn.execute("SELECT id FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active>=0", (pid,)).fetchone()
         if not row:
             raise AppError("کالا پیدا نشد", 404)
+        note = archive_product_on_site(conn, row)
         conn.execute("UPDATE products SET active=0, updated_at=? WHERE id=?", (iso(), pid))
-    return jsonify(ok=True)
+    return jsonify(ok=True, woo_sync_note=note)
+
+
+def archive_product_on_site(conn, row, remove: bool = False) -> str:
+    settings = get_settings(conn)
+    remote_id = row["woo_id"]
+    if not remote_id:
+        mode = settings.get("shop_mode") or ""
+        if mode == "offline" or (mode not in {"online", "hybrid"} and not settings.get("woo_key") and not settings.get("woo_secret")):
+            return "کالا فقط در دفترچی حذف شد؛ فروشگاه به سایت متصل نیست." if remove else "کالا فقط در دفترچی بایگانی شد؛ فروشگاه به سایت متصل نیست."
+        require_woo(settings)
+        sku = str(row["sku"] or "").strip()
+        if not sku:
+            raise AppError("اتصال این کالا به سایت مشخص نیست. ابتدا «دریافت از ووکامرس» را بزنید و دوباره تلاش کنید.", 409)
+        _status, matches = woo_request(settings, "GET", "products", {
+            "sku": sku, "status": "any", "context": "edit", "per_page": "100",
+        })
+        if not isinstance(matches, list):
+            raise AppError("پاسخ جستجوی کالا در سایت نامعتبر بود؛ وضعیت دفترچی تغییر نکرد.", 502)
+        candidates = {remote_product_id(item) for item in matches
+                      if isinstance(item, dict) and str(item.get("sku") or "").strip() == sku
+                      and str(item.get("type") or "simple") != "variation" and remote_product_id(item)}
+        if len(candidates) != 1:
+            raise AppError("کالای متناظر در سایت به‌طور یکتا پیدا نشد. ابتدا «دریافت از ووکامرس» را بزنید.", 409)
+        remote_id = candidates.pop()
+        if conn.execute("SELECT 1 FROM products WHERE woo_id=? AND id<>?", (remote_id, row["id"])).fetchone():
+            raise AppError("این کالای سایت به رکورد دیگری در دفترچی متصل است. ابتدا کالاها را از ووکامرس دریافت کنید.", 409)
+    require_woo(settings)
+    remote_id = int(remote_id)
+    path = f"products/{remote_id}"
+    expected = "trash" if remove else "draft"
+
+    def read_status():
+        _status, product = woo_request(settings, "GET", path, {
+            "context": "edit", "_fields": "id,status", "_daftarchi_check": secrets.token_hex(8),
+        })
+        if not isinstance(product, dict) or product.get("id") != remote_id:
+            raise AppError("پاسخ تأیید وضعیت کالا از سایت نامعتبر بود؛ دوباره تلاش کنید.", 502)
+        return product.get("status")
+
+    if remove:
+        # A retry after a lost response must also succeed when the site already trashed it.
+        if read_status() != "trash":
+            _status, saved = woo_request(settings, "DELETE", path, {"force": "false"})
+            # WooCommerce returns the product as it was BEFORE trashing it.
+            # Confirm persisted state with a fresh read, rather than the DELETE body.
+            if not isinstance(saved, dict) or saved.get("id") != remote_id or read_status() != expected:
+                raise AppError("حذف کالا در سایت تأیید نشد؛ وضعیت دفترچی تغییر نکرد. دوباره تلاش کنید.", 502)
+    else:
+        _status, saved = woo_request(settings, "PUT", path, payload={"status": "draft"})
+        if not isinstance(saved, dict) or saved.get("id") != remote_id or read_status() != expected:
+            raise AppError("پیش‌نویس شدن کالا در سایت تأیید نشد؛ وضعیت دفترچی تغییر نکرد. دوباره تلاش کنید.", 502)
+    conn.execute("UPDATE products SET woo_id=? WHERE id=?", (remote_id, row["id"]))
+    return "کالا در سایت به زباله‌دان منتقل شد." if remove else "کالا در سایت به پیش‌نویس تغییر کرد."
+
+
+@app.delete("/api/products/<int:pid>/archive")
+def delete_archived_product(pid: int):
+    require_admin()
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active=0", (pid,)).fetchone()
+        if not row:
+            raise AppError("کالای بایگانی‌شده پیدا نشد", 404)
+        note = archive_product_on_site(conn, row, remove=True)
+        # Keep the original IDs for invoices, purchases and inventory history.
+        # -1 hides the product from both lists and prevents a later pull reviving it.
+        conn.execute("UPDATE products SET active=-1, sku=NULL, barcode=NULL, updated_at=? WHERE id=?", (iso(), pid))
+        conn.execute("UPDATE product_variations SET active=0, sku=NULL, barcode=NULL WHERE product_id=?", (pid,))
+    return jsonify(ok=True, woo_sync_note=note)
 
 
 @app.get("/api/products/template")
@@ -5487,7 +5903,7 @@ def locate_import(by_barcode, by_sku, by_name, by_sig, item):
 
 
 def plan_product_import(conn, parsed):
-    by_barcode, by_sku, by_name, by_sig = index_products(conn.execute("SELECT * FROM products").fetchall())
+    by_barcode, by_sku, by_name, by_sig = index_products(conn.execute("SELECT * FROM products WHERE active>=0").fetchall())
     creating = updating = 0
     errors = []
     temp_id = 0
@@ -5520,7 +5936,7 @@ def plan_product_import(conn, parsed):
 def save_imported_products(user, parsed):
     created, updated, errors, ids = 0, 0, [], []
     with connect() as conn:
-        by_barcode, by_sku, by_name, by_sig = index_products(conn.execute("SELECT * FROM products").fetchall())
+        by_barcode, by_sku, by_name, by_sig = index_products(conn.execute("SELECT * FROM products WHERE active>=0").fetchall())
         for item in parsed:
             try:
                 existing = locate_import(by_barcode, by_sku, by_name, by_sig, item)
@@ -5688,6 +6104,8 @@ def woo_push():
             item["id"] = rid
             update_pairs.append((row["id"], item))
         else:
+            item["status"] = "publish"
+            item["slug"] = english_product_slug(row)
             create_pairs.append((row["id"], item))
     created = updated = 0
     failed = []
@@ -5883,6 +6301,10 @@ def store_remote_product(conn, remote: dict, variations: list[dict] | None, user
     sku = str(remote.get("sku") or "").strip() or None
     barcode = remote_barcode(remote)
     row = conn.execute("SELECT * FROM products WHERE woo_id=?", (remote.get("id"),)).fetchone()
+    if row is not None and row["active"] == -1:
+        return "skipped"
+    remote_status = str(remote.get("status") or "publish")
+    active = 1 if remote_status == "publish" else 0
     if not row and sku:
         row = conn.execute("SELECT * FROM products WHERE sku=?", (sku,)).fetchone()
     if not row and remote.get("name"):
@@ -5902,8 +6324,8 @@ def store_remote_product(conn, remote: dict, variations: list[dict] | None, user
     if row:
         conn.execute(
             """UPDATE products SET name=?, sku=COALESCE(?, sku), barcode=COALESCE(?, barcode), price=?, stock=?,
-               image=COALESCE(?, image), woo_id=?, product_type=?, active=1, updated_at=? WHERE id=?""",
-            (remote["name"], sku, barcode, price, stock, image or None, remote.get("id"), kind, iso(), row["id"]),
+               image=COALESCE(?, image), woo_id=?, product_type=?, active=?, updated_at=? WHERE id=?""",
+            (remote["name"], sku, barcode, price, stock, image or None, remote.get("id"), kind, active, iso(), row["id"]),
         )
         product_id = row["id"]
         state = "updated"
@@ -5911,14 +6333,15 @@ def store_remote_product(conn, remote: dict, variations: list[dict] | None, user
         cur = conn.execute(
             """INSERT INTO products
                (name, sku, barcode, price, cost, stock, image, woo_id, product_type, active, created_at, updated_at)
-               VALUES (?,?,?,?,0,?,?,?,?,1,?,?)""",
-            (remote["name"], sku, barcode, price, stock, image or None, remote.get("id"), kind, iso(), iso()),
+               VALUES (?,?,?,?,0,?,?,?,?,?,?,?)""",
+            (remote["name"], sku, barcode, price, stock, image or None, remote.get("id"), kind, active, iso(), iso()),
         )
         product_id = cur.lastrowid
         state = "imported"
     if index and row is not None and not row["woo_id"]:
         snap = row if isinstance(row, dict) else product_snapshot(row)
         forget_product({}, {}, index[0], snap, index[1])
+    remember_product_terms(conn, product_id, remote)
     if kind == "variable":
         seen = []
         parents = [item for item in (remote.get("attributes") or []) if isinstance(item, dict)]
@@ -6050,6 +6473,98 @@ def due_checks(conn) -> list:
     return [check_row(row) for row in rows]
 
 
+
+def site_settings_for_user(admin=False):
+    user = require_admin() if admin else require_user()
+    if not admin and user["role"] == "stock":
+        raise AppError("مشاهده سفارش‌های سایت با مدیر یا صندوق‌دار است", 403)
+    with connect() as conn:
+        settings = get_settings(conn)
+    if not woo_auto_ready(settings):
+        raise AppError("ابتدا سایت و کلیدهای ووکامرس را در تنظیمات ثبت کنید")
+    return settings
+
+
+def site_page():
+    try:
+        page = int(request.args.get("page") or 1)
+    except (TypeError, ValueError):
+        raise AppError("شماره صفحه نامعتبر است")
+    if not 1 <= page <= 100000:
+        raise AppError("شماره صفحه نامعتبر است")
+    return page
+
+
+def safe_site_link(value):
+    value = str(value or "")
+    return value if value.startswith(("https://", "http://")) else ""
+
+
+def present_site_order(row):
+    billing = row.get("billing") or {}
+    return {"id": row.get("id"), "number": str(row.get("number") or row.get("id") or ""),
+            "status": str(row.get("status") or ""), "currency": str(row.get("currency") or ""),
+            "total": str(row.get("total") or "0"), "discount_total": str(row.get("discount_total") or "0"),
+            "shipping_total": str(row.get("shipping_total") or "0"),
+            "date": str(row.get("date_created") or ""),
+            "payment_method": str(row.get("payment_method") or ""),
+            "payment_title": str(row.get("payment_method_title") or row.get("payment_method") or ""),
+            "customer": " ".join(str(billing.get(key) or "") for key in ("first_name", "last_name")).strip(),
+            "phone": str(billing.get("phone") or ""),
+            "payment_url": safe_site_link(row.get("payment_url")) if row.get("needs_payment") else "",
+            "items": [{"name": str(item.get("name") or ""), "qty": item.get("quantity") or 0,
+                       "total": str(item.get("total") or "0")} for item in row.get("line_items") or []]}
+
+
+@app.get("/api/site/orders")
+def site_orders():
+    settings = site_settings_for_user()
+    page = site_page()
+    status = str(request.args.get("status") or "any")
+    if status not in {"any", "pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed", "trash"}:
+        raise AppError("وضعیت سفارش نامعتبر است")
+    query = {"page": page, "per_page": 30, "orderby": "date", "order": "desc", "status": status}
+    search = clean_text(request.args.get("search"), "جستجوی سفارش", 120)
+    if search:
+        query["search"] = search
+    _code, rows = woo_request(settings, "GET", "orders", query)
+    if not isinstance(rows, list):
+        raise AppError("پاسخ فهرست سفارش‌های سایت معتبر نیست", 502)
+    return jsonify(orders=[present_site_order(row) for row in rows], page=page, has_more=len(rows) == 30)
+
+
+@app.get("/api/site/payment-methods")
+def site_payment_methods():
+    settings = site_settings_for_user()
+    _code, rows = woo_request(settings, "GET", "payment_gateways")
+    if not isinstance(rows, list):
+        raise AppError("پاسخ روش‌های پرداخت سایت معتبر نیست", 502)
+    return jsonify(methods=[{"id": str(row.get("id") or ""), "title": str(row.get("title") or row.get("method_title") or ""),
+                             "description": str(row.get("method_description") or "")[:240]}
+                            for row in rows if row.get("enabled") in (True, "yes", "1")])
+
+
+@app.route("/api/site/terms/<kind>", methods=["GET", "POST"])
+def site_product_terms(kind):
+    settings = site_settings_for_user(admin=True)
+    if kind not in {"categories", "brands"}:
+        raise AppError("نوع دسته‌بندی نامعتبر است", 404)
+    path = f"products/{kind}"
+    if request.method == "POST":
+        payload = body_json()
+        name = clean_text(payload.get("name"), "نام دسته‌بندی یا برند", 120, required=True)
+        _code, row = woo_request(settings, "POST", path, payload={"name": name})
+        if not isinstance(row, dict) or not row.get("id"):
+            raise AppError("سایت ایجاد دسته‌بندی یا برند را تأیید نکرد", 502)
+        return jsonify(term={"id": row["id"], "name": str(row.get("name") or name)})
+    page = site_page()
+    _code, rows = woo_request(settings, "GET", path, {"page": page, "per_page": 100, "hide_empty": "false", "orderby": "name", "order": "asc"})
+    if not isinstance(rows, list):
+        raise AppError("سایت فهرست دسته‌بندی یا برند را برنگرداند", 502)
+    return jsonify(terms=[{"id": row["id"], "name": str(row.get("name") or "")} for row in rows if row.get("id")],
+                   page=page, has_more=len(rows) == 100)
+
+
 @app.get("/api/checks/alerts")
 def check_alerts():
     require_user()
@@ -6093,6 +6608,7 @@ def create_check():
 def collect_check(check_id: int):
     user = require_admin()
     with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         row = conn.execute("SELECT * FROM checks WHERE id=?", (check_id,)).fetchone()
         if not row:
             raise AppError("چک پیدا نشد", 404)
@@ -6101,7 +6617,16 @@ def collect_check(check_id: int):
         cash = acc(conn, "1000")["id"]
         bank = acc(conn, "1010")["id"]
         capital = acc(conn, "3000")["id"]
-        if row["kind"] == "in":
+        if row["sale_id"]:
+            sale = conn.execute("SELECT * FROM sales WHERE id=?", (row["sale_id"],)).fetchone()
+            if not sale or sale["status"] != "paid" or sale["payment_method"] != "credit":
+                raise AppError("فاکتور این چک قابل وصول نیست")
+            customer = conn.execute("SELECT * FROM customers WHERE id=?", (sale["customer_id"],)).fetchone()
+            if not customer or not customer["account_id"]:
+                raise AppError("حساب مشتری این چک پیدا نشد")
+            lines = [(bank, int(row["amount"]), 0), (customer["account_id"], 0, int(row["amount"]))]
+            memo = f"وصول چک {row['number']} بابت فاکتور {sale['id']}"
+        elif row["kind"] == "in":
             lines = [(bank, int(row["amount"]), 0), (cash, 0, int(row["amount"]))]
             memo = f"وصول چک {row['number']} و برداشت از صندوق"
         else:
@@ -6742,6 +7267,24 @@ def create_sale():
             conn, user["id"], customer, items, subtotal, discount, method, pos_ref,
             sess["id"] if sess and method != "gateway" else None,
         )
+        conn.execute("UPDATE sales SET moadian_requested=? WHERE id=?", (1 if payload.get("send_moadian") is True else 0, sale_id))
+        if method == "credit":
+            credit_kind = payload.get("credit_kind") or "credit"
+            if credit_kind not in {"credit", "check"}:
+                raise AppError("نوع تسویه نسیه نامعتبر است")
+            conn.execute("UPDATE sales SET credit_kind=? WHERE id=?", (credit_kind, sale_id))
+            if credit_kind == "check":
+                details = payload.get("check")
+                if not isinstance(details, dict):
+                    raise AppError("شماره و سررسید چک را وارد کنید")
+                number = clean_text(details.get("number"), "شماره چک", 40, required=True)
+                due_on = parse_due(details.get("due_on"))
+                amount = subtotal - discount
+                if amount <= 0:
+                    raise AppError("مبلغ چک باید بیشتر از صفر باشد")
+                conn.execute("""INSERT INTO checks (number,person,amount,due_on,kind,status,note,user_id,created_at,sale_id)
+                                VALUES (?,?,?,?,'in','pending',?,?,?,?)""",
+                             (number, customer["name"], amount, due_on, f"چک فاکتور {sale_id}", user["id"], iso(), sale_id))
         settings = get_settings(conn)
         if method != "gateway":
             alerts = finalize_sale(conn, sale_id, user["id"])
@@ -6868,11 +7411,15 @@ def revise_sale(sale_id: int):
             raise AppError("فاکتور پیدا نشد", 404)
         if sale["status"] != "paid":
             raise AppError("فقط فاکتور ثبت‌شده را می‌شود اصلاح کرد")
+        if conn.execute("SELECT 1 FROM checks WHERE sale_id=? AND status!='canceled'", (sale_id,)).fetchone():
+            raise AppError("فاکتور دارای چک را ابتدا از بخش چک‌ها تعیین‌تکلیف کنید؛ اصلاح مستقیم آن مجاز نیست")
         if sale["payment_method"] == "gateway":
             raise AppError("فاکتور درگاه را از اینجا عوض نکنید")
         if (sale["moadian_status"] or "") in {"sent", "success", "pending"}:
             raise AppError("این فاکتور به سامانه مودیان رفته و از اینجا قابل اصلاح نیست")
         old_items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale_id,)).fetchall()
+        if any(weighted_item(item) for item in old_items):
+            raise AppError("برای اصلاح وزن یا مبلغ رسید گرمی، آن را ابطال و رسید تازه صادر کنید؛ رسید قبلی در سوابق می‌ماند")
         for item in old_items:
             product = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
             if is_payment_product(product):
@@ -6920,6 +7467,11 @@ def undo_paid_sale(conn, sale, user_id: int) -> None:
         raise AppError("فاکتور درگاه را از اینجا حذف نکنید")
     if (sale["moadian_status"] or "") in {"sent", "success", "pending"}:
         raise AppError("این فاکتور به سامانه مودیان رفته و از اینجا قابل حذف نیست")
+    check = conn.execute("SELECT * FROM checks WHERE sale_id=?", (sale_id,)).fetchone()
+    if check and check["status"] == "collected":
+        raise AppError("چک این فاکتور وصول شده است؛ ابتدا سند وصول باید اصلاح شود")
+    if check:
+        conn.execute("UPDATE checks SET status='canceled' WHERE id=?", (check["id"],))
     old_items = conn.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale_id,)).fetchall()
     for item in old_items:
         product = conn.execute("SELECT * FROM products WHERE id=?", (item["product_id"],)).fetchone()
@@ -6931,6 +7483,8 @@ def undo_paid_sale(conn, sale, user_id: int) -> None:
     post_entry(conn, f"حذف فاکتور {sale_id}", flipped, "sale-delete", sale_id, user_id)
     conn.execute("UPDATE sales SET status='canceled', revised_at=? WHERE id=?", (iso(), sale_id))
     for item in old_items:
+        if weighted_item(item):
+            continue
         vid = int(item["variation_id"] or 0) or None
         maybe_queue_woo_sync(conn, int(item["product_id"]), vid)
 
@@ -7151,9 +7705,11 @@ def pos_pay():
 
 @app.get("/api/reports/summary")
 def reports():
-    require_user()
+    user = require_user()
+    as_of = now_dt()
     with connect() as conn:
-        data = {kind: summary_for(conn, kind) for kind in ("day", "week", "month")}
+        conn.execute("BEGIN")
+        data = {kind: summary_for(conn, kind, finance=user["role"] == "admin", as_of=as_of) for kind in ("day", "week", "month")}
     return jsonify(**data)
 
 
@@ -7466,6 +8022,26 @@ def mark_license_paid(conn, license_id: int, user_id: int, ref: str):
     return conn.execute("SELECT * FROM licenses WHERE id=?", (license_id,)).fetchone()
 
 
+def license_campaign(as_of=None) -> dict:
+    moment = (as_of or now_dt()).astimezone(TEHRAN)
+    day = jdatetime.date(1405, 9, 5).togregorian()
+    start = datetime(day.year, day.month, day.day, tzinfo=TEHRAN)
+    end = start + timedelta(days=1)
+    return {"active": start <= moment < end, "upcoming": moment < start, "percent": 50,
+            "date_jalali": "۱۴۰۵/۰۹/۰۵", "starts_at": start.isoformat(), "ends_at": end.isoformat(),
+            "next_change": (start if moment < start else end).isoformat() if moment < end else ""}
+
+
+def license_price_quote(settings, plan, as_of=None) -> dict:
+    campaign = license_campaign(as_of)
+    price_key = PLANS[plan][2]
+    list_price = setting_int(settings, price_key)
+    discount = list_price // 2 if campaign["active"] else 0
+    return {"list_price": list_price, "discount": discount, "price": list_price - discount,
+            "discount_percent": 50 if campaign["active"] else 0,
+            "description": "شخصی‌سازی اپ متناسب با نیازمندی‌های کسب‌وکار تا ۵۰ سال" if plan == "50y" else ""}
+
+
 @app.get("/api/licenses")
 def list_licenses():
     require_admin()
@@ -7479,19 +8055,19 @@ def list_licenses():
         pro = pro_state(conn)
     plans = []
     for key, (title, months, price_key) in PLANS.items():
-        item = {"id": key, "title": title, "months": months, "price": setting_int(settings, price_key), "vip": False}
+        item = {"id": key, "title": title, "months": months, **license_price_quote(settings, key), "vip": False}
         if key == "50y":
             item["cap"] = cap
             item["remaining"] = max(0, cap - sold)
         plans.append(item)
-    return jsonify(plans=plans, licenses=[license_out(row) for row in rows], access=access, pro=pro)
+    return jsonify(plans=plans, licenses=[license_out(row) for row in rows], access=access, pro=pro, campaign=license_campaign())
 
 
 @app.put("/api/licenses/prices")
 def update_license_prices():
     require_admin()
     payload = body_json()
-    allowed = {key: payload[key] for key in ("price_3m", "price_6m", "price_12m", "price_50y", "cap_50y") if key in payload}
+    allowed = {key: payload[key] for key in ("price_1m", "price_3m", "price_6m", "price_12m", "price_50y", "cap_50y") if key in payload}
     with connect() as conn:
         save_settings(conn, allowed)
     return jsonify(ok=True)
@@ -7519,9 +8095,13 @@ def sell_license():
             sold = conn.execute("SELECT COUNT(*) AS c FROM licenses WHERE plan='50y' AND status!='canceled'").fetchone()["c"]
             if sold >= cap:
                 raise AppError("ظرفیت لایسنس پنجاه‌ساله تمام شده است")
-        list_price = setting_int(settings, price_key)
-        discount = calc_discount(list_price, payload.get("discount_type") or "amount", payload.get("discount_value"))
+        quote = license_price_quote(settings, plan)
+        list_price = quote["list_price"]
+        # The campaign and a manual discount do not stack.
+        discount = max(quote["discount"], calc_discount(list_price, payload.get("discount_type") or "amount", payload.get("discount_value")))
         payable = list_price - discount
+        if "expected_price" in payload and parse_money(payload["expected_price"], "قیمت نمایشی") != payable:
+            raise AppError("قیمت طرح تغییر کرده است. قیمت تازه را ببینید و دوباره طرح را انتخاب کنید.", 409)
         if method == "gateway" and payable < 1000:
             raise AppError("حداقل مبلغ درگاه ۱۰۰۰ تومان است")
         start = now_dt().replace(microsecond=0)
@@ -7697,8 +8277,10 @@ def sms_invoice_page(row, shop: str) -> str:
         "<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         "<title>فاکتور شارژ پیامک</title>"
+        f"<link rel='stylesheet' href='/static/css/printer.css?v={APP_VERSION}'>"
+        f"<script src='/static/js/printer.js?v={APP_VERSION}' defer></script>"
         "<body style='font-family:tahoma,sans-serif;background:#f6f4ef;color:#1c1a17;padding:24px'>"
-        "<main style='max-width:420px;margin:auto;background:#fff;border:1px solid #e4ddd2;border-radius:16px;padding:24px'>"
+        "<main id='print-area' style='max-width:420px;margin:auto;background:#fff;border:1px solid #e4ddd2;border-radius:16px;padding:24px'>"
         "<h1 style='font-size:20px;margin:0 0 8px'>دفترچی</h1>"
         "<p style='margin:0 0 12px'>فاکتور شارژ پنل پیامک</p>"
         f"<p>شماره فاکتور: <b dir='ltr'>{code}</b></p>"
@@ -7710,7 +8292,7 @@ def sms_invoice_page(row, shop: str) -> str:
         f"<p><b>پرداخت‌شده: {payable} تومان</b></p>"
         f"<p>زیبال · <span dir='ltr'>{ref}</span></p>"
         "<p>این فاکتور برای مدیر فروشگاه صادر شد.</p>"
-        "<p><button onclick='print()'>چاپ</button> · <a href='/'>برگشت به دفترچی</a></p>"
+        "<p class='no-print'><button onclick='DaftarchiPrinter.print()'>چاپ</button> · <button onclick='DaftarchiPrinter.open()'>تنظیم ابعاد چاپ</button> · <a href='/'>برگشت به دفترچی</a></p>"
         "</main></body></html>"
     )
 
@@ -8148,9 +8730,9 @@ def submit_moadian(sale_id: int) -> dict:
 def maybe_send_moadian(sale_id: int):
     try:
         with connect() as conn:
-            row = conn.execute("SELECT status, moadian_status FROM sales WHERE id=?", (sale_id,)).fetchone()
+            row = conn.execute("SELECT status, moadian_status, moadian_requested FROM sales WHERE id=?", (sale_id,)).fetchone()
             enabled = get_settings(conn).get("moadian_enabled") == "1"
-        if not row or row["status"] != "paid" or not enabled:
+        if not row or row["status"] != "paid" or not enabled or not row["moadian_requested"]:
             return
         if row["moadian_status"] in {"sent", "success", "pending"}:
             return
@@ -8329,7 +8911,8 @@ def main():
     quiet_stdio()
     hide_console()
     port = int(os.environ.get("PORT", "8080"))
-    print(f"دفترچی روی http://127.0.0.1:{port}")
+    host = os.environ.get("DAFTARCHI_BIND", "0.0.0.0")
+    print(f"Daftarchi: http://127.0.0.1:{port}")
     threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
     fresh = os.environ.pop("DAFTARCHI_JUST_UPDATED", "").strip().lower() in ("1", "true", "yes", "on")
     if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
@@ -8352,14 +8935,14 @@ def main():
             from waitress import serve
             serve(
                 app,
-                host="0.0.0.0",
+                host=host,
                 port=port,
                 threads=SERVER_THREADS,
                 channel_timeout=SERVER_CHANNEL_TIMEOUT,
             )
             return
         except ImportError:
-            app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+            app.run(host=host, port=port, debug=False, threaded=True)
             return
         except OSError:
             if time.time() > deadline:

@@ -1,12 +1,14 @@
-const CACHE = "daftarchi-1.1.51";
+const CACHE = "daftarchi-1.1.58";
 const SHELL = [
-  "/static/css/app.css?v=1.1.51",
-  "/static/js/app.js?v=1.1.51",
-  "/static/js/html2canvas.min.js?v=1.1.51",
-  "/static/fonts/Vazirmatn-Regular.woff2?v=1.1.51",
-  "/static/fonts/Vazirmatn-SemiBold.woff2?v=1.1.51",
-  "/static/icon-192.png?v=1.1.51",
-  "/static/icon-512.png?v=1.1.51",
+  "/static/css/app.css?v=1.1.58",
+  "/static/js/app.js?v=1.1.58",
+  "/static/js/perfume.js?v=1.1.58",
+  "/static/css/printer.css?v=1.1.58",
+  "/static/js/printer.js?v=1.1.58",
+  "/static/fonts/Vazirmatn-Regular.woff2?v=1.1.58",
+  "/static/fonts/Vazirmatn-SemiBold.woff2?v=1.1.58",
+  "/static/icon-192.png?v=1.1.58",
+  "/static/icon-512.png?v=1.1.58",
 ];
 
 self.addEventListener("install", (event) => {
@@ -18,7 +20,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("daftarchi-") && key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
