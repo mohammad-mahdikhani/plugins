@@ -1,0 +1,16 @@
+{
+  "name": "mohammad-plugins",
+  "owner": {
+    "name": "mohammad"
+  },
+  "metadata": {
+    "description": "Plugins for mohammad's sites and tools."
+  },
+  "plugins": [
+    {
+      "name": "wordpress",
+      "source": "wordpress",
+      "description": "Manage nahal.website through its Easy MCP AI WordPress server."
+    }
+  ]
+}
