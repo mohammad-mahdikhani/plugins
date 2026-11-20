@@ -748,12 +748,14 @@ function authHtml() {
   }
   if (state.authView === "register") {
     return `<div class="auth"><form class="card auth-card" data-act="register">
-      <div class="brand"><div class="mark">${logo()}</div><div><strong>ثبت شماره</strong><span>اولین ورود</span></div></div>
+      <div class="brand"><div class="mark">${logo()}</div><div><strong>ثبت‌نام</strong><span>اولین ورود</span></div></div>
       <p class="hint">فقط شماره موبایل را بنویسید. کد تأیید به همان شماره می‌رود. تا کد تأیید نشود، دفترچی این شماره را نمی‌شناسد.</p>
       ${authProblem()}
       <div class="field"><label>موبایل</label><input class="ltr" name="phone" required placeholder="09..." value="${esc(draft.phone || "")}"></div>
-      <button class="btn primary block" type="submit">دریافت کد</button>
-      <button class="btn block" type="button" data-act="show-login">بازگشت</button>
+      <div class="auth-actions">
+        <button class="btn primary block" type="submit">دریافت کد</button>
+        <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
+      </div>
     </form></div>`;
   }
   if (state.authView === "reset") {
@@ -789,11 +791,11 @@ function authHtml() {
     ${authProblem()}
     <div class="field"><label>موبایل یا جیمیل</label><input name="ident" autocomplete="username" required value="${esc(draft.ident || (state.bootstrap?.initial ? state.bootstrap.phone : ""))}"></div>
     <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}"></div>
-    <button class="btn primary block" type="submit">ورود</button>
-    <button class="btn block" type="button" data-act="show-phone-login">ورود با کد موبایل</button>
-    <button class="btn block" type="button" data-act="show-register">ثبت شماره موبایل</button>
-    <button class="btn block" type="button" data-act="show-forgot">رمز را فراموش کرده‌ام</button>
-    ${desktopIconButton(true)}
+    <div class="auth-actions">
+      <button class="btn primary block" type="submit">ورود</button>
+      <button class="btn block" type="button" data-act="show-register">ثبت‌نام</button>
+    </div>
+    <p class="auth-links"><button type="button" class="text-link" data-act="show-forgot">رمز را فراموش کرده‌ام</button></p>
     ${updateBanner()}
     <p class="hint">نسخه ${esc(state.bootstrap?.version || state.update?.current || "")}</p>
   </form></div>`;
