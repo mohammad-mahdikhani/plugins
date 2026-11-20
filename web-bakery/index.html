@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>وب بیکری — دانلود هوش‌اسکیما</title>
   <meta name="description" content="دانلود افزونه وردپرس هوش‌اسکیما از وب بیکری. اسکیمای JSON-LD مطابق گوگل و تایتل هوشمند." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --ink: #14110c;
@@ -19,10 +16,8 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: Vazirmatn, Tahoma, sans-serif;
-      background:
-        radial-gradient(900px 280px at 0% -10%, rgba(201, 162, 74, 0.18), transparent),
-        linear-gradient(180deg, #f6f1e7 0%, #efe6d6 100%);
+      font-family: Tahoma, "Segoe UI", sans-serif;
+      background: #efe6d6;
       color: var(--ink);
       min-height: 100vh;
     }
@@ -34,11 +29,7 @@
       justify-content: space-between;
       align-items: center;
     }
-    .brand {
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      font-size: 20px;
-    }
+    .brand { font-weight: 800; font-size: 20px; }
     .brand span { color: var(--tile); }
     main {
       max-width: 980px;
@@ -46,7 +37,7 @@
       padding: 12px 20px 64px;
     }
     .hero {
-      background: linear-gradient(180deg, #1b1712 0%, #241d16 100%);
+      background: #1b1712;
       color: #f6f1e7;
       border-radius: 28px;
       padding: 40px 36px;
@@ -63,6 +54,7 @@
     }
     h1 { margin: 0 0 12px; font-size: 34px; line-height: 1.35; }
     .lede { color: #e7dcc8; line-height: 1.8; margin: 0 0 22px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .btn {
       display: inline-flex;
       align-items: center;
@@ -70,13 +62,23 @@
       background: var(--tile);
       color: #fff;
       text-decoration: none;
+      border: 0;
+      cursor: pointer;
       border-radius: 999px;
       padding: 14px 22px;
       font-weight: 700;
-      box-shadow: 0 10px 24px rgba(28, 93, 88, 0.35);
+      font-family: inherit;
+      font-size: 15px;
     }
     .btn:hover { background: var(--tile-2); }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #3a3126;
+      color: #f6f1e7;
+    }
+    .btn[disabled] { opacity: 0.6; cursor: wait; }
     .meta { margin-top: 10px; font-size: 13px; color: #cbbfa8; }
+    .status { margin-top: 10px; font-size: 13px; color: #c9a24a; min-height: 1.2em; }
     .file {
       background: #14110c;
       border: 1px solid #3a3126;
@@ -101,6 +103,7 @@
     .card h2 { margin: 0 0 8px; font-size: 16px; }
     .card p { margin: 0; color: #5c5348; line-height: 1.7; font-size: 14px; }
     ol { line-height: 2; }
+    code { direction: ltr; display: inline-block; font-size: 12px; word-break: break-all; }
     footer {
       max-width: 980px;
       margin: 0 auto;
@@ -124,8 +127,12 @@
       <div>
         <p class="kicker">SCHEMA NOVA</p>
         <h1>هوش‌اسکیما آمادهٔ نصب روی وردپرس است</h1>
-        <p class="lede">فایل ZIP استاندارد وردپرس را از وب بیکری دانلود کنید، از افزونه‌ها → افزودن → بارگذاری افزونه نصب کنید. روی هر قالبی کار می‌کند.</p>
-        <a class="btn" href="schema-nova-1.1.zip" download>دانلود schema-nova-1.1.zip</a>
+        <p class="lede">دکمهٔ دانلود فایل ZIP واقعی افزونه را ذخیره می‌کند. بعد از افزونه‌ها → افزودن → بارگذاری افزونه نصب کنید. سازنده webakery.ir و نسخه ۱.۱ است.</p>
+        <div class="actions">
+          <button class="btn" id="download-btn" type="button">دانلود schema-nova-1.1.zip</button>
+          <a class="btn btn-ghost" id="github-link" href="https://raw.githubusercontent.com/mohammad-mahdikhani/plugins/cursor/schema-nova-plugin-d835/web-bakery/schema-nova-1.1.zip">لینک مستقیم ZIP</a>
+        </div>
+        <p class="status" id="status"></p>
         <p class="meta">نسخه ۱.۱ · سازنده webakery.ir · PHP ۸+ · وردپرس ۶+</p>
       </div>
       <div class="file">
@@ -154,8 +161,66 @@
         <li>افزونه را فعال کنید. منوی «هوش‌اسکیما» ظاهر می‌شود.</li>
         <li>هویت سازمان را پر کنید، سپس در «منبع داده» API آنالیتیکس را وصل کنید.</li>
       </ol>
+      <p>اگر دکمه کار نکرد، فایل را از این آدرس بگیرید:</p>
+      <p><code>https://raw.githubusercontent.com/mohammad-mahdikhani/plugins/cursor/schema-nova-plugin-d835/web-bakery/schema-nova-1.1.zip</code></p>
     </section>
   </main>
   <footer>وب بیکری — محل دانلود هوش‌اسکیما. افزونه تحت GPL-2.0-or-later است.</footer>
+  <script>
+    (function () {
+      var ZIP_NAME = "schema-nova-1.1.zip";
+      var SOURCES = [
+        "/download",
+        "/" + ZIP_NAME,
+        "https://raw.githubusercontent.com/mohammad-mahdikhani/plugins/cursor/schema-nova-plugin-d835/web-bakery/schema-nova-1.1.zip"
+      ];
+      var btn = document.getElementById("download-btn");
+      var status = document.getElementById("status");
+
+      function isZip(buffer) {
+        var bytes = new Uint8Array(buffer);
+        return bytes.length > 1000 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+      }
+
+      function save(buffer) {
+        var blob = new Blob([buffer], { type: "application/zip" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = ZIP_NAME;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+      }
+
+      async function pull(url) {
+        var res = await fetch(url, { redirect: "follow" });
+        if (!res.ok) throw new Error("bad status");
+        var buffer = await res.arrayBuffer();
+        if (!isZip(buffer)) throw new Error("not zip");
+        return buffer;
+      }
+
+      btn.addEventListener("click", async function () {
+        btn.disabled = true;
+        status.textContent = "در حال آماده‌سازی فایل…";
+        var lastError = null;
+        for (var i = 0; i < SOURCES.length; i++) {
+          try {
+            save(await pull(SOURCES[i]));
+            status.textContent = "دانلود شروع شد.";
+            btn.disabled = false;
+            return;
+          } catch (err) {
+            lastError = err;
+          }
+        }
+        status.textContent = "دانلود از سرور این صفحه نشد؛ لینک مستقیم ZIP را بزنید.";
+        btn.disabled = false;
+        if (lastError) console.warn(lastError);
+      });
+    })();
+  </script>
 </body>
 </html>
