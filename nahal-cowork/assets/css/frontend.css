@@ -82,7 +82,7 @@
 	display: flex;
 	gap: 10px;
 	flex-wrap: wrap;
-	margin-top: .4rem;
+	margin: .9rem 0 .2rem;
 	color: var(--nck-muted);
 	font-size: .88rem;
 }
@@ -540,7 +540,7 @@
 .nck-paper-nested{
 	box-shadow: none;
 	margin: 0;
-	padding: 1rem 1rem .2rem;
+	padding: 1rem 1rem 1.15rem;
 }
 .nck-fieldset{
 	border: 1px solid var(--nck-edge);
@@ -619,7 +619,10 @@
 	display: flex;
 	gap: 8px;
 	flex-wrap: wrap;
-	margin: 0 0 1rem;
+	margin: .35rem 0 1.15rem;
+}
+.nck-paper-nested + .nck-review-actions{
+	margin-top: 1.35rem;
 }
 .nck-review-meta{
 	display: flex;
@@ -820,6 +823,36 @@
 .nck-roll-list li.is-on{ font-weight: 800; color: var(--nck-leaf); }
 .nck-roll-list li.is-off{ opacity: .28; cursor: default; }
 .nck-roll-list li.is-busy{ text-decoration: line-through; }
+.nck-account-pdf{
+	margin: 1.6rem 0 0;
+	padding: 1.2rem 1.15rem 1.25rem;
+	background: var(--nck-paper);
+	border: 1px solid var(--nck-edge);
+	border-radius: var(--nck-radius);
+}
+.nck-account-pdf h2{
+	margin: 0 0 .45rem;
+	font-size: 1.12rem;
+}
+.nck-account-pdf > p{ margin: 0 0 .7rem; }
+.nck-account-pdf-sign{
+	margin: 0 0 1rem;
+	padding: .75rem;
+	background: #fff;
+	border-radius: 10px;
+}
+.nck-account-pdf-sign img{
+	display: block;
+	max-width: 220px;
+	max-height: 88px;
+	height: auto;
+}
+.nck-account-pdf-actions{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0;
+}
 @media (max-width: 640px){
 	.nck-grid,
 	.nck-grid-hall,

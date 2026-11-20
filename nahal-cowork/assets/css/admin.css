@@ -118,3 +118,43 @@
 .nck-sc-table code{ font-size: 13px; white-space: nowrap; }
 .nck-sc-table td p.description{ margin: 4px 0 0; }
 .nck-copy-ok{ color: #15803d; margin-right: 8px; font-size: 12px; }
+.nck-order-pdf{
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 10px;
+	padding: 12px 14px;
+	margin: 8px 0 12px;
+}
+.nck-order-pdf h3{
+	margin: 0 0 8px;
+	font-size: 14px;
+}
+.nck-order-pdf p{ margin: 0 0 6px; }
+.nck-order-pdf-who{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: baseline;
+}
+.nck-order-pdf-sign{
+	background: #f8fafc;
+	border-radius: 8px;
+	padding: 8px;
+}
+.nck-order-pdf-sign img{
+	display: block;
+	max-width: 180px;
+	max-height: 72px;
+	height: auto;
+}
+.nck-order-pdf-actions{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 8px;
+}
+#nck-cowork-agreement .nck-order-pdf{
+	border: 0;
+	padding: 0;
+	margin: 0;
+}

@@ -3,12 +3,17 @@ defined( 'ABSPATH' ) || exit;
 $title = isset( $nck_save_title ) ? (string) $nck_save_title : 'قرارداد-نهال';
 ?>
 <div class="nck-print-bar">
-	<button type="button" onclick="window.print()">چاپ</button>
-	<button type="button" data-nck-save-html data-nck-save-name="<?php echo esc_attr( $title ); ?>">دانلود قرارداد</button>
+	<button type="button" onclick="window.print()">چاپ / ذخیره PDF</button>
+	<button type="button" data-nck-save-html data-nck-save-name="<?php echo esc_attr( $title ); ?>">دانلود HTML</button>
 	<button type="button" onclick="window.close()">بستن</button>
 </div>
 <script>
 (function () {
+	if (/[?&]nck_autoprint=1(?:&|$)/.test(location.search)) {
+		window.addEventListener('load', function () {
+			window.print();
+		});
+	}
 	var btn = document.querySelector('[data-nck-save-html]');
 	if (!btn) return;
 	btn.addEventListener('click', function () {

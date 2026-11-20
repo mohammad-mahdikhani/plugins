@@ -14,6 +14,7 @@ require_once dirname( __DIR__ ) . '/includes/class-nck-hall.php';
 require_once dirname( __DIR__ ) . '/includes/class-nck-learner.php';
 require_once dirname( __DIR__ ) . '/includes/class-nck-settings.php';
 require_once dirname( __DIR__ ) . '/includes/class-nck-pay.php';
+require_once dirname( __DIR__ ) . '/includes/class-nck-print.php';
 
 $pass = 0;
 $fail = 0;
@@ -744,6 +745,35 @@ $check( 'پذیرش مرحله اهداف و امضا ندارد', false === str
 $forms_tpl = (string) file_get_contents( dirname( __DIR__ ) . '/templates/admin-forms.php' );
 $check( 'ویرایشگر فرم محصول ووکامرس دارد', false !== strpos( $forms_tpl, 'محصول ووکامرس' ) );
 $check( 'همگام‌سازی محصولات فرم در فهرست هست', false !== strpos( $forms_tpl, 'sync_all_products' ) );
+
+echo "\n=== چاپ PDF سفارش فضای کار ===\n";
+$print_php = (string) file_get_contents( dirname( __DIR__ ) . '/includes/class-nck-print.php' );
+$check( 'متاباکس سفارش ووکامرس ثبت می‌شود', false !== strpos( $print_php, 'register_order_metabox' ) );
+$check( 'توافق‌نامه بعد از آدرس صورتحساب سفارش است', false !== strpos( $print_php, 'woocommerce_admin_order_data_after_billing_address' ) );
+$check( 'اقدام چاپ PDF روی سفارش هست', false !== strpos( $print_php, 'nck_print_cowork' ) );
+$check( 'بدون سفارش قرارداد خالی است', null === NCK_Print::cowork_contract_from_order( null ) );
+$bar_tpl = (string) file_get_contents( dirname( __DIR__ ) . '/templates/print-bar.php' );
+$check( 'نوار چاپ دکمه PDF دارد', false !== strpos( $bar_tpl, 'چاپ / ذخیره PDF' ) );
+$check( 'چاپ خودکار از سفارش باز می‌شود', false !== strpos( $bar_tpl, 'nck_autoprint' ) );
+$order_box = (string) file_get_contents( dirname( __DIR__ ) . '/templates/admin-order-agreement.php' );
+$check( 'جعبه سفارش دکمه چاپ PDF دارد', false !== strpos( $order_box, 'چاپ / ذخیره PDF' ) );
+$check( 'جعبه سفارش پیش‌نمایش امضا دارد', false !== strpos( $order_box, 'signature_png' ) );
+$print_css = (string) file_get_contents( dirname( __DIR__ ) . '/assets/css/print.css' );
+$check( 'چاپ روی کاغذ A4 است', false !== strpos( $print_css, 'size: A4' ) );
+$contracts_php = (string) file_get_contents( dirname( __DIR__ ) . '/includes/class-nck-contracts.php' );
+$check( 'آدرس چاپ پارامتر خودکار دارد', false !== strpos( $contracts_php, 'nck_autoprint' ) );
+$admin_contracts = (string) file_get_contents( dirname( __DIR__ ) . '/templates/admin-contracts.php' );
+$check( 'فهرست قراردادها چاپ PDF دارد', false !== strpos( $admin_contracts, 'چاپ PDF' ) );
+$print_cowork = (string) file_get_contents( dirname( __DIR__ ) . '/templates/print-contract.php' );
+$check( 'PDF فضای کار امضا دارد', false !== strpos( $print_cowork, 'sign-plate.php' ) );
+$front_css = (string) file_get_contents( dirname( __DIR__ ) . '/assets/css/frontend.css' );
+$check( 'دکمه دانلود از کادر مفاد فاصله دارد', false !== strpos( $front_css, '.nck-paper-nested + .nck-review-actions' ) );
+$check( 'چاپ سفارش در پیشخوان کاربر هست', false !== strpos( $print_php, 'woocommerce_order_details_after_order_table' ) );
+$check( 'دانلود PDF در فهرست سفارش‌های حساب هست', false !== strpos( $print_php, 'woocommerce_my_account_my_orders_actions' ) );
+$account_box = (string) file_get_contents( dirname( __DIR__ ) . '/templates/account-order-agreement.php' );
+$check( 'پیشخوان کاربر دکمه چاپ PDF دارد', false !== strpos( $account_box, 'چاپ / ذخیره PDF' ) );
+$check( 'پیشخوان کاربر پیش‌نمایش امضا دارد', false !== strpos( $account_box, 'signature_png' ) );
+$check( 'اقدام خالی سفارش حساب آرایه می‌ماند', array() === NCK_Print::account_order_actions( array(), null ) );
 
 echo "\n--- {$pass} موفق، {$fail} ناموفق ---\n";
 exit( $fail ? 1 : 0 );
