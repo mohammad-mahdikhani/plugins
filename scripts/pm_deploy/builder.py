@@ -167,7 +167,13 @@ def logo_picture(footer: bool = False) -> str:
     load = "lazy" if footer else "eager"
     fetch = "" if footer else ' fetchpriority="high"'
     alt = "" if footer else ' alt="پاکن منتال"'
+    note = (
+        ""
+        if footer
+        else "<!-- لوگوی هدر از ویجت «تصویر لوگوی هدر» در همین قالب عوض می‌شود -->"
+    )
     return (
+        f"{note}"
         f'<picture class="pm-logo__picture">'
         f'<source type="image/webp" srcset="{LOGO_WEBP}" />'
         f'<img class="pm-logo__img" src="{LOGO_WEBP}" width="{w}" height="{h}" loading="{load}" decoding="async"{fetch}{alt} />'
