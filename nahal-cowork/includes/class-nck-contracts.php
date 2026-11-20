@@ -232,13 +232,14 @@ class NCK_Contracts {
 		);
 	}
 
-	public static function print_url( $token ) {
-		return add_query_arg(
-			array(
-				'nck_print' => $token,
-			),
-			home_url( '/' )
+	public static function print_url( $token, $autoprint = false ) {
+		$args = array(
+			'nck_print' => $token,
 		);
+		if ( $autoprint ) {
+			$args['nck_autoprint'] = '1';
+		}
+		return add_query_arg( $args, home_url( '/' ) );
 	}
 
 	public static function sign_flow( $name, $honorific, $phone, $plan, $signature, $ip, array $pay_in = array(), $shift = '' ) {

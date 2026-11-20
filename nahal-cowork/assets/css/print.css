@@ -67,6 +67,10 @@
 	font-weight: 700;
 }
 
+@page{
+	size: A4;
+	margin: 12mm;
+}
 @media print{
 	.nck-print-bar{ display: none !important; }
 	.nck-print-body{ background: #fff; }

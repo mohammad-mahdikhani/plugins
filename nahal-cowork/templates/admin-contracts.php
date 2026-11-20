@@ -54,7 +54,7 @@ $rows = NCK_Contracts::search( $q, 60, $kind );
 					<td><?php echo esc_html( $row['signed_at'] ); ?></td>
 					<td>
 						<?php if ( 'signed' === $row['status'] ) : ?>
-							<a class="button button-small" href="<?php echo esc_url( NCK_Contracts::print_url( $row['print_token'] ) ); ?>" target="_blank" rel="noopener">چاپ</a>
+							<a class="button button-small" href="<?php echo esc_url( NCK_Contracts::print_url( $row['print_token'], true ) ); ?>" target="_blank" rel="noopener">چاپ PDF</a>
 						<?php endif; ?>
 					</td>
 				</tr>
