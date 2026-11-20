@@ -61,7 +61,8 @@ $row       = static function ( $label, $value ) {
 			<h3>اطلاعات فراگیر</h3>
 			<?php
 			$row( 'نام و نام خانوادگی', $contract['full_name'] );
-			$row( 'تاریخ تولد', $fa( isset( $p['birth_date'] ) ? $p['birth_date'] : '' ) );
+			$birth_label = NCK_Learner::birth_label( isset( $p['birth_date'] ) ? $p['birth_date'] : '' );
+			$row( 'تاریخ تولد', $birth_label !== '' ? $birth_label : '—' );
 			$row( 'کد ملی', $fa( isset( $p['national_id'] ) ? $p['national_id'] : $contract['national_id'] ) );
 			$row( 'پایه تحصیلی', isset( $p['grade'] ) ? $p['grade'] : '—' );
 			$row( 'مدرسه', isset( $p['school'] ) ? $p['school'] : '—' );

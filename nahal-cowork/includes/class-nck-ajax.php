@@ -202,6 +202,8 @@ class NCK_Ajax {
 			'class_limit'    => self::post_text( 'class_limit' ),
 			'name'           => self::post_text( 'name' ),
 			'birth_date'     => self::post_text( 'birth_date' ),
+			'birth_month'    => self::post_text( 'birth_month' ),
+			'birth_year'     => self::post_text( 'birth_year' ),
 			'national_id'    => self::post_text( 'national_id' ),
 			'grade'          => self::post_text( 'grade' ),
 			'school'         => self::post_text( 'school' ),

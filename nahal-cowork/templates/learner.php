@@ -69,8 +69,23 @@ $chips = static function ( $name, array $opts, $type = 'checkbox', $required = f
 						<input id="nck-lr-name" name="name" type="text" autocomplete="name" required />
 					</div>
 					<div class="nck-field">
-						<label for="nck-birth">تاریخ تولد</label>
-						<input id="nck-birth" name="birth_date" type="text" dir="ltr" required placeholder="1392/06/20" />
+						<span class="nck-label" id="nck-birth-label">تاریخ تولد</span>
+						<div class="nck-birth-pair">
+							<label class="nck-sr" for="nck-birth-month">ماه تولد</label>
+							<select id="nck-birth-month" name="birth_month" required aria-labelledby="nck-birth-label">
+								<option value="">ماه</option>
+								<?php foreach ( NCK_Jalali::month_names() as $i => $month_name ) : ?>
+									<option value="<?php echo esc_attr( (string) ( $i + 1 ) ); ?>"><?php echo esc_html( $month_name ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<label class="nck-sr" for="nck-birth-year">سال تولد</label>
+							<select id="nck-birth-year" name="birth_year" required aria-labelledby="nck-birth-label">
+								<option value="">سال</option>
+								<?php foreach ( NCK_Learner::birth_years() as $year ) : ?>
+									<option value="<?php echo esc_attr( (string) $year ); ?>"><?php echo esc_html( NCK_Jalali::fa_digits( $year ) ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
 					</div>
 					<div class="nck-field">
 						<label for="nck-lr-nid">کد ملی</label>

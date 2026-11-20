@@ -143,6 +143,42 @@ class NCK_Learner {
 		return NCK_Jalali::format( $p['y'], $p['m'], $p['d'] );
 	}
 
+	public static function birth_years() {
+		$now = NCK_Jalali::today()['y'];
+		$out = array();
+		for ( $y = $now; $y >= $now - 70; $y-- ) {
+			$out[] = $y;
+		}
+		return $out;
+	}
+
+	public static function format_birth( array $in ) {
+		$y = isset( $in['birth_year'] ) ? (int) NCK_Phone::latin_digits( (string) $in['birth_year'] ) : 0;
+		$m = isset( $in['birth_month'] ) ? (int) NCK_Phone::latin_digits( (string) $in['birth_month'] ) : 0;
+		if ( $y < 1300 || $m < 1 || $m > 12 ) {
+			$raw = isset( $in['birth_date'] ) ? $in['birth_date'] : '';
+			$p   = NCK_Jalali::parse( $raw );
+			if ( ! $p ) {
+				return '';
+			}
+			$y = $p['y'];
+			$m = $p['m'];
+		}
+		$now = NCK_Jalali::today()['y'];
+		if ( $y < 1300 || $y > $now || $m < 1 || $m > 12 ) {
+			return '';
+		}
+		return NCK_Jalali::format_year_month( $y, $m );
+	}
+
+	public static function birth_label( $raw ) {
+		$p = NCK_Jalali::parse( $raw );
+		if ( ! $p ) {
+			return '';
+		}
+		return NCK_Jalali::format_month_year( $p['y'], $p['m'] );
+	}
+
 	/**
 	 * @return array{ok:bool,message:string,payload?:array}
 	 */
@@ -157,9 +193,9 @@ class NCK_Learner {
 			return array( 'ok' => false, 'message' => 'کد ملی فراگیر معتبر نیست. باید ۱۰ رقم و مطابق الگوریتم ملی باشد.' );
 		}
 
-		$birth = self::format_date( isset( $in['birth_date'] ) ? $in['birth_date'] : '' );
+		$birth = self::format_birth( $in );
 		if ( $birth === '' ) {
-			return array( 'ok' => false, 'message' => 'تاریخ تولد را به صورت ۱۴۰۴/۰۶/۲۰ وارد کنید.' );
+			return array( 'ok' => false, 'message' => 'ماه و سال تولد را انتخاب کنید.' );
 		}
 
 		$grade  = self::text( isset( $in['grade'] ) ? $in['grade'] : '' );

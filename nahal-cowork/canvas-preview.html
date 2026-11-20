@@ -97,7 +97,42 @@
               <legend>اطلاعات فراگیر</legend>
               <div class="nck-grid nck-grid-hall">
                 <div class="nck-field nck-field-wide"><label>نام و نام خانوادگی</label><input name="name" type="text" required /></div>
-                <div class="nck-field"><label>تاریخ تولد</label><input name="birth_date" type="text" dir="ltr" required placeholder="1392/06/20" /></div>
+                <div class="nck-field">
+                  <span class="nck-label">تاریخ تولد</span>
+                  <div class="nck-birth-pair">
+                    <select name="birth_month" required>
+                      <option value="">ماه</option>
+                      <option value="1">فروردین</option>
+                      <option value="2">اردیبهشت</option>
+                      <option value="3">خرداد</option>
+                      <option value="4">تیر</option>
+                      <option value="5">مرداد</option>
+                      <option value="6">شهریور</option>
+                      <option value="7">مهر</option>
+                      <option value="8">آبان</option>
+                      <option value="9">آذر</option>
+                      <option value="10">دی</option>
+                      <option value="11">بهمن</option>
+                      <option value="12">اسفند</option>
+                    </select>
+                    <select name="birth_year" required>
+                      <option value="">سال</option>
+                      <option value="1392">۱۳۹۲</option>
+                      <option value="1393">۱۳۹۳</option>
+                      <option value="1394">۱۳۹۴</option>
+                      <option value="1395">۱۳۹۵</option>
+                      <option value="1396">۱۳۹۶</option>
+                      <option value="1397">۱۳۹۷</option>
+                      <option value="1398">۱۳۹۸</option>
+                      <option value="1399">۱۳۹۹</option>
+                      <option value="1400">۱۴۰۰</option>
+                      <option value="1401">۱۴۰۱</option>
+                      <option value="1402">۱۴۰۲</option>
+                      <option value="1403">۱۴۰۳</option>
+                      <option value="1404">۱۴۰۴</option>
+                    </select>
+                  </div>
+                </div>
                 <div class="nck-field"><label>کد ملی</label><input name="national_id" type="text" dir="ltr" required maxlength="10" placeholder="۱۰ رقم" /></div>
                 <div class="nck-field"><label>پایه تحصیلی</label><input name="grade" type="text" required /></div>
                 <div class="nck-field"><label>مدرسه</label><input name="school" type="text" required /></div>
@@ -731,7 +766,7 @@
         if (action === 'nck_sign_learner') {
           if (!data.name || data.name.length < 3) return err('نام فراگیر را کامل وارد کنید.');
           if (String(data.national_id || '').replace(/\D+/g, '').length !== 10) return err('کد ملی باید ۱۰ رقم باشد.');
-          if (!data.birth_date) return err('تاریخ تولد را وارد کنید.');
+          if (!data.birth_month || !data.birth_year) return err('ماه و سال تولد را انتخاب کنید.');
           if (!data.grade || !data.school || !data.address) return err('اطلاعات فراگیر را کامل کنید.');
           if (!data.father_name && !data.mother_name) return err('نام حداقل یکی از والدین را وارد کنید.');
           var contact = phone(data.phone) || phone(data.father_phone) || phone(data.mother_phone);
