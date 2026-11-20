@@ -80,6 +80,7 @@ const state = {
   verifyNote: "",
   authError: "",
   authDraft: null,
+  backups: null,
   update: null,
   page: "dashboard",
   busy: false,
@@ -508,10 +509,16 @@ const loaders = {
   async settings() {
     const updatePromise = loadUpdate();
     const catalogPromise = api("/api/sms/catalog").catch(() => ({ patterns: [] }));
-    const [settings, users, catalog] = await Promise.all([api("/api/settings"), api("/api/users"), catalogPromise]);
+    const [settings, users, catalog, backups] = await Promise.all([
+      api("/api/settings"),
+      api("/api/users"),
+      catalogPromise,
+      api("/api/backups").catch(() => ({ backups: [], auto: true, keep: 14 })),
+    ]);
     state.settings = settings.settings;
     state.users = users.users;
     state.smsCatalog = catalog.patterns || [];
+    state.backups = backups;
     updatePromise.then(() => { if (state.page === "settings") paintChrome(); });
   },
   async updates() {
@@ -748,12 +755,14 @@ function authHtml() {
   }
   if (state.authView === "register") {
     return `<div class="auth"><form class="card auth-card" data-act="register">
-      <div class="brand"><div class="mark">${logo()}</div><div><strong>ثبت‌نام</strong><span>اولین ورود</span></div></div>
-      <p class="hint">فقط شماره موبایل را بنویسید. کد تأیید به همان شماره می‌رود. تا کد تأیید نشود، دفترچی این شماره را نمی‌شناسد.</p>
+      <div class="brand"><div class="mark">${logo()}</div><div><strong>ثبت‌نام</strong><span>با موبایل یا جیمیل</span></div></div>
+      <p class="hint">موبایل یا جیمیل را بنویسید و یک رمز بگذارید. بعد با همان از صفحه ورود وارد می‌شوید.</p>
       ${authProblem()}
-      <div class="field"><label>موبایل</label><input class="ltr" name="phone" required placeholder="09..." value="${esc(draft.phone || "")}"></div>
+      <div class="field"><label>موبایل</label><input class="ltr" name="phone" placeholder="09..." value="${esc(draft.phone || "")}"></div>
+      <div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" placeholder="name@gmail.com" value="${esc(draft.email || "")}"></div>
+      <div class="field"><label>رمز</label><input type="password" name="password" minlength="6" required value="${esc(draft.password || "")}"></div>
       <div class="auth-actions">
-        <button class="btn primary block" type="submit">دریافت کد</button>
+        <button class="btn primary block" type="submit">ثبت‌نام</button>
         <button class="btn block" type="button" data-act="show-login">بازگشت به ورود</button>
       </div>
     </form></div>`;
@@ -782,14 +791,10 @@ function authHtml() {
       <button class="btn block" type="button" data-act="show-login">بازگشت</button>
     </form></div>`;
   }
-  const initial = state.bootstrap?.initial
-    ? `<div class="initial-login"><strong>ورود اولیه</strong><span>موبایل <bdi>${esc(state.bootstrap.phone)}</bdi></span><span>رمز اولیه <bdi>${esc(state.bootstrap.password)}</bdi></span></div>`
-    : "";
   return `<div class="auth"><form class="card auth-card" data-act="login">
     <div class="brand"><div class="mark">${logo()}</div><div><strong>دفترچی</strong><span>${esc(state.bootstrap?.today?.label || "صندوق و حسابداری فروشگاه")}</span></div></div>
-    ${initial}
     ${authProblem()}
-    <div class="field"><label>موبایل یا جیمیل</label><input name="ident" autocomplete="username" required value="${esc(draft.ident || (state.bootstrap?.initial ? state.bootstrap.phone : ""))}"></div>
+    <div class="field"><label>موبایل یا جیمیل</label><input name="ident" autocomplete="username" required value="${esc(draft.ident || "")}" placeholder="09... یا name@gmail.com"></div>
     <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}"></div>
     <div class="auth-actions">
       <button class="btn primary block" type="submit">ورود</button>
@@ -1993,7 +1998,17 @@ function settingsHtml() {
     <input type="hidden" name="ui_theme" value="${esc(currentTheme)}">
     <div class="theme-picks">${THEMES.map(([id, label]) => `<button type="button" class="theme-pick ${id === currentTheme ? "on" : ""}" data-act="pick-theme" data-theme="${id}"><span class="theme-swatch ${id}"></span>${label}</button>`).join("")}</div>
   </section>`;
-  const parts = [desk, themeCard, modeCard].filter(Boolean);
+  const backupInfo = state.backups || {};
+  const backupRows = backupInfo.backups || [];
+  const latestBackup = backupInfo.latest;
+  const backupCard = `<section class="card"><h2 class="section-title">بکاپ روزانه</h2>
+    <p class="hint">هر روز یک نسخه از فروش‌ها، کالاها، فاکتورها و تنظیمات در همین رایانه ذخیره می‌شود. ${num(backupInfo.keep || 14)} نسخهٔ آخر نگه داشته می‌شود.</p>
+    <p>${latestBackup ? `آخرین بکاپ: <strong class="ltr">${esc(latestBackup.when)}</strong> · ${latestBackup.kind === "auto" ? "خودکار" : "دستی"}` : "هنوز بکاپی گرفته نشده."}</p>
+    <label class="check"><input type="checkbox" name="backup_auto" ${checked("backup_auto")}>بکاپ خودکار روزانه</label>
+    <div class="row-actions"><button type="button" class="btn primary" data-act="make-backup">گرفتن بکاپ الان</button></div>
+    ${backupRows.length ? `<table><thead><tr><th>تاریخ</th><th>نوع</th><th></th></tr></thead><tbody>${backupRows.map((row) => `<tr><td class="ltr">${esc(row.when)}</td><td>${row.kind === "auto" ? "خودکار" : "دستی"}</td><td><a class="btn" href="/api/backups/${encodeURIComponent(row.name)}">دانلود</a></td></tr>`).join("")}</tbody></table>` : ""}
+  </section>`;
+  const parts = [desk, themeCard, backupCard, modeCard].filter(Boolean);
   if (mode === "online") parts.push(woo);
   else if (mode === "offline") parts.push(invoice, pos, extra);
   else if (mode === "hybrid") parts.push(invoice, woo, pos, extra);
@@ -2317,9 +2332,17 @@ async function onSubmit(event) {
         throw err;
       }
     } else if (act === "register") {
+      if (!String(data.phone || "").trim() && !String(data.email || "").trim()) {
+        throw new Error("موبایل یا جیمیل را بنویسید");
+      }
       const result = await api("/api/auth/register", { method: "POST", body: data });
       state.authError = "";
-      if (result.phone) {
+      if (result.registered) {
+        state.authView = "login";
+        state.authDraft = { ident: data.phone || data.email || "", password: "" };
+        toast("ثبت‌نام شد. با همان موبایل یا جیمیل وارد شوید.", { ok: true });
+        render();
+      } else if (result.phone) {
         state.pendingPhone = result.phone;
         state.phoneCode = result.preview_code || "";
         state.phoneNote = result.delivery === "sms"
@@ -2638,7 +2661,7 @@ async function saveSettings(form) {
     const picked = state.smsCatalog?.find((item) => item.id === (data[`sms_choice_${role}`] || ""));
     if (picked) data[`sms_pattern_${role}`] = picked.text;
   }
-  for (const key of ["gateway_sandbox", "sms_on_close", "sms_on_sale", "sms_low_stock", "moadian_enabled", "moadian_sandbox", "woo_auto_sync"]) {
+  for (const key of ["gateway_sandbox", "sms_on_close", "sms_on_sale", "sms_low_stock", "moadian_enabled", "moadian_sandbox", "woo_auto_sync", "backup_auto"]) {
     const box = form.querySelector(`[name="${key}"]`);
     if (box) data[key] = box.checked ? "1" : "0";
   }
@@ -2840,6 +2863,14 @@ async function onClick(event) {
     const index = Number(el.dataset.index);
     if (state.modal?.lines) state.modal.lines.splice(index, 1);
     render();
+    return;
+  }
+  if (act === "make-backup") {
+    await guard(async () => {
+      state.backups = await api("/api/backups", { method: "POST" });
+      toast("بکاپ ذخیره شد");
+      render();
+    });
     return;
   }
   if (act === "desktop-icon") { createDesktopIcon(); return; }

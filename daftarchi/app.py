@@ -41,6 +41,8 @@ from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 TEHRAN = timezone(timedelta(hours=3, minutes=30))
 DATA = Path(os.environ.get("DAFTARCHI_DATA", Path(__file__).resolve().parent / "data"))
 UPLOAD = DATA / "uploads"
+BACKUP_DIR = DATA / "backups"
+BACKUP_KEEP = 14
 DB_PATH = DATA / "daftarchi.db"
 INITIAL_PHONE = "09120000000"
 INITIAL_PASSWORD = "daftarchi"
@@ -117,6 +119,7 @@ DEFAULT_SETTINGS = {
     "telegram_chat_id": "",
     "woo_auto_sync": "1",
     "ui_theme": "light",
+    "backup_auto": "1",
 }
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
@@ -129,7 +132,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.60"
+APP_VERSION = "1.1.62"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -210,6 +213,7 @@ SMS_PROVIDERS = {"internal", "kavenegar", "melipayamak"}
 BOOL_KEYS = {
     "gateway_sandbox", "sms_on_close", "sms_on_sale", "sms_low_stock",
     "moadian_enabled", "moadian_sandbox", "woo_auto_sync", "tour_done",
+    "backup_auto",
 }
 SYSTEM_ACCOUNTS = [
     ("1000", "صندوق", "asset"),
@@ -239,6 +243,8 @@ log = logging.getLogger("daftarchi")
 _woo_sync_lock = threading.Lock()
 _woo_sync_pending: set[tuple[int, int | None]] = set()
 _woo_sync_timer: threading.Timer | None = None
+_backup_lock = threading.Lock()
+_backup_loop_started = False
 
 
 class AppError(Exception):
@@ -3782,9 +3788,167 @@ def save_settings(conn, payload: dict):
         )
 
 
+def backup_safe_name(name: str) -> str:
+    text = Path(str(name or "")).name
+    if not re.fullmatch(r"daftarchi-\d{4}-\d{2}-\d{2}(?:-manual-\d{4,6})?\.zip", text):
+        raise AppError("نام فایل بکاپ نامعتبر است")
+    return text
+
+
+def backup_public(path: Path) -> dict:
+    when = datetime.fromtimestamp(path.stat().st_mtime, TEHRAN)
+    clock = jalali_clock(when)
+    return {
+        "name": path.name,
+        "size": path.stat().st_size,
+        "created_at": iso(when),
+        "when": clock["datetime"],
+        "date": clock["date"],
+        "kind": "manual" if "-manual-" in path.name else "auto",
+    }
+
+
+def list_shop_backups() -> list[dict]:
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for path in BACKUP_DIR.glob("daftarchi-*.zip"):
+        if not path.is_file():
+            continue
+        try:
+            backup_safe_name(path.name)
+        except AppError:
+            continue
+        rows.append(backup_public(path))
+    rows.sort(key=lambda item: item["created_at"], reverse=True)
+    return rows
+
+
+def prune_shop_backups(keep: int = BACKUP_KEEP) -> None:
+    for item in list_shop_backups()[keep:]:
+        try:
+            (BACKUP_DIR / item["name"]).unlink()
+        except OSError:
+            pass
+
+
+def snapshot_database(dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        dest.unlink()
+    source = sqlite3.connect(str(DB_PATH), timeout=8)
+    try:
+        source.execute("PRAGMA busy_timeout=8000")
+        target = sqlite3.connect(str(dest))
+        try:
+            source.backup(target)
+            target.commit()
+        finally:
+            target.close()
+    finally:
+        source.close()
+
+
+def today_auto_backup_path() -> Path:
+    return BACKUP_DIR / f"daftarchi-{jalali_clock()['date'].replace('/', '-')}.zip"
+
+
+def make_shop_backup(kind: str = "auto") -> dict:
+    with _backup_lock:
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        clock = jalali_clock()
+        day = clock["date"].replace("/", "-")
+        if kind == "auto":
+            name = f"daftarchi-{day}.zip"
+            existing = BACKUP_DIR / name
+            if existing.is_file() and existing.stat().st_size > 0:
+                return backup_public(existing)
+        else:
+            name = f"daftarchi-{day}-manual-{clock['time'].replace(':', '')}.zip"
+            if (BACKUP_DIR / name).exists():
+                name = f"daftarchi-{day}-manual-{clock['time'].replace(':', '')}{now_dt().second:02d}.zip"
+        zip_path = BACKUP_DIR / name
+        tmp_db = BACKUP_DIR / f".snap-{uuid.uuid4().hex}.db"
+        try:
+            snapshot_database(tmp_db)
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+                archive.write(tmp_db, "daftarchi.db")
+                archive.writestr(
+                    "backup.json",
+                    json.dumps(
+                        {
+                            "version": APP_VERSION,
+                            "kind": kind,
+                            "created_at": iso(),
+                            "date": clock["date"],
+                            "datetime": clock["datetime"],
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    ),
+                )
+                if UPLOAD.is_dir():
+                    for file in UPLOAD.rglob("*"):
+                        if file.is_file():
+                            archive.write(file, Path("uploads") / file.relative_to(UPLOAD))
+        except Exception:
+            if zip_path.exists():
+                zip_path.unlink()
+            raise
+        finally:
+            if tmp_db.exists():
+                tmp_db.unlink()
+            for extra in BACKUP_DIR.glob(".snap-*.db"):
+                try:
+                    extra.unlink()
+                except OSError:
+                    pass
+        prune_shop_backups()
+        return backup_public(zip_path)
+
+
+def backups_payload(extra: dict | None = None) -> dict:
+    items = list_shop_backups()
+    with connect() as conn:
+        auto = get_settings(conn).get("backup_auto") != "0"
+    packed = {"ok": True, "auto": auto, "keep": BACKUP_KEEP, "backups": items, "latest": items[0] if items else None}
+    if extra:
+        packed.update(extra)
+    return packed
+
+
+def maybe_daily_backup() -> dict | None:
+    try:
+        with connect() as conn:
+            auto = get_settings(conn).get("backup_auto") != "0"
+        if not auto:
+            return None
+        return make_shop_backup("auto")
+    except Exception:
+        log.exception("daily backup")
+        return None
+
+
+def start_backup_loop() -> None:
+    global _backup_loop_started
+    if _backup_loop_started:
+        return
+    _backup_loop_started = True
+
+    def run():
+        import time
+
+        time.sleep(8)
+        while True:
+            maybe_daily_backup()
+            time.sleep(15 * 60)
+
+    threading.Thread(target=run, daemon=True, name="daftarchi-backup").start()
+
+
 def init_db():
     DATA.mkdir(parents=True, exist_ok=True)
     UPLOAD.mkdir(parents=True, exist_ok=True)
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     secret_path = DATA / "secret.key"
     if secret_path.exists():
         app.secret_key = secret_path.read_text().strip()
@@ -4955,7 +5119,6 @@ def setup_state(conn) -> dict:
 def bootstrap():
     with connect() as conn:
         settings = get_settings(conn)
-        flag = settings.get("must_change_password") == "1"
         ready = smtp_ready(settings)
     extra = {
         "smtp_ready": ready,
@@ -4965,12 +5128,6 @@ def bootstrap():
         "today": jalali_clock(),
         "theme": clean_theme(settings.get("ui_theme")),
     }
-    if (
-        flag
-        and request.remote_addr in {"127.0.0.1", "::1"}
-        and request.host.split(":", 1)[0] in {"localhost", "127.0.0.1"}
-    ):
-        return jsonify(initial=True, phone=INITIAL_PHONE, password=INITIAL_PASSWORD, **extra)
     return jsonify(initial=False, **extra)
 
 
@@ -5064,25 +5221,36 @@ def finish_login(payload: dict):
 
 def register_phone(payload: dict):
     phone = mobile_number(payload.get("phone") or payload.get("ident"))
+    chosen = str(payload.get("password") or "")
+    if chosen and (len(chosen) < 6 or len(chosen) > 100):
+        raise AppError("رمز باید حداقل ۶ حرف باشد")
     with connect() as conn:
         owner = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
         if owner and int(owner["phone_verified"] or 0):
-            raise AppError("این شماره قبلاً ثبت شده. از صفحه ورود با کد وارد شوید.")
+            raise AppError("این شماره قبلاً ثبت شده. با همان موبایل یا جیمیل از صفحه ورود وارد شوید.")
         if owner:
             user_id = owner["id"]
+            if chosen:
+                write_password(conn, user_id, chosen)
+                conn.execute("UPDATE users SET phone_verified=1 WHERE id=?", (user_id,))
+                fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
+                push_signup(conn, fresh)
+                return jsonify(ok=True, registered=True, phone=phone)
         else:
             settings = get_settings(conn)
             others = conn.execute("SELECT COUNT(*) AS c FROM users WHERE phone<>?", (INITIAL_PHONE,)).fetchone()["c"]
             role = "admin" if settings.get("must_change_password") == "1" and others == 0 else "cashier"
-            secret = secrets.token_urlsafe(18)
+            secret = chosen or secrets.token_urlsafe(18)
             cur = conn.execute(
                 """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, phone_verified, created_at)
-                   VALUES (?,?,?,?,?,?,1,0,?)""",
-                (phone, phone, None, hash_pw(secret), secret_token(secret), role, iso()),
+                   VALUES (?,?,?,?,?,?,1,?,?)""",
+                (phone, phone, None, hash_pw(secret), secret_token(secret), role, 1 if chosen else 0, iso()),
             )
             user_id = cur.lastrowid
             fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
             push_signup(conn, fresh)
+            if chosen:
+                return jsonify(ok=True, registered=True, phone=phone)
         result = send_phone_code(conn, user_id, phone, "verify")
     return jsonify(**result)
 
@@ -5142,14 +5310,17 @@ def register():
     payload = body_json()
     if not str(payload.get("email") or payload.get("gmail") or "").strip():
         return register_phone(payload)
-    name = clean_text(payload.get("name"), "نام", 80, required=True)
     phone = norm_phone(payload.get("phone") or "")
     email = gmail_address(payload.get("email") or payload.get("gmail"))
+    name = clean_text(payload.get("name"), "نام", 80) or (f"کاربر {phone[-4:]}" if len(phone) >= 4 else "کاربر")
     password = str(payload.get("password") or "")
-    if re.fullmatch(r"9\d{9}", phone):
-        phone = "0" + phone
-    if not re.fullmatch(r"09\d{9}", phone):
-        raise AppError("شماره موبایل معتبر نیست")
+    if phone:
+        if re.fullmatch(r"9\d{9}", phone):
+            phone = "0" + phone
+        if not re.fullmatch(r"09\d{9}", phone):
+            raise AppError("شماره موبایل معتبر نیست")
+    else:
+        phone = f"g#{email}"
     if len(password) < 6 or len(password) > 100:
         raise AppError("رمز باید حداقل ۶ حرف باشد")
     with connect() as conn:
@@ -5189,7 +5360,7 @@ def register():
             fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
             push_signup(conn, fresh)
             return jsonify(ok=True, email=email, needs_verify=True, delivery="email")
-        conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
+        conn.execute("UPDATE users SET email_verified=1, phone_verified=1 WHERE id=?", (user_id,))
         fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
         push_signup(conn, fresh)
         push_login(conn, fresh)
@@ -5225,7 +5396,7 @@ def verify_email():
         if not row or row["expires_at"] < iso() or not secrets.compare_digest(row["code_hash"], digest):
             raise AppError("کد نادرست یا منقضی است")
         conn.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
-        conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user["id"],))
+        conn.execute("UPDATE users SET email_verified=1, phone_verified=1 WHERE id=?", (user["id"],))
         fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user["id"],)).fetchone()
         clear_initial_secret(conn, fresh)
         push_signup(conn, fresh)
@@ -8539,6 +8710,30 @@ def put_settings():
     return jsonify(settings=public_settings(data))
 
 
+@app.get("/api/backups")
+def backups_index():
+    require_admin()
+    maybe_daily_backup()
+    return jsonify(**backups_payload())
+
+
+@app.post("/api/backups")
+def backups_create():
+    require_admin()
+    item = make_shop_backup("manual")
+    return jsonify(**backups_payload({"backup": item}))
+
+
+@app.get("/api/backups/<name>")
+def backups_download(name: str):
+    require_admin()
+    safe = backup_safe_name(name)
+    path = (BACKUP_DIR / safe).resolve()
+    if not path.is_file() or not path.is_relative_to(BACKUP_DIR.resolve()):
+        raise AppError("فایل بکاپ پیدا نشد", 404)
+    return send_file(path, as_attachment=True, download_name=safe, mimetype="application/zip")
+
+
 def moadian_ready(settings: dict) -> tuple[str, str, str]:
     fiscal = (settings.get("moadian_fiscal_id") or "").strip().upper()
     economic = re.sub(r"\D", "", str(settings.get("moadian_economic_code") or ""))
@@ -8914,6 +9109,7 @@ def main():
     host = os.environ.get("DAFTARCHI_BIND", "0.0.0.0")
     print(f"Daftarchi: http://127.0.0.1:{port}")
     threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
+    start_backup_loop()
     fresh = os.environ.pop("DAFTARCHI_JUST_UPDATED", "").strip().lower() in ("1", "true", "yes", "on")
     if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
         def _open_browser():
