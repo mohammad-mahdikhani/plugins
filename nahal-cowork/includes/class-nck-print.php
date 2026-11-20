@@ -9,7 +9,10 @@ class NCK_Print {
 		add_action( 'woocommerce_admin_order_data_after_billing_address', array( __CLASS__, 'render_order_after_billing' ) );
 		add_filter( 'woocommerce_order_actions', array( __CLASS__, 'order_actions' ) );
 		add_action( 'woocommerce_order_action_nck_print_cowork', array( __CLASS__, 'handle_print_action' ) );
+		add_action( 'woocommerce_order_details_after_order_table', array( __CLASS__, 'render_account_order' ) );
+		add_filter( 'woocommerce_my_account_my_orders_actions', array( __CLASS__, 'account_order_actions' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'admin_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'account_assets' ) );
 	}
 
 	public static function order_from_metabox( $post ) {
@@ -83,6 +86,47 @@ class NCK_Print {
 
 	public static function render_order_after_billing( $order ) {
 		self::render_order_box( $order, false );
+	}
+
+	public static function render_account_order( $order ) {
+		$contract = self::cowork_contract_from_order( $order );
+		if ( ! $contract ) {
+			return;
+		}
+		include NCK_PATH . 'templates/account-order-agreement.php';
+	}
+
+	public static function account_order_actions( $actions, $order ) {
+		if ( ! is_array( $actions ) ) {
+			$actions = array();
+		}
+		$contract = self::cowork_contract_from_order( $order );
+		if ( $contract && ! empty( $contract['print_token'] ) ) {
+			$actions['nck_pdf'] = array(
+				'url'  => NCK_Contracts::print_url( $contract['print_token'], true ),
+				'name' => 'دانلود PDF توافق‌نامه',
+			);
+		}
+		return $actions;
+	}
+
+	public static function account_assets() {
+		if ( is_admin() ) {
+			return;
+		}
+		$need = function_exists( 'is_account_page' ) && is_account_page();
+		if ( ! $need && function_exists( 'is_order_received_page' ) && is_order_received_page() ) {
+			$need = true;
+		}
+		if ( ! $need ) {
+			return;
+		}
+		if ( class_exists( 'NCK_Frontend' ) ) {
+			if ( ! wp_style_is( 'nck-frontend', 'registered' ) ) {
+				NCK_Frontend::register_assets();
+			}
+			wp_enqueue_style( 'nck-frontend' );
+		}
 	}
 
 	public static function render_order_box( $order, $compact = false ) {

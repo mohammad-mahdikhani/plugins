@@ -766,6 +766,14 @@ $admin_contracts = (string) file_get_contents( dirname( __DIR__ ) . '/templates/
 $check( 'فهرست قراردادها چاپ PDF دارد', false !== strpos( $admin_contracts, 'چاپ PDF' ) );
 $print_cowork = (string) file_get_contents( dirname( __DIR__ ) . '/templates/print-contract.php' );
 $check( 'PDF فضای کار امضا دارد', false !== strpos( $print_cowork, 'sign-plate.php' ) );
+$front_css = (string) file_get_contents( dirname( __DIR__ ) . '/assets/css/frontend.css' );
+$check( 'دکمه دانلود از کادر مفاد فاصله دارد', false !== strpos( $front_css, '.nck-paper-nested + .nck-review-actions' ) );
+$check( 'چاپ سفارش در پیشخوان کاربر هست', false !== strpos( $print_php, 'woocommerce_order_details_after_order_table' ) );
+$check( 'دانلود PDF در فهرست سفارش‌های حساب هست', false !== strpos( $print_php, 'woocommerce_my_account_my_orders_actions' ) );
+$account_box = (string) file_get_contents( dirname( __DIR__ ) . '/templates/account-order-agreement.php' );
+$check( 'پیشخوان کاربر دکمه چاپ PDF دارد', false !== strpos( $account_box, 'چاپ / ذخیره PDF' ) );
+$check( 'پیشخوان کاربر پیش‌نمایش امضا دارد', false !== strpos( $account_box, 'signature_png' ) );
+$check( 'اقدام خالی سفارش حساب آرایه می‌ماند', array() === NCK_Print::account_order_actions( array(), null ) );
 
 echo "\n--- {$pass} موفق، {$fail} ناموفق ---\n";
 exit( $fail ? 1 : 0 );
