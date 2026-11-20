@@ -127,7 +127,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.50"
+APP_VERSION = "1.1.51"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -472,7 +472,16 @@ def barcode_taken(conn, code: str, except_id: int | None = None) -> bool:
     row = conn.execute("SELECT id FROM products WHERE barcode=?", (code,)).fetchone()
     if row and (except_id is None or int(row["id"]) != except_id):
         return True
-    return conn.execute("SELECT 1 FROM product_variations WHERE barcode=?", (code,)).fetchone() is not None
+    if conn.execute("SELECT 1 FROM product_variations WHERE barcode=?", (code,)).fetchone():
+        return True
+    try:
+        if conn.execute("SELECT 1 FROM sales WHERE barcode=?", (code,)).fetchone():
+            return True
+        if conn.execute("SELECT 1 FROM purchases WHERE barcode=?", (code,)).fetchone():
+            return True
+    except sqlite3.OperationalError:
+        return False
+    return False
 
 
 def free_archived_codes(conn, barcode: str | None, sku: str | None, except_id: int | None = None) -> None:
@@ -524,6 +533,13 @@ def active_code_taken(conn, barcode: str | None, sku: str | None, except_id: int
             (barcode, skip),
         ).fetchone():
             return True
+        try:
+            if conn.execute("SELECT 1 FROM sales WHERE barcode=?", (barcode,)).fetchone():
+                return True
+            if conn.execute("SELECT 1 FROM purchases WHERE barcode=?", (barcode,)).fetchone():
+                return True
+        except sqlite3.OperationalError:
+            pass
     if sku:
         if conn.execute(
             "SELECT 1 FROM products WHERE sku=? AND active=1 AND id<>?",
@@ -1001,6 +1017,55 @@ def make_invoice_code(conn) -> str:
     return secrets.token_hex(6).upper()
 
 
+def make_purchase_code(conn) -> str:
+    for _ in range(10):
+        code = "P" + secrets.token_hex(4).upper()
+        if not conn.execute("SELECT 1 FROM purchases WHERE invoice_code=?", (code,)).fetchone():
+            return code
+    return "P" + secrets.token_hex(6).upper()
+
+
+def mint_doc_barcode(conn, prefix: str) -> str:
+    for _ in range(30):
+        body = prefix + f"{secrets.randbelow(1_000_000_000):09d}"
+        code = body + ean13_check(body)
+        if not barcode_taken(conn, code):
+            return code
+    raise AppError("بارکد یکتا ساخته نشد")
+
+
+def fill_missing_doc_barcodes(conn) -> None:
+    for row in conn.execute("SELECT id FROM sales WHERE barcode IS NULL OR barcode=''"):
+        conn.execute("UPDATE sales SET barcode=? WHERE id=?", (mint_doc_barcode(conn, "210"), row["id"]))
+    for row in conn.execute("SELECT id FROM purchases WHERE barcode IS NULL OR barcode=''"):
+        conn.execute("UPDATE purchases SET barcode=? WHERE id=?", (mint_doc_barcode(conn, "220"), row["id"]))
+    for row in conn.execute("SELECT id FROM purchases WHERE invoice_code IS NULL OR invoice_code=''"):
+        conn.execute("UPDATE purchases SET invoice_code=? WHERE id=?", (make_purchase_code(conn), row["id"]))
+
+
+def locate_document(conn, code: str):
+    keys = scan_keys(code)
+    if not keys:
+        return None
+    try:
+        for key in keys:
+            sale = conn.execute(
+                "SELECT id FROM sales WHERE barcode=? OR invoice_code=? ORDER BY id DESC LIMIT 1",
+                (key, key),
+            ).fetchone()
+            if sale:
+                return ("sale", int(sale["id"]))
+            purchase = conn.execute(
+                "SELECT id FROM purchases WHERE barcode=? OR invoice_code=? ORDER BY id DESC LIMIT 1",
+                (key, key),
+            ).fetchone()
+            if purchase:
+                return ("purchase", int(purchase["id"]))
+    except sqlite3.OperationalError:
+        return None
+    return None
+
+
 def scan_keys(code: str) -> list[str]:
     text = str(code or "").translate(DIGITS)
     text = re.sub(r"[\s\u200c\u200d]+", "", text).strip("*")
@@ -1208,13 +1273,14 @@ def load_cart(conn, items) -> tuple[list[dict], int]:
 def insert_sale(conn, user_id: int, customer: dict, items: list[dict], subtotal: int, discount: int, method: str, pos_ref: str, session_id: int | None) -> int:
     payable = subtotal - discount
     invoice_code = make_invoice_code(conn)
+    barcode = mint_doc_barcode(conn, "210")
     cur = conn.execute(
         """INSERT INTO sales (status, customer_id, customer_name, customer_phone, subtotal, discount, payable,
-           payment_method, pos_ref, gateway, gateway_ref, pay_url, session_id, user_id, created_at, invoice_code)
-           VALUES ('pending',?,?,?,?,?,?,?,?, '', NULL, NULL, ?, ?, ?, ?)""",
+           payment_method, pos_ref, gateway, gateway_ref, pay_url, session_id, user_id, created_at, invoice_code, barcode)
+           VALUES ('pending',?,?,?,?,?,?,?,?, '', NULL, NULL, ?, ?, ?, ?, ?)""",
         (
             customer["id"], customer["name"], customer["phone"], subtotal, discount, payable,
-            method, pos_ref or None, session_id, user_id, iso(), invoice_code,
+            method, pos_ref or None, session_id, user_id, iso(), invoice_code, barcode,
         ),
     )
     sale_id = cur.lastrowid
@@ -1492,6 +1558,20 @@ def sale_payload(conn, sale_id: int) -> dict:
     data = dict(sale)
     data["at_jalali"] = to_jalali(data["created_at"])
     return {"sale": data, "items": [dict(item) for item in items]}
+
+
+def purchase_payload(conn, purchase_id: int) -> dict:
+    row = conn.execute(
+        """SELECT p.*, pr.name AS product_name FROM purchases p
+           LEFT JOIN products pr ON pr.id=p.product_id
+           WHERE p.id=?""",
+        (purchase_id,),
+    ).fetchone()
+    if not row:
+        return {}
+    data = dict(row)
+    data["at_jalali"] = to_jalali(data["created_at"])
+    return data
 
 
 def session_figures(conn, sess) -> dict:
@@ -3823,6 +3903,17 @@ def init_db():
             for row in conn.execute("SELECT id FROM sales"):
                 conn.execute("UPDATE sales SET invoice_code=? WHERE id=?", (f"D{int(row['id']):08d}", row["id"]))
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_invoice_code ON sales(invoice_code)")
+        if "barcode" not in sale_cols:
+            conn.execute("ALTER TABLE sales ADD COLUMN barcode TEXT")
+        purchase_cols = {row["name"] for row in conn.execute("PRAGMA table_info(purchases)")}
+        if "barcode" not in purchase_cols:
+            conn.execute("ALTER TABLE purchases ADD COLUMN barcode TEXT")
+        if "invoice_code" not in purchase_cols:
+            conn.execute("ALTER TABLE purchases ADD COLUMN invoice_code TEXT")
+        fill_missing_doc_barcodes(conn)
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_barcode ON sales(barcode)")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_barcode ON purchases(barcode)")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_invoice_code ON purchases(invoice_code)")
         if "revised_at" not in sale_cols:
             conn.execute("ALTER TABLE sales ADD COLUMN revised_at TEXT")
         note_cols = {row["name"] for row in conn.execute("PRAGMA table_info(notifications)")}
@@ -5065,6 +5156,39 @@ def list_products():
     return jsonify(products=products)
 
 
+@app.get("/api/scan")
+def scan_document():
+    require_user()
+    code = request.args.get("code") or ""
+    with connect() as conn:
+        found = locate_document(conn, code)
+        if found:
+            kind, doc_id = found
+            if kind == "sale":
+                payload = sale_payload(conn, doc_id)
+                return jsonify(kind="sale", **payload)
+            return jsonify(kind="purchase", purchase=purchase_payload(conn, doc_id))
+        found = locate_scan(conn, code)
+        if found is None:
+            raise AppError("فاکتور یا کالایی با این بارکد نیست", 404)
+        if found == "conflict":
+            raise AppError("این بارکد به بیش از یک کالا می‌خورد. بارکد را در کالاها یکتا کنید.", 409)
+        product_id, variation_id = found
+        row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
+        if not row:
+            raise AppError("فاکتور یا کالایی با این بارکد نیست", 404)
+        threshold = setting_int(get_settings(conn), "low_stock")
+        product = present_product(conn, row, threshold)
+    variation = next((item for item in product["variations"] if item["id"] == variation_id), None) if variation_id else None
+    return jsonify(
+        kind="product",
+        product=product,
+        variation_id=variation_id or None,
+        price=variation["price"] if variation else product["price"],
+        stock=variation["stock"] if variation else product["stock"],
+    )
+
+
 @app.get("/api/products/scan")
 def scan_product():
     require_user()
@@ -6164,22 +6288,29 @@ def create_purchase():
         new_cost = moving_avg(int(row["stock"]), int(row["cost"]), qty, unit_cost)
         conn.execute("UPDATE products SET cost=?, updated_at=? WHERE id=?", (new_cost, iso(), pid))
         pay = acc(conn, pay_code)
-        cur = conn.execute(
-            """INSERT INTO purchases (product_id, qty, unit_cost, total, pay_account_id, session_id, user_id, created_at)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (pid, qty, unit_cost, total, pay["id"], session_id, user["id"], iso()),
-        )
+        purchase_id = insert_purchase_row(conn, pid, qty, unit_cost, total, pay["id"], session_id, user["id"])
         if total:
             post_entry(
                 conn,
                 f"خرید {note_name}",
                 [(acc(conn, "1200")["id"], total, 0), (pay["id"], 0, total)],
                 "purchase",
-                cur.lastrowid,
+                purchase_id,
                 user["id"],
             )
         maybe_queue_woo_sync(conn, pid, variation_id if product_kind(row) == "variable" else None)
-    return jsonify(ok=True, total=total)
+        purchase = purchase_payload(conn, purchase_id)
+    return jsonify(ok=True, total=total, purchase=purchase)
+
+
+@app.get("/api/purchases/<int:purchase_id>")
+def get_purchase(purchase_id: int):
+    require_user()
+    with connect() as conn:
+        purchase = purchase_payload(conn, purchase_id)
+        if not purchase:
+            raise AppError("رسید خرید پیدا نشد", 404)
+    return jsonify(purchase=purchase)
 
 
 def pro_balance(conn) -> int:
@@ -6319,7 +6450,18 @@ def read_invoice_with_ai(blob: bytes, mime: str) -> dict:
     return invoice_from_ai(body)
 
 
-def record_simple_purchase(conn, user_id: int, product_id: int, qty: int, unit_cost: int, seller: str) -> None:
+def insert_purchase_row(conn, product_id: int, qty: int, unit_cost: int, total: int, pay_id: int, session_id: int | None, user_id: int) -> int:
+    barcode = mint_doc_barcode(conn, "220")
+    invoice_code = make_purchase_code(conn)
+    cur = conn.execute(
+        """INSERT INTO purchases (product_id, qty, unit_cost, total, pay_account_id, session_id, user_id, created_at, barcode, invoice_code)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (product_id, qty, unit_cost, total, pay_id, session_id, user_id, iso(), barcode, invoice_code),
+    )
+    return int(cur.lastrowid)
+
+
+def record_simple_purchase(conn, user_id: int, product_id: int, qty: int, unit_cost: int, seller: str) -> int:
     row = conn.execute("SELECT * FROM products WHERE id=? AND active=1", (product_id,)).fetchone()
     if not row:
         raise AppError("کالا پیدا نشد", 404)
@@ -6332,22 +6474,19 @@ def record_simple_purchase(conn, user_id: int, product_id: int, qty: int, unit_c
     new_cost = moving_avg(int(row["stock"]), int(row["cost"]), qty, unit_cost)
     conn.execute("UPDATE products SET cost=?, updated_at=? WHERE id=?", (new_cost, iso(), product_id))
     pay = acc(conn, "1010")
-    cur = conn.execute(
-        """INSERT INTO purchases (product_id, qty, unit_cost, total, pay_account_id, session_id, user_id, created_at)
-           VALUES (?,?,?,?,?,?,?,?)""",
-        (product_id, qty, unit_cost, qty * unit_cost, pay["id"], None, user_id, iso()),
-    )
     total = qty * unit_cost
+    purchase_id = insert_purchase_row(conn, product_id, qty, unit_cost, total, pay["id"], None, user_id)
     if total:
         post_entry(
             conn,
             f"خرید {row['name']}",
             [(acc(conn, "1200")["id"], total, 0), (pay["id"], 0, total)],
             "purchase",
-            cur.lastrowid,
+            purchase_id,
             user_id,
         )
     maybe_queue_woo_sync(conn, product_id, None)
+    return purchase_id
 
 
 @app.get("/api/pro")
@@ -6457,6 +6596,7 @@ def apply_invoice_photo():
     if not isinstance(lines, list) or not lines:
         raise AppError("قلمی برای ثبت نیست")
     saved = []
+    purchases = []
     with connect() as conn:
         require_access(conn)
         for raw in lines:
@@ -6477,9 +6617,10 @@ def apply_invoice_photo():
                     (name, "", "", unit_cost, unit_cost, 0, "", "", iso(), iso()),
                 )
                 product_id = int(cur.lastrowid)
-            record_simple_purchase(conn, user["id"], product_id, qty, unit_cost, seller)
+            purchase_id = record_simple_purchase(conn, user["id"], product_id, qty, unit_cost, seller)
+            purchases.append(purchase_payload(conn, purchase_id))
             saved.append({"product_id": product_id, "name": name, "qty": qty, "unit_price": unit_cost})
-    return jsonify(ok=True, lines=saved)
+    return jsonify(ok=True, lines=saved, purchases=purchases)
 
 
 def quick_link_customer(conn, payload: dict) -> dict:

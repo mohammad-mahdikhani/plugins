@@ -41,6 +41,22 @@ function payUrlField(url, targetId) {
   if (!url) return "";
   return `<div class="field"><label>لینک پرداخت</label><input class="ltr" id="${targetId}" readonly value="${esc(url)}"><button type="button" class="btn" data-act="copy-text" data-target="${targetId}">کپی لینک</button></div>`;
 }
+function ean13Svg(code) {
+  const digits = String(code || "").replace(/\D/g, "");
+  if (digits.length !== 13) return "";
+  const L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"];
+  const G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"];
+  const R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"];
+  const parity = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
+  const left = parity[Number(digits[0])] || "LLLLLL";
+  let bits = "101";
+  for (let i = 0; i < 6; i += 1) bits += (left[i] === "L" ? L : G)[Number(digits[i + 1])];
+  bits += "01010";
+  for (let i = 7; i < 13; i += 1) bits += R[Number(digits[i])];
+  bits += "101";
+  const bars = [...bits].map((bit, i) => (bit === "1" ? `<rect x="${i}" y="0" width="1" height="48"/>` : "")).join("");
+  return `<div class="invoice-barcode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${bits.length} 48" preserveAspectRatio="none" aria-label="${esc(digits)}">${bars}</svg><span class="ltr">${esc(digits)}</span></div>`;
+}
 function gatewayPanel(sale) {
   const target = `pay-url-${sale.id}`;
   const url = sale.pay_url || "";
@@ -538,11 +554,41 @@ function matchCode(product, code) {
   const variation = (product.variations || []).find((item) => item.barcode === code || item.sku === code);
   return variation ? { product, variation, parent: false } : null;
 }
+async function openScanHit(data) {
+  if (data.kind === "sale") {
+    if (canEditSale(data.sale)) {
+      await openSaleEdit(data.sale.id);
+      toast("فاکتور باز شد");
+      return true;
+    }
+    state.modal = { type: "receipt", sale: data.sale, items: data.items || [] };
+    render();
+    return true;
+  }
+  if (data.kind === "purchase") {
+    state.modal = { type: "purchase-receipt", purchase: data.purchase };
+    render();
+    return true;
+  }
+  return false;
+}
+async function openDocumentFromBarcode(code) {
+  const trimmed = String(code || "").trim();
+  if (!trimmed) return;
+  const data = await api(`/api/scan?code=${encodeURIComponent(trimmed)}`);
+  if (await openScanHit(data)) return;
+  toast("این بارکد فاکتور نیست", { error: true });
+}
 async function addByBarcode(code) {
   const trimmed = code.trim();
   if (!trimmed) return;
-  const data = await api(`/api/products/scan?code=${encodeURIComponent(trimmed)}`);
+  const data = await api(`/api/scan?code=${encodeURIComponent(trimmed)}`);
+  if (await openScanHit(data)) return;
   const product = data.product;
+  if (!product) {
+    toast("فاکتور یا کالایی با این بارکد نیست", { error: true });
+    return;
+  }
   if (!state.products.some((item) => item.id === product.id)) state.products.push(product);
   else state.products = state.products.map((item) => item.id === product.id ? product : item);
   const variation = data.variation_id
@@ -771,6 +817,7 @@ function receiptHtml(modal) {
       <p class="invoice-total"><span>قابل پرداخت</span><span class="num">${money(sale.payable)}</span></p>
       <p class="invoice-pay">${PAY[sale.payment_method] || ""}</p>
       ${sale.moadian_taxid ? `<p class="invoice-tax ltr">${esc(sale.moadian_taxid)}</p>` : ""}
+      ${ean13Svg(sale.barcode)}
       <p class="invoice-thanks">با تشکر از خرید شما</p>
     </div>
   </div>
@@ -1106,6 +1153,7 @@ function invoicesHtml() {
   </section>` : "";
   return `<div class="stack">${reader}<section class="card"><h2 class="section-title">فاکتورهای ثبت‌شده</h2>
     <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. اگر یک قلم اشتباه خریده شده، همان قلم را حذف کنید. اگر کل سفارش اشتباه است، داخل اصلاح «حذف فاکتور» را بزنید تا موجودی و حساب به قبل از فروش برگردد.</p>
+    <div class="field"><label>بارکدخوان فاکتور</label><input id="invoice-barcode" data-barcode="invoice" class="ltr" autocomplete="off" placeholder="بارکد پایین رسید را بگیرید تا همان فاکتور باز شود"></div>
     <div class="grid-2">
       <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
       <div class="field"><label>تاریخ شمسی</label><div class="jalali-date-wrap"><input class="jalali-date" id="invoice-date" value="${esc(state.invoiceDate)}" placeholder="همه روزها" autocomplete="off"><button type="button" class="btn" data-act="open-datepicker" data-target="invoice-date">تقویم</button></div></div>
@@ -1278,7 +1326,7 @@ function posHtml() {
       ${closed ? `<div class="banner">صندوق بسته است. <button type="button" class="btn" data-act="nav" data-page="register">باز کردن صندوق</button></div>` : ""}
       ${lowStockBanner(state.products)}
       ${checkAlertBanner()}
-      <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد را اینجا بگیرید"></div>
+      <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد کالا یا بارکد پایین فاکتور را بگیرید"></div>
       ${state.scanHit ? notice(`scan:${state.scanHit.name}:${state.scanHit.stock}`, `همین بارکد: <strong>${esc(state.scanHit.name)}</strong> · قیمت ${money(state.scanHit.price)} · موجودی ${num(state.scanHit.stock)}`) : ""}
       ${lines}
       <div class="grid-2">
@@ -1384,7 +1432,7 @@ function inventoryHtml() {
   const pay = data.pay_accounts.map((account) => `<option value="${esc(account.code)}">${esc(account.name)}</option>`).join("");
   return `<div class="stack">${lowStockBanner(data.products)}<section class="card"><input id="inventory-query" value="${esc(state.inventoryQuery)}" placeholder="جستجوی کالا برای دیدن موجودی"><div id="inventory-box">${inventoryTable()}</div>
     ${isAdmin() ? `<details><summary>تعدیل موجودی</summary><form data-act="adjust"><div class="field"><label>کالا</label><select name="product_id">${options}</select><p class="hint">اگر کالا در فهرست نیست، نامش را بالا بنویسید.</p></div><div class="field"><label>موجودی جدید</label><input name="stock" inputmode="numeric" required></div><div class="field"><label>شرح</label><input name="note"></div><button class="btn primary" type="submit">ثبت</button></form></details>` : `<p class="hint">این حساب موجودی را می‌بیند. تغییر موجودی با مدیر است.</p>`}
-    ${isAdmin() ? `<details><summary>رسید خرید</summary><form data-act="purchase"><div class="grid-2"><div class="field"><label>کالا</label><select name="product_id">${options}</select></div><div class="field"><label>تعداد</label><input name="qty" inputmode="numeric" required></div></div><div class="grid-2"><div class="field"><label>فی خرید</label><input name="unit_cost" inputmode="numeric" required></div><div class="field"><label>پرداخت از</label><select name="pay_code">${pay}</select></div></div><p class="hint">اگر فی خرید وارد شود، میانگین قیمت خرید عوض می‌شود و سند حسابداری می‌خورد.</p><button class="btn primary" type="submit">ثبت خرید</button></form></details>` : ""}
+    ${isAdmin() ? `<details><summary>رسید خرید</summary><form data-act="purchase"><div class="grid-2"><div class="field"><label>کالا</label><select name="product_id">${options}</select></div><div class="field"><label>تعداد</label><input name="qty" inputmode="numeric" required></div></div><div class="grid-2"><div class="field"><label>فی خرید</label><input name="unit_cost" inputmode="numeric" required></div><div class="field"><label>پرداخت از</label><select name="pay_code">${pay}</select></div></div><p class="hint">اگر فی خرید وارد شود، میانگین قیمت خرید عوض می‌شود و سند حسابداری می‌خورد. بعد از ثبت، بارکد روی رسید چاپ می‌شود.</p><button class="btn primary" type="submit">ثبت خرید</button></form></details>` : ""}
   </section>
   <section class="card"><h2 class="section-title">گردش اخیر</h2><table><thead><tr><th>زمان</th><th>کالا</th><th>نوع</th><th>از</th><th>به</th><th>شرح</th></tr></thead><tbody>
     ${data.logs.map((row) => `<tr><td>${esc(row.at_jalali)}</td><td>${esc(row.product_name)}</td><td>${KINDS[row.kind] || esc(row.kind)}</td><td class="num">${num(row.old_value)}</td><td class="num">${num(row.new_value)}</td><td>${esc(row.note || "")}</td></tr>`).join("") || `<tr><td colspan="6">گردشی نیست.</td></tr>`}
@@ -1525,6 +1573,26 @@ function smsInvoiceHtml(topup) {
       <p class="invoice-total"><span>پرداخت‌شده</span><span class="num">${money(topup.payable)}</span></p>
       <p class="invoice-pay">زیبال${topup.paid_ref ? ` · <span class="ltr">${esc(topup.paid_ref)}</span>` : ""}</p>
       <p class="invoice-thanks">این فاکتور برای مدیر فروشگاه صادر شد</p>
+    </div>
+  </div>
+  <div class="row-actions"><button type="button" class="btn" data-act="print">چاپ</button></div>`;
+}
+function purchaseReceiptHtml(modal) {
+  const row = modal.purchase || {};
+  const shop = shopBrand();
+  const code = row.invoice_code || `P${row.id || ""}`;
+  return `<div id="print-area" class="invoice thermal">
+    <div class="invoice-sheet">
+      <header class="invoice-head">
+        <div class="invoice-brand">${invoiceSeal(true)}<div><strong>${esc(shop.name)}</strong><div>رسید خرید</div></div></div>
+        <div class="invoice-meta"><b class="ltr">${esc(code)}</b><span>خرید ${num(row.id)}</span><span>${esc(row.at_jalali || "")}</span></div>
+      </header>
+      <table><thead><tr><th>کالا</th><th>مبلغ</th></tr></thead><tbody>
+        <tr><td>${esc(row.product_name || "")} × ${num(row.qty)}</td><td class="num">${money(row.total)}</td></tr>
+      </tbody></table>
+      <p class="invoice-total"><span>مبلغ خرید</span><span class="num">${money(row.total)}</span></p>
+      ${ean13Svg(row.barcode)}
+      <p class="invoice-thanks">بارکد را برای باز کردن همین رسید اسکن کنید</p>
     </div>
   </div>
   <div class="row-actions"><button type="button" class="btn" data-act="print">چاپ</button></div>`;
@@ -1782,6 +1850,7 @@ function modalHtml() {
     inner = `<h2 class="section-title">پرداخت لایسنس در زیبال</h2><p>${esc(lic.title)} · ${esc(lic.buyer_name)} · ${money(lic.payable)}</p>${lic.pay_url ? `<p><a href="${esc(lic.pay_url)}" target="_blank" rel="noopener">باز کردن صفحه زیبال</a></p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-license" data-id="${lic.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-license" data-id="${lic.id}">لغو</button></div><form data-act="manual-license"><input type="hidden" name="id" value="${lic.id}"><div class="field"><label>اگر در پنل زیبال پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
   }
   if (modal.type === "receipt") inner = receiptHtml(modal);
+  if (modal.type === "purchase-receipt") inner = purchaseReceiptHtml(modal);
   if (modal.type === "sms-invoice") inner = smsInvoiceHtml(modal.topup || {});
   if (modal.type === "import") {
     const preview = modal.preview;
@@ -1815,7 +1884,7 @@ function modalHtml() {
     <form data-act="attach-email"><h2 class="section-title">ورود با جیمیل</h2><p class="hint">همین جیمیل را ذخیره کنید و بعد با آن وارد شوید.</p><div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" value="${esc(state.user.email || "")}" required placeholder="name@gmail.com"></div><button class="btn primary" type="submit">ذخیره جیمیل</button></form>
     <form data-act="verify-email"><div class="field"><label>کد ۶ رقمی جیمیل</label><input class="ltr" name="code" inputmode="numeric" required></div><button class="btn" type="submit">تأیید جیمیل</button></form>`;
   }
-  const wide = modal.type === "receipt" || modal.type === "sale-edit" || modal.type === "sms-invoice" || modal.type === "invoice-read" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
+  const wide = modal.type === "receipt" || modal.type === "purchase-receipt" || modal.type === "sale-edit" || modal.type === "sms-invoice" || modal.type === "invoice-read" ? "invoice-modal" : (modal.type === "import" ? "import-modal" : "");
   return `<div class="modal-back" data-act="close-modal"><div class="modal card ${wide}" data-act="stop"><div class="row-actions"><button type="button" class="btn" data-act="close-modal">بستن</button></div>${inner}</div></div>`;
 }
 
@@ -2050,8 +2119,8 @@ async function onSubmit(event) {
           product_id: asInt(data[`product-${index}`] || "0"),
         });
       }
-      await api("/api/invoices/apply", { method: "POST", body: { seller: data.seller || "", lines } });
-      state.modal = null;
+      const applied = await api("/api/invoices/apply", { method: "POST", body: { seller: data.seller || "", lines } });
+      state.modal = applied.purchases?.length === 1 ? { type: "purchase-receipt", purchase: applied.purchases[0] } : null;
       toast("خرید از روی فاکتور ثبت شد", { ok: true });
       await loaders.invoices();
       render();
@@ -2163,8 +2232,9 @@ async function onSubmit(event) {
       await loaders.inventory();
       render();
     } else if (act === "purchase") {
-      await api("/api/purchases", { method: "POST", body: data });
+      const result = await api("/api/purchases", { method: "POST", body: data });
       await loaders.inventory();
+      state.modal = result.purchase ? { type: "purchase-receipt", purchase: result.purchase } : null;
       toast("خرید ثبت شد");
       render();
     } else if (act === "journal") await saveJournal(data);
@@ -3037,22 +3107,30 @@ document.addEventListener("keydown", (event) => {
     guard(() => openProductFromBarcode(code));
     return;
   }
+  if (event.key === "Enter" && event.target?.dataset?.barcode === "invoice") {
+    event.preventDefault();
+    const code = event.target.value;
+    event.target.value = "";
+    guard(() => openDocumentFromBarcode(code));
+    return;
+  }
   if (event.target?.dataset?.barcode === "product" && event.key === "Enter") {
     event.preventDefault();
     return;
   }
-  if (!state.user || state.page !== "pos" || state.modal) return;
+  const scanPages = state.page === "pos" || state.page === "invoices" || state.page === "inventory";
+  if (!state.user || !scanPages || state.modal) return;
   const inField = event.target.matches("input, textarea, select");
-  if (inField && event.target.dataset.barcode !== "1") return;
+  if (inField && event.target.dataset.barcode !== "1" && event.target.dataset.barcode !== "invoice") return;
   const now = Date.now();
   if (now - scanAt > 80) scanBuffer = "";
   scanAt = now;
   if (event.key === "Enter") {
-    const code = event.target.dataset?.barcode === "1" ? event.target.value : scanBuffer;
+    const code = event.target.dataset?.barcode === "1" || event.target.dataset?.barcode === "invoice" ? event.target.value : scanBuffer;
     scanBuffer = "";
     if (code && code.trim()) {
       event.preventDefault();
-      guard(() => addByBarcode(code));
+      guard(() => (state.page === "pos" ? addByBarcode(code) : openDocumentFromBarcode(code)));
     }
   } else if (!inField && event.key.length === 1) scanBuffer += event.key;
 });

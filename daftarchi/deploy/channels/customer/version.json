@@ -1,11 +1,11 @@
 {
-  "version": "1.1.50",
+  "version": "1.1.51",
   "channel": "customer",
-  "notes": "تم روشن، تیره، کرم و سبز از تنظیمات عوض می‌شود.",
+  "notes": "بارکد فاکتور و خرید روی رسید چاپ می‌شود و با اسکن همان فاکتور باز می‌شود.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.50-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.51-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-17T07:50:41+00:00"
+  "published_at": "2026-11-20T10:35:22+00:00"
 }

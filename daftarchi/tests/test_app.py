@@ -92,11 +92,11 @@ class DaftarchiTest(unittest.TestCase):
         unknown = self.client.put("/api/settings", json={"ui_theme": "neon"})
         self.assertEqual(unknown.status_code, 200, unknown.get_json())
         self.assertEqual(unknown.get_json()["settings"]["ui_theme"], "light")
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("ظاهر برنامه", page)
         self.assertIn('data-act="pick-theme"', page)
         self.assertIn('["dark", "تیره"]', page)
-        sheet = self.client.get("/static/css/app.css?v=1.1.50").get_data(as_text=True)
+        sheet = self.client.get("/static/css/app.css?v=1.1.51").get_data(as_text=True)
         self.assertIn('html[data-theme="dark"]', sheet)
         self.assertIn('html[data-theme="sand"]', sheet)
         self.assertIn('html[data-theme="forest"]', sheet)
@@ -141,7 +141,7 @@ class DaftarchiTest(unittest.TestCase):
         later = self.client.get("/api/calendar").get_json()
         cell = next(item for week in later["weeks"] for item in week if item["today"])
         self.assertGreaterEqual(cell["checks"], 1)
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn('["calendar", "تقویم"]', page)
         self.assertIn("تقویم دفترچی شمسی است", page)
         self.assertIn("jalali-date", page)
@@ -177,22 +177,22 @@ class DaftarchiTest(unittest.TestCase):
         entered = self.client.post("/api/auth/phone/enter", json={"phone": "09125556677", "code": sent.get_json()["preview_code"]})
         self.assertEqual(entered.status_code, 200, entered.get_json())
         self.assertEqual(entered.get_json()["user"]["phone"], "09125556677")
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("ثبت شماره موبایل", page)
         self.assertIn("فقط شماره موبایل را بنویسید", page)
 
     def test_web_edition_can_make_a_desktop_icon(self):
         page = self.client.get("/").get_data(as_text=True)
-        self.assertIn("/static/css/app.css?v=1.1.50", page)
-        self.assertIn("/static/icon-192.png?v=1.1.50", page)
-        self.assertIn("/static/js/app.js?v=1.1.50", page)
+        self.assertIn("/static/css/app.css?v=1.1.51", page)
+        self.assertIn("/static/icon-192.png?v=1.1.51", page)
+        self.assertIn("/static/js/app.js?v=1.1.51", page)
         self.assertIn("beforeinstallprompt", page)
         self.assertIn('defer', page)
-        css = self.client.get("/static/css/app.css?v=1.1.50")
+        css = self.client.get("/static/css/app.css?v=1.1.51")
         self.assertIn("immutable", css.headers["Cache-Control"])
         self.assertIn("max-age=31536000", css.headers["Cache-Control"])
         sheet = css.get_data(as_text=True)
-        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.50", sheet)
+        self.assertIn("Vazirmatn-Regular.woff2?v=1.1.51", sheet)
         self.assertIn(".bubble .toast-remedy { color: var(--accent); }", sheet)
         self.assertIn(".bubble.bug .toast-remedy { color: #9f1239; }", sheet)
         health = self.client.get("/api/health")
@@ -218,12 +218,12 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.50", worker)
+        self.assertIn("daftarchi-1.1.51", worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.50", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.50", headers={"Accept-Encoding": "gzip"})
+        self.assertIn("/static/js/app.js?v=1.1.51", worker)
+        packed = self.client.get("/static/js/app.js?v=1.1.51", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
-        self.assertLess(len(packed.data), 125000)
+        self.assertLess(len(packed.data), 132000)
         prev = os.environ.get("DAFTARCHI_OPEN_BROWSER")
         os.environ["DAFTARCHI_OPEN_BROWSER"] = "1"
         try:
@@ -604,7 +604,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(customers[0]["balance"], 0)
 
     def test_shop_pattern_is_sent_through_melipayamak(self):
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("الگوی پیامک خریدار", page)
         self.assertIn("به صورت الگو", page)
         self.assertNotIn("کلید کاوه‌نگار", page)
@@ -689,7 +689,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(tried.status_code, 200, tried.get_json())
         sent = [item for item in seen["calls"] if item.get("action") == "send"]
         self.assertEqual(sent[-1]["pattern"], "noway")
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("sms_choice_", page)
         self.assertIn("الگوهای آماده", page)
         php = (Path(__file__).resolve().parents[1] / "deploy/webakery/daftarchi-sms.php").read_text(encoding="utf-8")
@@ -713,7 +713,7 @@ class DaftarchiTest(unittest.TestCase):
         values = appmod.pattern_values(None, sale, items, {"shop_name": "دفترچی"})
         _text, args = appmod.render_pattern("{mobile};{sh_first_name};{price};{all_items};{order_id}", values)
         self.assertEqual(args, ["09120000000", "نگار", "10,000", "عطر، کرم", "12"])
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("insert-sms-var", page)
         self.assertIn("شماره موبایل مشتری", page)
         php = (Path(__file__).resolve().parents[1] / "deploy/webakery/daftarchi-sms.php").read_text(encoding="utf-8")
@@ -737,7 +737,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(removed.status_code, 200, removed.get_json())
         phones = [row["phone"] for row in self.client.get("/api/users").get_json()["users"]]
         self.assertNotIn("09127778899", phones)
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn('data-act="delete-user"', page)
         self.assertIn("آزمایش پیامک", page)
         self.assertIn("ریست برنامه", page)
@@ -1511,7 +1511,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(color.get_json()["product"]["name"], "تیشرت پاکان")
         clash = self.client.get("/api/products/scan", query_string={"code": "1234"})
         self.assertEqual(clash.status_code, 409)
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn('data-act="dismiss"', page)
         self.assertIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
         self.assertIn('aria-label="بستن"', page)
@@ -1587,7 +1587,7 @@ class DaftarchiTest(unittest.TestCase):
         bad = self.client.post("/api/settings/test/pos", json={"pos_host": "192.168.001.999", "pos_port": "1362"})
         self.assertEqual(bad.status_code, 400)
         self.assertIn("آدرس کارت‌خوان درست نیست", bad.get_json()["error"])
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("pos_host: data.pos_host", page)
         self.assertIn("پرداخت نوین", page)
 
@@ -1676,7 +1676,7 @@ class DaftarchiTest(unittest.TestCase):
         typed = self.client.post("/api/pos/pay", json={"amount": 15000})
         self.assertEqual(typed.status_code, 200, typed.get_json())
         self.assertFalse(typed.get_json()["sent"])
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("/api/pos/pay", page)
         self.assertIn("waiting: true", page)
 
@@ -1792,7 +1792,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
         self.assertEqual(empty.status_code, 400)
         self.assertEqual(self.client.get("/api/pro").get_json()["tokens"], 9160)
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("buy-pro", page)
         self.assertIn("دست‌نویس", page)
 
@@ -1961,7 +1961,7 @@ class DaftarchiTest(unittest.TestCase):
         blocked = self.client.patch(f"/api/products/{live['id']}", json={"barcode": "6260001111111"})
         self.assertEqual(blocked.status_code, 400)
         self.assertIn("بارکد", blocked.get_json()["error"])
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("اگر این بارکد مال کالای بایگانی‌شده باشد", page)
 
     def test_excel_import_and_archive(self):
@@ -2358,7 +2358,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertNotIn("token", seen["payload"])
         listed = self.client.get("/api/support/messages").get_json()["messages"]
         self.assertEqual(listed[-1]["body"], "صندوق بسته ماند")
-        page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+        page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
         self.assertIn("اسکرین برای پشتیبان ارسال شد", page)
         self.assertIn("html2canvas.min.js", page)
         self.assertNotIn('name="shot"', page)
@@ -3226,7 +3226,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.50")
+        self.assertEqual(appmod.APP_VERSION, "1.1.51")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
@@ -3291,7 +3291,7 @@ class DaftarchiTest(unittest.TestCase):
             boot = self.client.get("/api/auth/bootstrap").get_json()
         finally:
             appmod.http_request = original
-        self.assertEqual(boot["version"], "1.1.50")
+        self.assertEqual(boot["version"], "1.1.51")
         home = self.client.get("/")
         self.assertIn("manifest.webmanifest", home.get_data(as_text=True))
         manifest = json.loads(self.client.get("/manifest.webmanifest").get_data(as_text=True))
@@ -3300,7 +3300,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.50", worker.get_data(as_text=True))
+        self.assertIn("daftarchi-1.1.51", worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)
@@ -3512,7 +3512,7 @@ class DaftarchiTest(unittest.TestCase):
             self.assertTrue(str(paid["topup"]["invoice_code"]).startswith("S"))
             self.assertEqual(seen["credit"]["invoice_code"], paid["topup"]["invoice_code"])
             self.assertNotIn("password", seen["credit"])
-            page = self.client.get("/static/js/app.js?v=1.1.50").get_data(as_text=True)
+            page = self.client.get("/static/js/app.js?v=1.1.51").get_data(as_text=True)
             self.assertIn('"sms", "settings"', page)
             self.assertIn("این فاکتور برای مدیر فروشگاه صادر شد", page)
             self.assertNotIn("با زدن مبلغ، صفحه زیبال باز می‌شود", page)
@@ -3643,6 +3643,66 @@ class DaftarchiTest(unittest.TestCase):
         locked = self.client.delete(f"/api/sales/{cash_sale['id']}")
         self.assertEqual(locked.status_code, 400, locked.get_json())
         self.assertIn("مودیان", locked.get_json()["error"])
+
+    def test_sale_and_purchase_barcodes_open_from_scan(self):
+        self.open_register(0)
+        product = self.add_product(name="قند بارکد", price=10000, cost=4000, stock=8, barcode="scan-sale-1")
+        sold = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}],
+            "payment_method": "cash",
+            "customer_first": "مریم",
+            "customer_last": "احمدی",
+        })
+        self.assertEqual(sold.status_code, 200, sold.get_json())
+        sale = sold.get_json()["sale"]
+        self.assertTrue(str(sale["barcode"]).startswith("210"), sale["barcode"])
+        self.assertEqual(len(sale["barcode"]), 13)
+        self.assertEqual(sale["barcode"][-1], appmod.ean13_check(sale["barcode"][:12]))
+        by_bar = self.client.get("/api/scan", query_string={"code": sale["barcode"]})
+        self.assertEqual(by_bar.status_code, 200, by_bar.get_json())
+        self.assertEqual(by_bar.get_json()["kind"], "sale")
+        self.assertEqual(by_bar.get_json()["sale"]["id"], sale["id"])
+        self.assertEqual(by_bar.get_json()["sale"]["customer_name"], "مریم احمدی")
+        by_code = self.client.get("/api/scan", query_string={"code": sale["invoice_code"]})
+        self.assertEqual(by_code.get_json()["kind"], "sale")
+        self.assertEqual(by_code.get_json()["sale"]["id"], sale["id"])
+        purchase = self.client.post("/api/purchases", json={
+            "product_id": product["id"], "qty": 2, "unit_cost": 3000, "pay_code": "1000",
+        })
+        self.assertEqual(purchase.status_code, 200, purchase.get_json())
+        row = purchase.get_json()["purchase"]
+        self.assertTrue(str(row["barcode"]).startswith("220"), row["barcode"])
+        self.assertEqual(len(row["barcode"]), 13)
+        self.assertTrue(str(row["invoice_code"]).startswith("P"))
+        found = self.client.get("/api/scan", query_string={"code": row["barcode"]})
+        self.assertEqual(found.status_code, 200, found.get_json())
+        self.assertEqual(found.get_json()["kind"], "purchase")
+        self.assertEqual(found.get_json()["purchase"]["id"], row["id"])
+        goods = self.client.get("/api/scan", query_string={"code": "scan-sale-1"})
+        self.assertEqual(goods.status_code, 200, goods.get_json())
+        self.assertEqual(goods.get_json()["kind"], "product")
+        self.assertEqual(goods.get_json()["product"]["id"], product["id"])
+        missing = self.client.get("/api/scan", query_string={"code": "9999999999999"})
+        self.assertEqual(missing.status_code, 404)
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE sales SET barcode='' WHERE id=?", (sale["id"],))
+        db.execute("UPDATE purchases SET barcode='', invoice_code='' WHERE id=?", (row["id"],))
+        db.commit()
+        db.close()
+        with appmod.connect() as conn:
+            appmod.fill_missing_doc_barcodes(conn)
+        restored = self.client.get(f"/api/sales/{sale['id']}").get_json()["sale"]
+        self.assertTrue(str(restored["barcode"]).startswith("210"))
+        self.assertEqual(len(restored["barcode"]), 13)
+        script = Path(__file__).resolve().parents[1].joinpath("static/js/app.js").read_text(encoding="utf-8")
+        self.assertIn("function ean13Svg", script)
+        self.assertIn("invoice-barcode", script)
+        self.assertIn("/api/scan", script)
+        self.assertIn("فاکتور باز شد", script)
+        self.assertIn("بارکدخوان فاکتور", script)
+        self.assertIn("purchase-receipt", script)
+        sheet = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")
+        self.assertIn(".invoice-barcode", sheet)
 
 
 if __name__ == "__main__":
