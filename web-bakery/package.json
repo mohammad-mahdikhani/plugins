@@ -1,0 +1,9 @@
+{
+  "name": "web-bakery",
+  "private": true,
+  "description": "Download page for Schema Nova WordPress plugin",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
