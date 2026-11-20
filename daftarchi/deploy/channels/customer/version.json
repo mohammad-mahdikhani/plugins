@@ -1,11 +1,11 @@
 {
-  "version": "1.1.62",
+  "version": "1.1.63",
   "channel": "customer",
-  "notes": "بکاپ خودکار روزانه در تنظیمات. ورود بدون باکس ورود اولیه. کارت‌خوان، بارکد فاکتور و فروش گرمی حفظ شد.",
+  "notes": "ارسال و شارژ پیامک از ملی‌پیامک وب‌بیکری. ورود با موبایل فقط بعد از کد تأیید. خواندن فاکتور با گپ‌جی‌پی‌تی؛ روزی یک فاکتور رایگان و تطبیق قیمت خرید/فروش.",
   "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
-  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.62-app.zip",
+  "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.63-app.zip",
   "full_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.13-windows.zip",
   "mac_url": "",
   "linux_url": "",
-  "published_at": "2026-11-20T12:50:00+00:00"
+  "published_at": "2026-11-20T14:20:00+00:00"
 }

@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.62") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.63") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.62") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.63") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.62") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.63") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -296,6 +296,7 @@ tr.selected { background: var(--soft); }
 .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: var(--soft); color: var(--accent-ink); }
 .pill.warn { background: #ffedd5; color: var(--warn); }
 .pill.danger { background: #ffe4e6; color: var(--danger); }
+.pill.update { background: var(--accent); color: #fff; border: 0; cursor: pointer; }
 .banner {
   background: #fff7ed;
   border: 1px solid #fed7aa;

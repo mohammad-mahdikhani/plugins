@@ -83,6 +83,170 @@ function daftarchi_sms_panel() {
     return is_array($panel) ? $panel : array();
 }
 
+function daftarchi_sms_zibal_merchant() {
+    $panel = daftarchi_sms_panel();
+    $merchant = trim((string) ($panel['zibal'] ?? ''));
+    if ($merchant !== '') {
+        return $merchant;
+    }
+    return '6a331116da557b902563c32f';
+}
+
+function daftarchi_sms_pending() {
+    $rows = get_option('daftarchi_sms_pending', array());
+    return is_array($rows) ? $rows : array();
+}
+
+function daftarchi_sms_keep_pending($track, $row) {
+    $rows = daftarchi_sms_pending();
+    $rows[(string) $track] = $row;
+    if (count($rows) > 500) {
+        $rows = array_slice($rows, -500, 500, true);
+    }
+    update_option('daftarchi_sms_pending', $rows, false);
+}
+
+function daftarchi_sms_send_text($params) {
+    $to = daftarchi_sms_phone($params['to'] ?? '');
+    $text = mb_substr(sanitize_textarea_field((string) ($params['text'] ?? '')), 0, 500);
+    $panel = daftarchi_sms_panel();
+    if ($to === '' || $text === '' || empty($panel['username']) || empty($panel['password'])) {
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'sent' => false,
+            'detail' => 'ملی‌پیامک وب‌بیکری هنوز خط ارسال ندارد',
+        ), 200);
+    }
+    $sender = preg_replace('/\D+/', '', (string) ($panel['sender'] ?? ''));
+    $response = wp_remote_post('https://rest.payamak-panel.com/api/SendSMS/SendSimpleSMS2', array(
+        'timeout' => 12,
+        'headers' => array('Content-Type' => 'application/json; charset=utf-8'),
+        'body' => wp_json_encode(array(
+            'username' => (string) $panel['username'],
+            'password' => (string) $panel['password'],
+            'to' => $to,
+            'from' => $sender,
+            'text' => $text,
+            'isFlash' => false,
+        )),
+    ));
+    if (is_wp_error($response)) {
+        return new WP_REST_Response(array('ok' => true, 'sent' => false, 'detail' => 'ملی‌پیامک پاسخ نداد'), 200);
+    }
+    $decoded = json_decode(wp_remote_retrieve_body($response), true);
+    $ret = is_array($decoded) ? (string) ($decoded['RetStatus'] ?? '') : '';
+    if ((int) wp_remote_retrieve_response_code($response) < 400 && ($ret === '1' || $ret === 'Ok')) {
+        return new WP_REST_Response(array('ok' => true, 'sent' => true, 'detail' => 'ملی‌پیامک'), 200);
+    }
+    $message = is_array($decoded) ? (string) ($decoded['StrRetStatus'] ?? 'ارسال پیامک ناموفق بود') : 'ارسال پیامک ناموفق بود';
+    return new WP_REST_Response(array('ok' => true, 'sent' => false, 'detail' => mb_substr($message, 0, 180)), 200);
+}
+
+function daftarchi_sms_charge_request($params) {
+    $credit = absint($params['credit'] ?? 0);
+    $fee = absint($params['fee'] ?? 0);
+    $payable = absint($params['payable'] ?? 0);
+    if ($credit < 100000 || $credit > 1000000) {
+        return new WP_Error('amount', 'مبلغ شارژ خارج از بازه است', array('status' => 400));
+    }
+    if ($payable <= 0) {
+        $payable = $credit + $fee;
+    }
+    $amount = absint($params['amount'] ?? 0);
+    if ($amount <= 0) {
+        $amount = $payable * 10;
+    }
+    $callback = esc_url_raw((string) ($params['callbackUrl'] ?? ''));
+    if ($callback === '') {
+        $callback = home_url('/');
+    }
+    $response = wp_remote_post('https://gateway.zibal.ir/v1/request', array(
+        'timeout' => 20,
+        'headers' => array('Content-Type' => 'application/json; charset=utf-8'),
+        'body' => wp_json_encode(array(
+            'merchant' => daftarchi_sms_zibal_merchant(),
+            'amount' => $amount,
+            'callbackUrl' => $callback,
+            'description' => mb_substr(sanitize_text_field((string) ($params['description'] ?? 'شارژ پیامک دفترچی')), 0, 180),
+            'orderId' => (string) absint($params['local_id'] ?? $params['orderId'] ?? 0),
+            'mobile' => daftarchi_sms_phone($params['mobile'] ?? $params['buyer_phone'] ?? ''),
+        )),
+    ));
+    if (is_wp_error($response)) {
+        return new WP_Error('zibal', 'وب‌بیکری به درگاه شارژ پیامک وصل نشد', array('status' => 502));
+    }
+    $decoded = json_decode(wp_remote_retrieve_body($response), true);
+    $result = is_array($decoded) ? (int) ($decoded['result'] ?? 0) : 0;
+    $track = is_array($decoded) ? (string) ($decoded['trackId'] ?? '') : '';
+    if ($result !== 100 || $track === '') {
+        $message = is_array($decoded) ? (string) ($decoded['message'] ?? 'درگاه شارژ ساخته نشد') : 'درگاه شارژ ساخته نشد';
+        return new WP_Error('zibal', $message, array('status' => 502));
+    }
+    daftarchi_sms_keep_pending($track, array(
+        'shop_phone' => daftarchi_sms_phone($params['shop_phone'] ?? ''),
+        'shop' => mb_substr(sanitize_text_field((string) ($params['shop'] ?? '')), 0, 80),
+        'local_id' => absint($params['local_id'] ?? 0),
+        'credit' => $credit,
+        'fee' => $fee,
+        'payable' => $payable,
+        'buyer_name' => mb_substr(sanitize_text_field((string) ($params['buyer_name'] ?? '')), 0, 80),
+        'buyer_phone' => daftarchi_sms_phone($params['buyer_phone'] ?? $params['mobile'] ?? ''),
+        'trackId' => $track,
+        'created_at' => gmdate('c'),
+    ));
+    return new WP_REST_Response(array(
+        'ok' => true,
+        'service' => 'daftarchi-sms',
+        'trackId' => (int) $track,
+        'payUrl' => 'https://gateway.zibal.ir/start/' . $track,
+    ), 200);
+}
+
+function daftarchi_sms_charge_verify($params) {
+    $track = preg_replace('/\D+/', '', (string) ($params['trackId'] ?? ''));
+    if ($track === '') {
+        return new WP_Error('track', 'شناسه پرداخت خالی است', array('status' => 400));
+    }
+    $response = wp_remote_post('https://gateway.zibal.ir/v1/verify', array(
+        'timeout' => 20,
+        'headers' => array('Content-Type' => 'application/json; charset=utf-8'),
+        'body' => wp_json_encode(array(
+            'merchant' => daftarchi_sms_zibal_merchant(),
+            'trackId' => (int) $track,
+        )),
+    ));
+    if (is_wp_error($response)) {
+        return new WP_Error('zibal', 'استعلام شارژ پیامک انجام نشد', array('status' => 502));
+    }
+    $decoded = json_decode(wp_remote_retrieve_body($response), true);
+    $result = is_array($decoded) ? (int) ($decoded['result'] ?? 0) : 0;
+    $ref = is_array($decoded) ? (string) ($decoded['refNumber'] ?? $track) : $track;
+    if ($result === 100 || $result === 201) {
+        $pending = daftarchi_sms_pending();
+        $row = $pending[$track] ?? null;
+        if (is_array($row)) {
+            $row['status'] = 'paid';
+            $row['gateway_ref'] = $ref;
+            $row['paid_at'] = gmdate('c');
+            $row['invoice_code'] = 'S' . str_pad((string) ($row['local_id'] ?? 0), 8, '0', STR_PAD_LEFT);
+            daftarchi_sms_keep($row);
+        }
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'service' => 'daftarchi-sms',
+            'result' => $result,
+            'refNumber' => $ref,
+            'trackId' => (int) $track,
+        ), 200);
+    }
+    return new WP_REST_Response(array(
+        'ok' => false,
+        'service' => 'daftarchi-sms',
+        'result' => $result,
+        'error' => is_array($decoded) ? (string) ($decoded['message'] ?? 'پرداخت انجام نشده') : 'پرداخت انجام نشده',
+    ), 409);
+}
+
 function daftarchi_sms_catalog() {
     $rows = get_option('daftarchi_sms_catalog', array());
     return is_array($rows) ? $rows : array();
@@ -269,6 +433,9 @@ function daftarchi_sms_pattern_rest($request) {
         }
         return new WP_REST_Response(array('ok' => true, 'service' => 'daftarchi-sms-pattern'), 200);
     }
+    if ($action === 'otp' || $action === 'text') {
+        return daftarchi_sms_send_text($params);
+    }
     if ($action !== 'send') {
         return new WP_Error('action', 'درخواست پیامک نامعتبر است', array('status' => 400));
     }
@@ -338,6 +505,7 @@ function daftarchi_sms_save_panel() {
         $panel['password'] = $password;
     }
     $panel['sender'] = preg_replace('/\D+/', '', (string) ($_POST['sender'] ?? ''));
+    $panel['zibal'] = sanitize_text_field((string) ($_POST['zibal'] ?? ''));
     update_option('daftarchi_melipayamak', $panel, false);
     wp_safe_redirect(admin_url('admin.php?page=daftarchi-sms'));
     exit;
@@ -417,6 +585,13 @@ function daftarchi_sms_rest_save($request) {
     if (!empty($params['password']) || !empty($params['password_hash'])) {
         return new WP_Error('password', 'رمز ذخیره نمی‌شود', array('status' => 400));
     }
+    $action = sanitize_key((string) ($params['action'] ?? ''));
+    if ($action === 'request' || $action === 'charge') {
+        return daftarchi_sms_charge_request($params);
+    }
+    if ($action === 'verify') {
+        return daftarchi_sms_charge_verify($params);
+    }
     if (sanitize_key((string) ($params['status'] ?? '')) !== 'paid') {
         return new WP_REST_Response(array('ok' => true, 'service' => 'daftarchi-sms', 'saved' => 0), 200);
     }
@@ -464,14 +639,16 @@ function daftarchi_sms_page() {
     echo '<div class="wrap">';
     echo '<h1>پیامک دفترچی</h1>';
     echo '<h2>اتصال ملی‌پیامک</h2>';
-    echo '<p>نام کاربری و خط مشترک اینجاست. الگوهای آماده را همین‌جا بسازید تا در تنظیمات دفترچی فروشگاه دیده شوند و فروشگاه یکی را انتخاب کند. کد الگو را بعد از ساختن در ملی‌پیامک بنویسید.</p>';
+    echo '<p>نام کاربری و خط مشترک اینجاست. ارسال پیامک، کد تأیید ورود و شارژ پنل فروشگاه همه از همین اتصال ملی‌پیامک وب‌بیکری انجام می‌شود. فروشگاه کلید ملی‌پیامک نمی‌گیرد.</p>';
     $panel = daftarchi_sms_panel();
     echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
     wp_nonce_field('daftarchi_sms_panel');
     echo '<input type="hidden" name="action" value="daftarchi_sms_panel">';
     echo '<table class="form-table"><tr><th>نام کاربری</th><td><input class="regular-text" name="username" value="' . esc_attr((string) ($panel['username'] ?? '')) . '"></td></tr>';
     echo '<tr><th>رمز</th><td><input class="regular-text" type="password" name="password" placeholder="' . (!empty($panel['password']) ? 'ذخیره شده؛ برای عوض کردن بنویسید' : '') . '" autocomplete="new-password"></td></tr>';
-    echo '<tr><th>شماره خط</th><td><input class="regular-text" name="sender" value="' . esc_attr((string) ($panel['sender'] ?? '')) . '"></td></tr></table>';
+    echo '<tr><th>شماره خط</th><td><input class="regular-text" name="sender" value="' . esc_attr((string) ($panel['sender'] ?? '')) . '"></td></tr>';
+    echo '<tr><th>مرچنت درگاه شارژ</th><td><input class="regular-text" name="zibal" value="' . esc_attr((string) ($panel['zibal'] ?? '')) . '" placeholder="در صورت خالی بودن همان درگاه وب‌بیکری">';
+    echo '<p class="description">شارژ پنل پیامک فروشگاه از همین وب‌بیکری ساخته می‌شود، نه از کلید فروشگاه.</p></td></tr></table>';
     submit_button('ذخیره اتصال');
     echo '</form>';
     echo '<h2>الگوهای آماده</h2>';
@@ -534,7 +711,7 @@ function daftarchi_sms_page() {
     submit_button('ذخیره کد الگوها');
     echo '</form>';
     echo '<h2>شارژ فروشگاه‌ها</h2>';
-    echo '<p>فروشگاه پنل پیامک خودش را شارژ می‌کند. کارمزد هر تراکنش ۳ درصد است و جدا از مبلغ شارژ گرفته می‌شود.</p>';
+    echo '<p>شارژ پنل پیامک فروشگاه از همین وب‌بیکری و اتصال ملی‌پیامک انجام می‌شود. کارمزد هر تراکنش ۳ درصد است و جدا از مبلغ شارژ گرفته می‌شود.</p>';
     echo '<p>جمع شارژ: <strong>' . esc_html(number_format($credit)) . '</strong> تومان · جمع کارمزد شما: <strong>' . esc_html(number_format($fee)) . '</strong> تومان</p>';
     echo '<table class="widefat striped"><thead><tr>';
     echo '<th>فاکتور</th><th>مدیر فروشگاه</th><th>فروشگاه</th><th>موبایل فروشگاه</th><th>شارژ</th><th>کارمزد ۳٪</th><th>پرداخت</th><th>پیگیری</th><th>زمان</th>';

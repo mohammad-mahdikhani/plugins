@@ -1,7 +1,8 @@
 <?php
 /**
- * Read a photographed invoice, including handwriting, with Gemini.
- * The shop pays with Pro tokens. The model key stays on Webakery.
+ * Read a photographed invoice through the GapGPT API on Webakery.
+ * Shop clients never receive the GapGPT key. One free invoice per shop
+ * account per day is enforced in Daftarchi; extra reads spend Pro tokens.
  */
 
 add_action('admin_menu', 'daftarchi_invoice_ai_menu');
@@ -28,16 +29,26 @@ function daftarchi_invoice_ai_page() {
         if ($key !== '') {
             update_option('daftarchi_ai_key', $key, false);
         }
-        echo '<div class="updated"><p>کلید ذخیره شد. در صفحه نشان داده نمی‌شود.</p></div>';
+        $model = sanitize_text_field((string) wp_unslash($_POST['daftarchi_ai_model'] ?? ''));
+        if ($model === '') {
+            $model = 'gpt-4o';
+        }
+        update_option('daftarchi_ai_model', $model, false);
+        echo '<div class="updated"><p>کلید گپ‌جی‌پی‌تی ذخیره شد. در صفحه نشان داده نمی‌شود.</p></div>';
     }
     $saved = trim((string) get_option('daftarchi_ai_key')) !== '';
+    $model = trim((string) get_option('daftarchi_ai_model'));
+    if ($model === '') {
+        $model = 'gpt-4o';
+    }
     echo '<div class="wrap"><h1>هوش فاکتور</h1>';
-    echo '<p>این کلید فقط برای خواندن عکس فاکتور، از جمله دست‌نویس، استفاده می‌شود. توکن مصرفی از اکانت Pro فروشگاه کم می‌شود، نه از VIP.</p>';
-    echo '<p>' . ($saved ? 'یک کلید ذخیره شده است.' : 'هنوز کلیدی نیست.') . '</p>';
+    echo '<p>خواندن عکس فاکتور از API گپ‌جی‌پی‌تی است (<code>https://api.gapgpt.app/v1</code>). کلید فقط اینجاست. فروشگاه کلید نمی‌گیرد. هر حساب دفترچی روزی یک فاکتور رایگان دارد؛ بقیه از توکن Pro کم می‌شود.</p>';
+    echo '<p>' . ($saved ? 'یک کلید گپ‌جی‌پی‌تی ذخیره شده است.' : 'هنوز کلید گپ‌جی‌پی‌تی نیست.') . '</p>';
     echo '<form method="post">';
     wp_nonce_field('daftarchi_invoice_ai');
-    echo '<input type="password" name="daftarchi_ai_key" autocomplete="new-password" style="width:24em" placeholder="کلید Gemini">';
-    echo '<p><button class="button button-primary">ذخیره کلید</button></p></form></div>';
+    echo '<p><label>کلید API گپ‌جی‌پی‌تی<br><input type="password" name="daftarchi_ai_key" autocomplete="new-password" style="width:24em" placeholder="sk-..."></label></p>';
+    echo '<p><label>مدل<br><input class="regular-text" name="daftarchi_ai_model" value="' . esc_attr($model) . '" placeholder="gpt-4o"></label></p>';
+    echo '<p><button class="button button-primary">ذخیره اتصال</button></p></form></div>';
 }
 
 function daftarchi_invoice_ai_route() {
@@ -48,6 +59,68 @@ function daftarchi_invoice_ai_route() {
     ));
 }
 
+function daftarchi_invoice_ai_json($text) {
+    $text = trim((string) $text);
+    if (preg_match('/```(?:json)?\s*(.*?)```/s', $text, $match)) {
+        $text = trim($match[1]);
+    }
+    $parsed = json_decode($text, true);
+    return is_array($parsed) ? $parsed : null;
+}
+
+function daftarchi_invoice_ai_chat($secret, $model, $prompt, $mime, $image) {
+    $payload = wp_json_encode(array(
+        'model' => $model,
+        'temperature' => 0,
+        'response_format' => array('type' => 'json_object'),
+        'messages' => array(
+            array(
+                'role' => 'system',
+                'content' => 'فقط JSON فاکتور فارسی برگردان. فی هر قلم را دقیق بخوان تا با قیمت خرید یا فروش کالای فروشگاه قابل تطبیق باشد.',
+            ),
+            array(
+                'role' => 'user',
+                'content' => array(
+                    array('type' => 'text', 'text' => $prompt),
+                    array(
+                        'type' => 'image_url',
+                        'image_url' => array(
+                            'url' => 'data:' . $mime . ';base64,' . $image,
+                            'detail' => 'high',
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    ));
+    $urls = array(
+        'https://api.gapgpt.app/v1/chat/completions',
+        'https://api.gapapi.com/v1/chat/completions',
+    );
+    $last = null;
+    foreach ($urls as $url) {
+        $response = wp_remote_post($url, array(
+            'timeout' => 50,
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $secret,
+            ),
+            'body' => $payload,
+        ));
+        if (is_wp_error($response)) {
+            $last = $response;
+            continue;
+        }
+        $code = (int) wp_remote_retrieve_response_code($response);
+        $raw = json_decode((string) wp_remote_retrieve_body($response), true);
+        if ($code < 400 && is_array($raw)) {
+            return $raw;
+        }
+        $last = $raw;
+    }
+    return $last;
+}
+
 function daftarchi_invoice_ai_read($request) {
     $key = (string) $request->get_param('key');
     if ($key === '' || !hash_equals('daftarchi-webakery-mail', $key)) {
@@ -55,7 +128,7 @@ function daftarchi_invoice_ai_read($request) {
     }
     $secret = trim((string) get_option('daftarchi_ai_key'));
     if ($secret === '') {
-        return new WP_Error('ai', 'کلید هوش مصنوعی در پیشخوان دفترچی ذخیره نشده', array('status' => 503));
+        return new WP_Error('ai', 'کلید گپ‌جی‌پی‌تی در پیشخوان دفترچی ذخیره نشده', array('status' => 503));
     }
     $image = (string) $request->get_param('image');
     $mime = (string) $request->get_param('mime');
@@ -69,47 +142,28 @@ function daftarchi_invoice_ai_read($request) {
     if ($prompt === '') {
         $prompt = 'فاکتور فارسی را بخوان، حتی اگر دست‌نویس باشد، و JSON برگردان.';
     }
-    $body = array(
-        'contents' => array(array('parts' => array(
-            array('text' => $prompt),
-            array('inline_data' => array('mime_type' => $mime, 'data' => $image)),
-        ))),
-        'generationConfig' => array(
-            'responseMimeType' => 'application/json',
-            'temperature' => 0,
-        ),
-    );
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . rawurlencode($secret);
-    $response = wp_remote_post($url, array(
-        'timeout' => 50,
-        'headers' => array('Content-Type' => 'application/json'),
-        'body' => wp_json_encode($body),
-    ));
-    if (is_wp_error($response)) {
-        return new WP_Error('ai', 'اتصال به هوش مصنوعی برقرار نشد', array('status' => 502));
+    $model = trim((string) get_option('daftarchi_ai_model'));
+    if ($model === '') {
+        $model = 'gpt-4o';
     }
-    $code = (int) wp_remote_retrieve_response_code($response);
-    $raw = json_decode((string) wp_remote_retrieve_body($response), true);
-    if ($code >= 400 || !is_array($raw)) {
-        return new WP_Error('ai', 'هوش مصنوعی فاکتور را نخواند', array('status' => 502));
+    $raw = daftarchi_invoice_ai_chat($secret, $model, $prompt, $mime, $image);
+    if (!is_array($raw)) {
+        return new WP_Error('ai', 'اتصال به گپ‌جی‌پی‌تی برقرار نشد', array('status' => 502));
     }
-    $text = '';
-    $parts = $raw['candidates'][0]['content']['parts'] ?? array();
-    if (is_array($parts)) {
-        foreach ($parts as $part) {
-            if (is_array($part) && isset($part['text'])) {
-                $text .= (string) $part['text'];
-            }
-        }
-    }
-    $parsed = json_decode($text, true);
+    $text = (string) ($raw['choices'][0]['message']['content'] ?? '');
+    $parsed = daftarchi_invoice_ai_json($text);
     if (!is_array($parsed)) {
-        return new WP_Error('ai', 'پاسخ هوش مصنوعی فاکتور نبود', array('status' => 502));
+        return new WP_Error('ai', 'پاسخ گپ‌جی‌پی‌تی فاکتور نبود', array('status' => 502));
     }
-    $tokens = (int) ($raw['usageMetadata']['totalTokenCount'] ?? 0);
+    $tokens = (int) ($raw['usage']['total_tokens'] ?? 0);
     if ($tokens <= 0) {
-        return new WP_Error('ai', 'هوش مصنوعی تعداد توکن را برنگرداند', array('status' => 502));
+        $tokens = (int) ($raw['usage']['prompt_tokens'] ?? 0) + (int) ($raw['usage']['completion_tokens'] ?? 0);
+    }
+    if ($tokens <= 0) {
+        $tokens = 1;
     }
     $parsed['tokens'] = $tokens;
+    $parsed['model'] = $model;
+    $parsed['provider'] = 'gapgpt';
     return new WP_REST_Response($parsed, 200);
 }

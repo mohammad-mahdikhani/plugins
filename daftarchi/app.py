@@ -132,7 +132,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.62"
+APP_VERSION = "1.1.63"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -193,10 +193,12 @@ PRO_PACKS = {
 }
 INVOICE_PROMPT = (
     "این عکس یک فاکتور فارسی است و ممکن است چاپی یا دست‌نویس باشد. "
-    "نام فروشنده، شماره فاکتور، تاریخ، و هر قلم را با نام کالا، تعداد و فی بخوان. "
+    "نام فروشنده، شماره فاکتور، تاریخ، و هر قلم را با نام کالا، تعداد، فی، بارکد یا شناسه اگر روی فاکتور هست بخوان. "
     "رقم‌های فارسی و لاتین هر دو معتبرند. اگر مبلغ به ریال است آن را به تومان تبدیل کن و در خروجی فقط تومان بده. "
+    "فی هر قلم را دقیق بخوان چون باید با قیمت خرید (cost) یا قیمت فروش (price) کالای همین فروشگاه و سایت تطبیق داده شود. "
+    "اگر فهرست کالاهای فروشگاه در پیام هست و نام یا بارکد یا فی یکی بود، product_id همان id باشد. "
     "شماره کارت و کد ملی را برنگردان. فقط JSON با این شکل: "
-    '{"seller":"","invoice_no":"","date":"","lines":[{"name":"","qty":1,"unit_price":0}],"discount":0,"payable":0}'
+    '{"seller":"","invoice_no":"","date":"","lines":[{"name":"","qty":1,"unit_price":0,"barcode":"","sku":"","product_id":0}],"discount":0,"payable":0}'
 )
 SMS_CREDIT_MIN = 100_000
 SMS_CREDIT_MAX = 1_000_000
@@ -2003,13 +2005,38 @@ def sms_balance(conn) -> int:
     return int(paid) - int(spent)
 
 
+def host_sms_text(conn, recipient: str, text: str) -> tuple[str, str]:
+    phone, shop = shop_sms_identity(conn)
+    payload = {
+        "key": HOST_MAIL_KEY,
+        "action": "otp",
+        "shop_phone": phone,
+        "shop": shop,
+        "to": recipient,
+        "text": text,
+    }
+    payload.pop("password", None)
+    for url in HOST_SMS_PATTERN_URLS:
+        try:
+            code, body = http_request("POST", url, payload=payload, timeout=8)
+        except Exception as exc:
+            log.warning("sms text: %s", exc)
+            continue
+        if code < 400 and isinstance(body, dict) and body.get("ok"):
+            if body.get("sent"):
+                return "sent", str(body.get("detail") or "ملی‌پیامک")[:300]
+            return "internal", str(body.get("detail") or "ملی‌پیامک وب‌بیکری پیام را نفرستاد")[:300]
+    return "internal", "وب‌بیکری پیامک را نفرستاد"
+
+
 def deliver_sms(conn, settings: dict, recipient: str, text: str, cost: int = 0) -> tuple[str, str]:
-    """Free text stays in the local outbox. Live SMS goes through a Melipayamak pattern."""
+    """OTP and free text go through the Melipayamak panel on Webakery."""
     recipient = norm_phone(recipient)
-    status, detail = "internal", "در صندوق پیامک سیستم ثبت شد"
+    status, detail = host_sms_text(conn, recipient, text)
+    charged = cost if status == "sent" else 0
     conn.execute(
         "INSERT INTO notifications (channel, recipient, body, status, detail, created_at, cost) VALUES ('sms',?,?,?,?,?,?)",
-        (recipient, text, status, detail, iso(), cost if status != "failed" else 0),
+        (recipient, text, status, detail, iso(), charged),
     )
     return status, detail
 
@@ -2815,6 +2842,22 @@ def license_gateway_settings(settings: dict) -> dict:
     return data
 
 
+def explain_host_sms(detail: str) -> str:
+    text = str(detail or "")
+    low = text.lower()
+    if "invalid ip" in low:
+        ip = text.replace(":", " ").split()[-1].strip(".,")
+        return (
+            "صفحه شارژ پیامک در مرورگر باز می‌شود و آی‌پی فروشگاه به درگاه فرستاده نمی‌شود. "
+            f"درگاه فقط آی‌پی هاست را دیده و نپذیرفته است: {ip}."
+        )
+    if "404" in low:
+        return "مسیر شارژ پیامک روی وب‌بیکری پاسخ نداد."
+    if "اتصال" in text or "timed out" in low or "timeout" in low:
+        return "اتصال به وب‌بیکری برای شارژ پیامک برقرار نشد."
+    return f"شارژ پیامک از وب‌بیکری ساخته نشد: {text[:180]}"
+
+
 def explain_host_pay(detail: str) -> str:
     text = str(detail or "")
     low = text.lower()
@@ -3119,6 +3162,68 @@ def host_zibal_verify(track: str) -> str:
     if body.get("result") in (100, 201, "100", "201"):
         return str(body.get("refNumber") or track)
     raise AppError("پرداخت در زیبال انجام نشده. اول در صفحه زیبال کارت را بکشید، بعد تأیید را بزنید.", 409)
+
+
+def host_sms(action: str, fields: dict) -> dict:
+    payload = {"key": HOST_MAIL_KEY, "action": action, **fields}
+    payload.pop("password", None)
+    payload.pop("password_hash", None)
+    failures = []
+    for url in HOST_SMS_URLS:
+        try:
+            status, body = http_request("POST", url, payload=payload, timeout=20)
+        except AppError as exc:
+            failures.append(str(exc))
+            continue
+        if not isinstance(body, dict):
+            failures.append(f"HTTP {status}")
+            continue
+        if status < 400 and body.get("ok") and body.get("service") == "daftarchi-sms":
+            return body
+        if action == "verify" and body.get("result") in (100, 201, 202, "100", "201", "202"):
+            return body
+        if body.get("service") == "daftarchi-sms" or isinstance(body.get("ok"), bool):
+            detail = str(body.get("error") or body.get("message") or f"HTTP {status}")
+            raise AppError(explain_host_sms(detail), 502 if status < 400 or status >= 500 else status)
+        failures.append(str(body.get("error") or body.get("message") or f"HTTP {status}"))
+    detail = next((item for item in failures if "invalid ip" in item.lower()), "")
+    if not detail:
+        detail = failures[-1] if failures else "HTTP 404"
+    raise AppError(explain_host_sms(detail), 502)
+
+
+def webakery_sms_payment(conn, settings: dict, topup_id: int, credit: int, fee: int, payable: int, buyer: str, phone: str, description: str | None = None) -> tuple[str, str, str]:
+    shop_phone, shop = shop_sms_identity(conn)
+    callback = (settings.get("gateway_callback") or "").strip() or WEBAKERY_URL
+    body = host_sms("request", {
+        "credit": int(credit),
+        "fee": int(fee),
+        "payable": int(payable),
+        "amount": int(payable) * 10,
+        "callbackUrl": callback,
+        "description": description or f"شارژ پیامک دفترچی {credit} تومان، کارمزد {fee} تومان",
+        "local_id": int(topup_id),
+        "orderId": str(topup_id),
+        "mobile": phone or "",
+        "shop_phone": shop_phone,
+        "shop": shop,
+        "buyer_name": buyer or "",
+        "buyer_phone": phone or "",
+    })
+    track = str(body.get("trackId") or "")
+    if not track:
+        raise AppError("وب‌بیکری شماره پرداخت شارژ پیامک را نداد", 502)
+    pay_url = str(body.get("payUrl") or f"https://gateway.zibal.ir/start/{track}")
+    return "zibal", track, pay_url
+
+
+def host_sms_verify(track: str) -> str:
+    if not str(track or "").strip():
+        raise AppError("شناسه پرداخت شارژ پیامک خالی است")
+    body = host_sms("verify", {"trackId": int(track) if str(track).isdigit() else track})
+    if body.get("result") in (100, 201, "100", "201"):
+        return str(body.get("refNumber") or track)
+    raise AppError("پرداخت شارژ پیامک در وب‌بیکری انجام نشده. اول در صفحه پرداخت کارت را بکشید، بعد تأیید را بزنید.", 409)
 
 
 def days_left(end: datetime) -> int:
@@ -5232,10 +5337,6 @@ def register_phone(payload: dict):
             user_id = owner["id"]
             if chosen:
                 write_password(conn, user_id, chosen)
-                conn.execute("UPDATE users SET phone_verified=1 WHERE id=?", (user_id,))
-                fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
-                push_signup(conn, fresh)
-                return jsonify(ok=True, registered=True, phone=phone)
         else:
             settings = get_settings(conn)
             others = conn.execute("SELECT COUNT(*) AS c FROM users WHERE phone<>?", (INITIAL_PHONE,)).fetchone()["c"]
@@ -5243,14 +5344,12 @@ def register_phone(payload: dict):
             secret = chosen or secrets.token_urlsafe(18)
             cur = conn.execute(
                 """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, phone_verified, created_at)
-                   VALUES (?,?,?,?,?,?,1,?,?)""",
-                (phone, phone, None, hash_pw(secret), secret_token(secret), role, 1 if chosen else 0, iso()),
+                   VALUES (?,?,?,?,?,?,1,0,?)""",
+                (phone, phone, None, hash_pw(secret), secret_token(secret), role, iso()),
             )
             user_id = cur.lastrowid
             fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
             push_signup(conn, fresh)
-            if chosen:
-                return jsonify(ok=True, registered=True, phone=phone)
         result = send_phone_code(conn, user_id, phone, "verify")
     return jsonify(**result)
 
@@ -5349,10 +5448,11 @@ def register():
             else:
                 others = conn.execute("SELECT COUNT(*) AS c FROM users WHERE phone<>?", (INITIAL_PHONE,)).fetchone()["c"]
                 role = "admin" if settings.get("must_change_password") == "1" and others == 0 else "cashier"
+                phone_ok = 0 if re.fullmatch(r"09\d{9}", phone) else 1
                 cur = conn.execute(
-                    """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, created_at)
-                       VALUES (?,?,?,?,?,?,0,?)""",
-                    (name, phone, email, hash_pw(password), secret_token(password), role, iso()),
+                    """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, phone_verified, created_at)
+                       VALUES (?,?,?,?,?,?,0,?,?)""",
+                    (name, phone, email, hash_pw(password), secret_token(password), role, phone_ok, iso()),
                 )
                 user_id = cur.lastrowid
         if not reopen:
@@ -5360,8 +5460,11 @@ def register():
             fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
             push_signup(conn, fresh)
             return jsonify(ok=True, email=email, needs_verify=True, delivery="email")
-        conn.execute("UPDATE users SET email_verified=1, phone_verified=1 WHERE id=?", (user_id,))
+        conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
         fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
+        if str(fresh["phone"] or "").startswith("g#"):
+            conn.execute("UPDATE users SET phone_verified=1 WHERE id=?", (user_id,))
+            fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
         push_signup(conn, fresh)
         push_login(conn, fresh)
         flag = get_settings(conn).get("must_change_password") == "1"
@@ -5396,7 +5499,9 @@ def verify_email():
         if not row or row["expires_at"] < iso() or not secrets.compare_digest(row["code_hash"], digest):
             raise AppError("کد نادرست یا منقضی است")
         conn.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
-        conn.execute("UPDATE users SET email_verified=1, phone_verified=1 WHERE id=?", (user["id"],))
+        conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user["id"],))
+        if str(user["phone"] or "").startswith("g#"):
+            conn.execute("UPDATE users SET phone_verified=1 WHERE id=?", (user["id"],))
         fresh = conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user["id"],)).fetchone()
         clear_initial_secret(conn, fresh)
         push_signup(conn, fresh)
@@ -7039,14 +7144,32 @@ def pro_pack_rows(settings: dict) -> list[dict]:
     return rows
 
 
-def pro_state(conn) -> dict:
+def invoice_free_key(user_id: int) -> str:
+    return f"invoice_free_{int(user_id)}"
+
+
+def invoice_free_available(conn, user_id: int) -> bool:
+    today = jalali_clock()["date"]
+    return str(get_settings(conn).get(invoice_free_key(user_id)) or "") != today
+
+
+def mark_invoice_free_used(conn, user_id: int) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+        (invoice_free_key(user_id), jalali_clock()["date"]),
+    )
+
+
+def pro_state(conn, user_id: int | None = None) -> dict:
     settings = get_settings(conn)
     access = ensure_access(conn)
+    uid = int(user_id or session.get("uid") or 0)
     return {
         "tokens": pro_balance(conn),
         "packs": pro_pack_rows(settings),
         "vip": bool(access.get("vip")),
         "vip_included": False,
+        "invoice_free": bool(uid and invoice_free_available(conn, uid)),
     }
 
 
@@ -7081,20 +7204,150 @@ def spend_pro_tokens(conn, user_id: int, tokens: int, detail: str) -> dict:
     return {"tokens": used, "billed": billed, "remaining": pro_balance(conn)}
 
 
-def suggest_invoice_product(conn, name: str) -> int:
-    folded = re.sub(r"[\s\u200c]+", "", name)
+def fold_invoice_name(name: str) -> str:
+    text = str(name or "").translate(str.maketrans("يكة", "یکه"))
+    return re.sub(r"[\s\u200c\-_.]+", "", text).lower()
+
+
+def invoice_barcode(value) -> str:
+    return re.sub(r"\D+", "", str(value or "").translate(DIGITS))[:32]
+
+
+def money_close(left: int, right: int) -> bool:
+    left_n = int(left or 0)
+    right_n = int(right or 0)
+    if left_n <= 0 or right_n <= 0:
+        return False
+    return abs(left_n - right_n) <= max(100, int(max(left_n, right_n) * 0.02))
+
+
+def invoice_price_fit(unit_price: int, cost: int, price: int) -> str:
+    if money_close(unit_price, cost):
+        return "cost"
+    if money_close(unit_price, price):
+        return "sale"
+    return ""
+
+
+def pack_invoice_match(row, unit_price: int, how: str) -> dict:
+    cost = int(row["cost"] or 0)
+    price = int(row["price"] or 0)
+    fit = invoice_price_fit(unit_price, cost, price) or ("name" if how in {"name", "hint", "sku"} else how)
+    if fit == "cost":
+        note = "فی عکس با قیمت خرید کالا در برنامه و سایت یکی است."
+    elif fit == "sale":
+        note = "فی عکس به قیمت فروش نزدیک است؛ برای ثبت خرید، قیمت خرید را چک کنید."
+    else:
+        note = "نام یا بارکد با کالای برنامه و سایت یکی شد."
+    return {
+        "product_id": int(row["id"]),
+        "shop_name": row["name"] or "",
+        "shop_cost": cost,
+        "shop_price": price,
+        "on_site": bool(row["woo_id"]),
+        "price_fit": fit,
+        "price_note": note,
+        "match": how,
+    }
+
+
+def invoice_shop_catalog(conn) -> list[dict]:
+    rows = conn.execute(
+        "SELECT id, name, barcode, sku, price, cost FROM products WHERE active=1 ORDER BY id DESC LIMIT 80"
+    ).fetchall()
+    catalog = []
+    for row in rows:
+        catalog.append({
+            "id": int(row["id"]),
+            "name": row["name"] or "",
+            "barcode": row["barcode"] or "",
+            "sku": row["sku"] or "",
+            "cost": int(row["cost"] or 0),
+            "price": int(row["price"] or 0),
+        })
+    return catalog
+
+
+def match_invoice_line(conn, name: str, unit_price: int = 0, barcode: str = "", sku: str = "", hinted_id: int = 0) -> dict:
+    empty = {
+        "product_id": 0,
+        "shop_name": "",
+        "shop_cost": 0,
+        "shop_price": 0,
+        "on_site": False,
+        "price_fit": "",
+        "price_note": "در کالاهای برنامه و سایت پیدا نشد.",
+        "match": "",
+    }
+    if hinted_id:
+        row = conn.execute(
+            "SELECT id, name, barcode, sku, price, cost, woo_id FROM products WHERE id=? AND active=1",
+            (int(hinted_id),),
+        ).fetchone()
+        if row:
+            return pack_invoice_match(row, unit_price, "hint")
+    code = invoice_barcode(barcode)
+    if len(code) >= 4:
+        row = conn.execute(
+            "SELECT id, name, barcode, sku, price, cost, woo_id FROM products WHERE active=1 AND barcode=?",
+            (code,),
+        ).fetchone()
+        if row:
+            return pack_invoice_match(row, unit_price, "barcode")
+        varied = conn.execute(
+            """SELECT p.id, p.name, p.barcode, p.sku, COALESCE(v.price, p.price) AS price,
+                      p.cost, p.woo_id
+               FROM product_variations v JOIN products p ON p.id=v.product_id
+               WHERE p.active=1 AND v.active=1 AND v.barcode=? LIMIT 1""",
+            (code,),
+        ).fetchone()
+        if varied:
+            return pack_invoice_match(varied, unit_price, "barcode")
+    sku_text = str(sku or "").strip()
+    if sku_text:
+        row = conn.execute(
+            "SELECT id, name, barcode, sku, price, cost, woo_id FROM products WHERE active=1 AND lower(sku)=lower(?)",
+            (sku_text,),
+        ).fetchone()
+        if row:
+            return pack_invoice_match(row, unit_price, "sku")
+    folded = fold_invoice_name(name)
     if len(folded) < 2:
-        return 0
-    rows = conn.execute("SELECT id, name FROM products WHERE active=1").fetchall()
+        return empty
+    rows = conn.execute("SELECT id, name, barcode, sku, price, cost, woo_id FROM products WHERE active=1").fetchall()
+    exact = []
+    partial = []
     for row in rows:
-        other = re.sub(r"[\s\u200c]+", "", str(row["name"] or ""))
+        other = fold_invoice_name(row["name"] or "")
         if other == folded:
-            return int(row["id"])
-    for row in rows:
-        other = re.sub(r"[\s\u200c]+", "", str(row["name"] or ""))
-        if len(other) >= 3 and (folded in other or other in folded):
-            return int(row["id"])
-    return 0
+            exact.append(row)
+        elif len(other) >= 3 and (folded in other or other in folded):
+            partial.append(row)
+    candidates = exact or partial
+    if not candidates:
+        priced = []
+        for row in rows:
+            if invoice_price_fit(unit_price, int(row["cost"] or 0), int(row["price"] or 0)):
+                priced.append(row)
+        if len(priced) == 1:
+            return pack_invoice_match(priced[0], unit_price, "price")
+        return empty
+
+    def score(row) -> tuple:
+        cost = int(row["cost"] or 0)
+        price = int(row["price"] or 0)
+        gap = min(abs(unit_price - cost) if cost else 10**12, abs(unit_price - price) if price else 10**12)
+        return (0 if invoice_price_fit(unit_price, cost, price) else 1, gap)
+
+    best = sorted(candidates, key=score)[0]
+    how = "name" if any(int(row["id"]) == int(best["id"]) for row in exact) else "partial"
+    if invoice_price_fit(unit_price, int(best["cost"] or 0), int(best["price"] or 0)):
+        how = "price"
+    return pack_invoice_match(best, unit_price, how)
+
+
+def suggest_invoice_product(conn, name: str) -> int:
+    return int(match_invoice_line(conn, name).get("product_id") or 0)
 
 
 def invoice_from_ai(payload: dict) -> dict:
@@ -7107,11 +7360,18 @@ def invoice_from_ai(payload: dict) -> dict:
         name = clean_text(row.get("name"), "نام کالا", 120)
         if not name:
             continue
+        hinted = 0
+        try:
+            hinted = int(row.get("product_id") or 0)
+        except (TypeError, ValueError):
+            hinted = 0
         lines.append({
             "name": name,
             "qty": parse_qty(row.get("qty") or 1),
             "unit_price": parse_money(row.get("unit_price"), "فی", allow_empty=True),
-            "product_id": 0,
+            "barcode": invoice_barcode(row.get("barcode")),
+            "sku": clean_text(row.get("sku"), "sku", 40),
+            "product_id": hinted,
         })
     if not lines:
         raise AppError("کالایی در عکس فاکتور پیدا نشد")
@@ -7130,12 +7390,19 @@ def invoice_from_ai(payload: dict) -> dict:
     }
 
 
-def read_invoice_with_ai(blob: bytes, mime: str) -> dict:
+def read_invoice_with_ai(blob: bytes, mime: str, catalog: list[dict] | None = None) -> dict:
     encoded = base64.b64encode(blob).decode()
+    prompt = INVOICE_PROMPT
+    if catalog:
+        prompt += (
+            "\nکالاهای همین فروشگاه و سایت (id, name, barcode, sku, cost=قیمت خرید, price=قیمت فروش). "
+            "اگر نام یا بارکد یا فی با cost یا price یکی بود product_id همان id باشد:\n"
+            + json.dumps(catalog, ensure_ascii=False)
+        )
     status, body = http_request(
         "POST",
         HOST_INVOICE_URL,
-        payload={"key": HOST_MAIL_KEY, "image": encoded, "mime": mime, "prompt": INVOICE_PROMPT},
+        payload={"key": HOST_MAIL_KEY, "image": encoded, "mime": mime, "prompt": prompt, "provider": "gapgpt"},
         timeout=55,
     )
     if not isinstance(body, dict):
@@ -7271,13 +7538,37 @@ def read_invoice_photo():
     with connect() as conn:
         require_access(conn)
         access = ensure_access(conn)
-        if pro_balance(conn) <= 0:
-            raise AppError("برای خواندن عکس فاکتور اکانت Pro لازم است. VIP این بخش را باز نمی‌کند. از لایسنس یک بسته توکن بخرید.", 402)
-    draft = read_invoice_with_ai(blob, mime)
+        free = invoice_free_available(conn, user["id"])
+        if not free and pro_balance(conn) <= 0:
+            raise AppError(
+                "سهمیه رایگان امروز این حساب تمام شده. برای فاکتور بعدی اکانت Pro لازم است. VIP این بخش را باز نمی‌کند.",
+                402,
+            )
+        catalog = invoice_shop_catalog(conn)
+    draft = read_invoice_with_ai(blob, mime, catalog)
     with connect() as conn:
         for line in draft["lines"]:
-            line["product_id"] = suggest_invoice_product(conn, line["name"])
-        usage = spend_pro_tokens(conn, user["id"], draft["tokens"], draft.get("seller") or "فاکتور")
+            match = match_invoice_line(
+                conn,
+                line["name"],
+                int(line.get("unit_price") or 0),
+                line.get("barcode") or "",
+                line.get("sku") or "",
+                int(line.get("product_id") or 0),
+            )
+            line.update(match)
+            if not int(line.get("unit_price") or 0) and match.get("shop_cost"):
+                line["unit_price"] = match["shop_cost"]
+        if free:
+            mark_invoice_free_used(conn, user["id"])
+            conn.execute(
+                "INSERT INTO ai_usage (kind, tokens, billed, detail, user_id, created_at) VALUES ('invoice',?,?,?,?,?)",
+                (int(draft.get("tokens") or 0), 0, (draft.get("seller") or "فاکتور رایگان")[:180], user["id"], iso()),
+            )
+            usage = {"tokens": int(draft.get("tokens") or 0), "billed": 0, "remaining": pro_balance(conn), "free": True}
+        else:
+            usage = spend_pro_tokens(conn, user["id"], draft["tokens"], draft.get("seller") or "فاکتور")
+            usage["free"] = False
         draft["usage"] = usage
         draft["vip"] = bool(access.get("vip"))
     return jsonify(ok=True, invoice=draft)
@@ -8395,7 +8686,7 @@ def pay_return():
                 store_license_on_host(conn, saved)
             return pay_page("لایسنس پرداخت شد و در دفترچی فعال است.", True)
         if topup:
-            ref = host_zibal_verify(topup["gateway_ref"] or "")
+            ref = host_sms_verify(topup["gateway_ref"] or "")
             with connect() as conn:
                 saved = mark_sms_paid(conn, topup["id"], ref)
                 shop = get_settings(conn).get("shop_name") or ""
@@ -8526,9 +8817,8 @@ def send_paid_sms(conn, settings: dict, recipient: str, text: str) -> tuple[str,
     if sms_balance(conn) < cost:
         raise AppError(f"موجودی پیامک کافی نیست. این پیام {cost:,} تومان است و موجودی {sms_balance(conn):,} تومان.")
     status, detail = deliver_sms(conn, settings, recipient, text, cost)
-    if status == "failed":
-        return status, detail, 0
-    return status, detail, cost
+    charged = cost if status == "sent" else 0
+    return status, detail, charged
 
 
 def mark_sms_paid(conn, topup_id: int, ref: str):
@@ -8582,7 +8872,7 @@ def send_sms():
     with connect() as conn:
         status, detail, cost = send_paid_sms(conn, get_settings(conn), recipient, text)
         balance = sms_balance(conn)
-    return jsonify(ok=status != "failed", status=status, detail=detail, cost=cost, balance=balance)
+    return jsonify(ok=status == "sent", status=status, detail=detail, cost=cost, balance=balance)
 
 
 @app.post("/api/sms/customers")
@@ -8609,10 +8899,10 @@ def send_customer_sms():
         failed = 0
         for _customer_id, phone in targets:
             status, _detail, _spent = send_paid_sms(conn, settings, phone, text)
-            if status == "failed":
-                failed += 1
-            else:
+            if status == "sent":
                 sent += 1
+            else:
+                failed += 1
         balance = sms_balance(conn)
     return jsonify(ok=sent > 0, sent=sent, failed=failed, cost=sms_message_cost(text) * sent, balance=balance)
 
@@ -8632,15 +8922,18 @@ def sms_topup():
         )
         topup_id = cur.lastrowid
     try:
-        gateway_name, ref, pay_url = webakery_payment(
-            settings,
-            topup_id,
-            "پیامک",
-            payable,
-            user["name"],
-            user["phone"],
-            description=f"شارژ پیامک دفترچی {credit} تومان، کارمزد {fee} تومان",
-        )
+        with connect() as conn:
+            gateway_name, ref, pay_url = webakery_sms_payment(
+                conn,
+                settings,
+                topup_id,
+                credit,
+                fee,
+                payable,
+                user["name"],
+                user["phone"],
+                description=f"شارژ پیامک دفترچی {credit} تومان، کارمزد {fee} تومان",
+            )
     except Exception:
         with connect() as conn:
             conn.execute("UPDATE sms_topups SET status='canceled' WHERE id=? AND status='pending'", (topup_id,))
@@ -8667,7 +8960,7 @@ def confirm_sms_topup(topup_id: int):
             return jsonify(ok=True, balance=sms_balance(conn), credit=row["credit"], fee=row["fee"])
     if row["status"] != "pending" or not row["gateway_ref"]:
         raise AppError("این شارژ قابل تأیید نیست")
-    ref = host_zibal_verify(row["gateway_ref"])
+    ref = host_sms_verify(row["gateway_ref"])
     with connect() as conn:
         saved = mark_sms_paid(conn, topup_id, ref)
         balance = sms_balance(conn)

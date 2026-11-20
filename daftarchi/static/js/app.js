@@ -733,7 +733,7 @@ function authHtml() {
     const entering = state.authView === "phone-enter";
     return `<div class="auth"><form class="card auth-card" data-act="${entering ? "phone-enter" : "phone-verify"}">
       <div class="brand"><div class="mark">${logo()}</div><div><strong>${entering ? "ورود با کد" : "تأیید شماره"}</strong><span>دفترچی</span></div></div>
-      <p class="hint">${esc(state.phoneNote || "کد شش‌رقمی به همین شماره می‌رود.")}</p>
+      <p class="hint">${esc(state.phoneNote || "کد شش‌رقمی از ملی‌پیامک وب‌بیکری به همین شماره می‌رود.")}</p>
       ${authProblem()}
       ${state.phoneCode ? `<p><strong class="num">${esc(state.phoneCode)}</strong></p>` : ""}
       <div class="field"><label>موبایل</label><input class="ltr" name="phone" required value="${esc(state.pendingPhone || draft.phone || "")}"></div>
@@ -756,7 +756,7 @@ function authHtml() {
   if (state.authView === "register") {
     return `<div class="auth"><form class="card auth-card" data-act="register">
       <div class="brand"><div class="mark">${logo()}</div><div><strong>ثبت‌نام</strong><span>با موبایل یا جیمیل</span></div></div>
-      <p class="hint">موبایل یا جیمیل را بنویسید و یک رمز بگذارید. بعد با همان از صفحه ورود وارد می‌شوید.</p>
+      <p class="hint">موبایل یا جیمیل را بنویسید و یک رمز بگذارید. موبایل تا با کد ملی‌پیامک وب‌بیکری تأیید نشود وارد نمی‌شوید.</p>
       ${authProblem()}
       <div class="field"><label>موبایل</label><input class="ltr" name="phone" placeholder="09..." value="${esc(draft.phone || "")}"></div>
       <div class="field"><label>جیمیل</label><input class="ltr" name="email" type="email" placeholder="name@gmail.com" value="${esc(draft.email || "")}"></div>
@@ -1163,7 +1163,8 @@ function paintChrome() {
     : "";
   const status = document.getElementById("app-status");
   const todayPill = state.today?.label ? `<span class="pill date-pill">${esc(state.today.label)}</span>` : "";
-  if (status) status.innerHTML = `${todayPill}${accessPill}${pill}${mobileBrowser() ? mobileInstallButton() : ""}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="logout">خروج</button>`;
+  const updatePill = isAdmin() && state.update?.update ? `<button type="button" class="pill update" data-act="nav" data-page="updates">نسخه ${esc(state.update.version)} آماده</button>` : "";
+  if (status) status.innerHTML = `${todayPill}${accessPill}${pill}${updatePill}${mobileBrowser() ? mobileInstallButton() : ""}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="logout">خروج</button>`;
   const banner = document.getElementById("banner-host");
   if (banner) {
     banner.innerHTML = [
@@ -1198,13 +1199,25 @@ function salesTable(rows, actions) {
   </tbody></table>`;
 }
 function invoiceReadHtml(invoice) {
-  const lines = (invoice.lines || []).map((line, index) => `<div class="line"><div class="field"><label>کالا</label><input name="name-${index}" value="${esc(line.name)}"></div>
+  const lines = (invoice.lines || []).map((line, index) => {
+    const fit = line.price_fit === "cost"
+      ? "فی عکس با قیمت خرید کالا در برنامه و سایت یکی است."
+      : line.price_fit === "sale"
+        ? "فی عکس به قیمت فروش نزدیک است؛ برای ثبت خرید، قیمت خرید را چک کنید."
+        : (line.product_id ? (line.price_note || "نام یا بارکد با کالای برنامه و سایت یکی شد.") : "در کالاهای برنامه و سایت پیدا نشد؛ به‌صورت کالای تازه ثبت می‌شود.");
+    const prices = [line.shop_cost ? `خرید ${money(line.shop_cost)}` : "", line.shop_price ? `فروش ${money(line.shop_price)}` : ""].filter(Boolean).join(" · ");
+    return `<div class="line"><div class="field"><label>کالا</label><input name="name-${index}" value="${esc(line.name)}"></div>
     <div class="grid-2"><div class="field"><label>تعداد</label><input name="qty-${index}" inputmode="numeric" value="${esc(line.qty)}"></div>
     <div class="field"><label>فی، تومان</label><input name="price-${index}" inputmode="numeric" value="${esc(line.unit_price)}"></div></div>
-    <div class="field"><label>کالای موجود</label><select name="product-${index}"><option value="">کالای تازه</option>${stockChoices(state.products || []).replace(`value="${line.product_id}"`, `value="${line.product_id}" selected`)}</select></div></div>`).join("");
+    <div class="field"><label>کالای موجود</label><select name="product-${index}"><option value="">کالای تازه</option>${stockChoices(state.products || []).replace(`value="${line.product_id}"`, `value="${line.product_id}" selected`)}</select></div>
+    <p class="hint">${line.shop_name ? `${esc(line.shop_name)} · ` : ""}${prices ? `${prices} · ` : ""}${esc(fit)}</p></div>`;
+  }).join("");
+  const usageLine = invoice.usage?.free
+    ? "این فاکتور سهمیه رایگان امروز این حساب بود. فاکتور بعدی از توکن Pro کم می‌شود."
+    : `این بار ${num(invoice.usage?.tokens || invoice.tokens || 0)} توکن از پرو کم شد. ${num(invoice.usage?.remaining || 0)} توکن مانده. VIP از این موجودی جداست.`;
   return `<form data-act="apply-invoice"><h2 class="section-title">فاکتور خوانده‌شده</h2>
     <p class="hint">${esc(invoice.seller || "فروشنده نامشخص")}${invoice.invoice_no ? ` · ${esc(invoice.invoice_no)}` : ""}${invoice.date ? ` · ${esc(invoice.date)}` : ""}</p>
-    <p class="hint">این بار ${num(invoice.usage?.tokens || invoice.tokens || 0)} توکن از پرو کم شد. ${num(invoice.usage?.remaining || 0)} توکن مانده. VIP از این موجودی جداست.</p>
+    <p class="hint">${usageLine}</p>
     <input type="hidden" name="seller" value="${esc(invoice.seller || "")}">
     <input type="hidden" name="count" value="${(invoice.lines || []).length}">
     ${lines}
@@ -1267,8 +1280,8 @@ function invoicesHtml() {
   const rows = filteredInvoices();
   const pro = state.pro;
   const reader = isAdmin() ? `<section class="card"><h2 class="section-title">خواندن عکس فاکتور</h2>
-    <p class="hint">عکس فاکتور چاپی یا دست‌نویس را بگذارید. هوش مصنوعی قلم‌ها را درمی‌آورد. این بخش با VIP باز نمی‌شود و فقط از توکن اکانت Pro کم می‌کند.</p>
-    <p>توکن مانده: <strong class="num">${num(pro?.tokens || 0)}</strong></p>
+    <p class="hint">عکس فاکتور چاپی یا دست‌نویس با گپ‌جی‌پی‌تی وب‌بیکری خوانده می‌شود. هر حساب روزی یک فاکتور رایگان دارد. قلم‌ها با نام، بارکد و قیمت خرید/فروش کالاهای همین برنامه و سایت تطبیق داده می‌شوند. فاکتور بعدی از توکن Pro است؛ VIP این بخش را باز نمی‌کند.</p>
+    <p>توکن مانده: <strong class="num">${num(pro?.tokens || 0)}</strong>${pro?.invoice_free ? " · سهمیه رایگان امروز باقی است" : ""}</p>
     <div class="row-actions">
       <label class="btn primary">انتخاب عکس<input id="invoice-photo" type="file" accept="image/*" hidden></label>
       <button type="button" class="btn" data-act="nav" data-page="licenses">خرید توکن Pro</button>
@@ -1765,8 +1778,8 @@ function licensesHtml() {
   const packs = (pro.packs || []).map((pack) => `<button type="button" class="plan buy" data-act="buy-pro" data-pack="${pack.id}"><span>${esc(pack.title)}</span><em class="num">${money(pack.price)}</em><span class="buy-label">${num(pack.tokens)} توکن</span></button>`).join("");
   return `<div class="stack">${accessCard(data.access)}${data.campaign?.active || data.campaign?.upcoming ? `<section class="card campaign-note"><h2 class="section-title">۵۰٪ تخفیف ویژهٔ ۵ آذر ۱۴۰۵</h2><p>${data.campaign.active ? "تخفیف امروز روی مبلغ پرداختی همهٔ طرح‌ها اعمال شده است." : "فقط در روز ۵ آذر، قیمت همهٔ طرح‌ها نصف می‌شود."} از ۰۰:۰۰ تا پایان روز به وقت ایران.</p></section>` : ""}<div class="plans">${plans}</div>
     <section class="card"><h2 class="section-title">اکانت Pro، فقط خواندن عکس فاکتور</h2>
-      <p class="hint">VIP این بخش را شامل نمی‌شود. هر بار که هوش مصنوعی یک فاکتور، حتی دست‌نویس، را می‌خواند به اندازه توکن مصرف‌شده از همین موجودی کم می‌شود.</p>
-      <p>توکن مانده: <strong class="num">${num(pro.tokens || 0)}</strong></p>
+      <p class="hint">خواندن عکس از گپ‌جی‌پی‌تی وب‌بیکری است. هر حساب روزی یک فاکتور رایگان دارد. VIP این بخش را باز نمی‌کند. فاکتورهای بعدی از توکن Pro کم می‌شوند.</p>
+      <p>توکن مانده: <strong class="num">${num(pro.tokens || 0)}</strong>${pro.invoice_free ? " · سهمیه رایگان امروز باقی است" : ""}</p>
       <div class="plans">${packs}</div>
     </section>
     <p class="hint">روی طرح بزنید تا صفحه زیبال باز شود. مبلغ وارد صندوق فروشگاه نمی‌شود. نام، موبایل و طرح خریدار روی هاست وب‌بیکری هم می‌ماند؛ پرداخت و فعال‌سازی از طریق وب‌بیکری انجام می‌شود.</p>
@@ -1856,6 +1869,7 @@ function smsHtml() {
   return `<div class="stack">
     <section class="card">
       <h2 class="section-title">شارژ پنل پیامک</h2>
+      <p class="hint">ارسال و شارژ از پنل ملی‌پیامک وب‌بیکری است. فروشگاه کلید ملی‌پیامک نمی‌گیرد.</p>
       <p>موجودی: <strong class="num">${money(wallet.balance || 0)}</strong></p>
       <div class="row-actions">${packs.map((amount) => `<button type="button" class="btn primary" data-act="sms-topup" data-amount="${amount}">${feeLine(amount)}</button>`).join("")}</div>
       <form data-act="sms-topup-custom"><div class="field"><label>مبلغ دیگر، تومان</label><input name="amount" inputmode="numeric" required placeholder="مثلاً ۱۵۰۰۰۰"></div><button class="btn primary" type="submit">پرداخت همین مبلغ</button></form>
@@ -1870,7 +1884,7 @@ function smsHtml() {
       ${buyers.length ? buyers.map((row) => `<label class="check"><input type="checkbox" name="sms-customer" value="${row.id}">${esc(row.name)} <span class="ltr">${esc(row.phone)}</span></label>`).join("") : `<p class="empty">هنوز مشتری با موبایل ثبت نشده است.</p>`}
       <button type="button" class="btn primary" data-act="send-customer-sms">ارسال به انتخاب‌شده‌ها</button>
     </section>
-    <section class="card"><form data-act="send-sms"><div class="field"><label>یک شماره</label><input class="ltr" name="recipient" required placeholder="09..."></div><div class="field"><label>متن</label><textarea name="body" required></textarea></div><button class="btn primary" type="submit">ارسال</button><p class="hint">ارسال آزاد از خط فروشگاه انجام نمی‌شود. فقط متن الگوهایی که در تنظیمات نوشته‌اید، بعد از ثبت در ملی‌پیامک فرستاده می‌شود.</p></form></section>
+    <section class="card"><form data-act="send-sms"><div class="field"><label>یک شماره</label><input class="ltr" name="recipient" required placeholder="09..."></div><div class="field"><label>متن</label><textarea name="body" required></textarea></div><button class="btn primary" type="submit">ارسال</button><p class="hint">متن آزاد و الگوها از خط ملی‌پیامک وب‌بیکری می‌روند. فروشگاه کلید جدا نمی‌گیرد.</p></form></section>
     <section class="card"><table><thead><tr><th>زمان</th><th>گیرنده</th><th>متن</th><th>وضعیت</th></tr></thead><tbody>
       ${state.sms.map((row) => `<tr><td>${esc(row.at_jalali)}</td><td class="ltr">${esc(row.recipient)}</td><td>${esc(row.body)}</td><td>${esc(row.status)} ${esc(row.detail || "")}</td></tr>`).join("") || `<tr><td colspan="4">پیامی نیست.</td></tr>`}
     </tbody></table></section></div>`;
@@ -1984,7 +1998,7 @@ function settingsHtml() {
       ${field("manager_phone", "موبایل مدیر")}
       <label class="check"><input type="checkbox" name="sms_on_sale" ${checked("sms_on_sale")}>بعد از هر فروش، الگوی مدیر فرستاده شود</label>
       <button type="button" class="btn" data-act="test-setting" data-kind="sms">آزمایش پیامک</button>
-      <p class="hint">شارژ پنل مستقیم به زیبال می‌رود و فاکتور به نام مدیر فروشگاه صادر می‌شود.</p>
+      <p class="hint">اتصال ملی‌پیامک فقط در وب‌بیکری است. فروشگاه کلید نمی‌گیرد. شارژ پنل هم از همین مسیر وب‌بیکری پرداخت می‌شود.</p>
       <button type="button" class="btn primary" data-act="nav" data-page="sms">شارژ پنل پیامک</button>
       <h2 class="section-title">سامانه مودیان</h2>
       ${field("moadian_fiscal_id", "شناسه حافظه مالیاتی")}
@@ -2096,7 +2110,7 @@ function modalHtml() {
     const product = modal.product;
     inner = `<h2 class="section-title">${esc(product.name)}</h2><p class="hint">نوع متغیر را انتخاب کنید. موجودی هر نوع جداست.</p><div class="var-pick">${(product.variations || []).map((item) => `<button type="button" class="btn var-choice" data-act="pick-variation" data-id="${product.id}" data-variation="${item.id}" ${item.in_stock ? "" : "disabled"}><span>${esc(item.label)}</span><span class="num">${item.tracked ? `موجودی ${num(item.stock)}` : (item.in_stock ? "موجود" : "ناموجود")}</span><span class="num">${money(item.price)}</span></button>`).join("")}</div>`;
   }
-  if (modal.type === "invoice-read" && modal.waiting) inner = `<h2 class="section-title">خواندن فاکتور</h2><p>هوش مصنوعی در حال خواندن عکس است. اگر دست‌نویس باشد هم همان‌جا می‌ماند.</p>`;
+  if (modal.type === "invoice-read" && modal.waiting) inner = `<h2 class="section-title">خواندن فاکتور</h2><p>گپ‌جی‌پی‌تی در حال خواندن عکس است. قلم‌ها با قیمت خرید و فروش کالاهای برنامه و سایت تطبیق داده می‌شوند.</p>`;
   if (modal.type === "invoice-read" && modal.invoice) inner = invoiceReadHtml(modal.invoice);
   if (modal.type === "pro") inner = `<h2 class="section-title">اکانت Pro</h2><p>${esc(modal.title || "بسته توکن")} · ${money(modal.payable)}</p><p class="hint">صفحه زیبال را باز کنید و پرداخت را تمام کنید. تا وقتی بانک تأیید نکند توکنی اضافه نمی‌شود. این توکن لایسنس فروشگاه و VIP نیست.</p><div class="row-actions">${modal.credit?.pay_url ? `<a class="btn" href="${esc(modal.credit.pay_url)}" target="_blank" rel="noopener">باز کردن زیبال</a>` : ""}<button type="button" class="btn primary" data-act="confirm-pro" data-id="${modal.credit?.id || ""}">پرداخت را انجام دادم</button></div>`;
   if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">مبلغ روی دستگاه است. مشتری کارت را می‌کشد و رمز را روی دستگاه می‌زند. تا تأیید نیاید فاکتور صادر نمی‌شود.</p>`;
@@ -2204,7 +2218,7 @@ async function startSmsTopup(amount) {
   try {
     const result = await api("/api/sms/topup", { method: "POST", body: { amount } });
     const url = result.topup?.pay_url || "";
-    if (!url) throw new Error("زیبال صفحه پرداخت نداد");
+    if (!url) throw new Error("وب‌بیکری صفحه پرداخت شارژ را نداد");
     if (popup && !popup.closed) popup.location.href = url;
     else location.assign(url);
     toast(`کارمزد ${money(result.fee)} جدا از شارژ ${money(result.credit)} است`);
@@ -2318,6 +2332,13 @@ async function onSubmit(event) {
           state.pendingPhone = err.data.ident || data.ident || data.phone;
           state.phoneNote = err.message;
           state.phoneCode = "";
+          try {
+            const sent = await api("/api/auth/register", { method: "POST", body: { phone: state.pendingPhone, password: data.password } });
+            state.phoneCode = sent.preview_code || "";
+            state.phoneNote = sent.delivery === "sms"
+              ? "کد تأیید از ملی‌پیامک وب‌بیکری به همین شماره رفت."
+              : (err.message || "کد تأیید را وارد کنید.");
+          } catch { /* کد را از دکمه ارسال دوباره می‌گیرد */ }
           state.authView = "phone-verify";
           render();
           return;
@@ -2337,17 +2358,12 @@ async function onSubmit(event) {
       }
       const result = await api("/api/auth/register", { method: "POST", body: data });
       state.authError = "";
-      if (result.registered) {
-        state.authView = "login";
-        state.authDraft = { ident: data.phone || data.email || "", password: "" };
-        toast("ثبت‌نام شد. با همان موبایل یا جیمیل وارد شوید.", { ok: true });
-        render();
-      } else if (result.phone) {
+      if (result.phone) {
         state.pendingPhone = result.phone;
         state.phoneCode = result.preview_code || "";
         state.phoneNote = result.delivery === "sms"
-          ? "کد تأیید به همین شماره فرستاده شد."
-          : "سامانه پیامک وصل نیست؛ کد روی همین صفحه ساخته شد.";
+          ? "کد تأیید از ملی‌پیامک وب‌بیکری به همین شماره رفت."
+          : "ملی‌پیامک وب‌بیکری الان پیام نفرستاد؛ کد روی همین صفحه است.";
         state.authView = "phone-verify";
         render();
       } else if (result.needs_verify) {
@@ -2380,8 +2396,8 @@ async function onSubmit(event) {
       state.pendingPhone = result.phone;
       state.phoneCode = result.preview_code || "";
       state.phoneNote = result.delivery === "sms"
-        ? "کد ورود به همین شماره فرستاده شد."
-        : "سامانه پیامک وصل نیست؛ کد روی همین صفحه ساخته شد.";
+        ? "کد ورود از ملی‌پیامک وب‌بیکری به همین شماره رفت."
+        : "ملی‌پیامک وب‌بیکری الان پیام نفرستاد؛ کد روی همین صفحه است.";
       state.authError = "";
       state.authView = "phone-enter";
       render();
@@ -2549,7 +2565,7 @@ async function onSubmit(event) {
       render();
     } else if (act === "send-sms") {
       const result = await api("/api/sms", { method: "POST", body: data });
-      toast(result.status === "failed" ? (result.detail || "ارسال نشد") : `ارسال شد و ${money(result.cost)} از موجودی کم شد`);
+      toast(result.status === "sent" ? `ارسال شد و ${money(result.cost)} از موجودی کم شد` : (result.detail || "ملی‌پیامک وب‌بیکری پیام را نفرستاد"));
       await loaders.sms();
       render();
     } else if (act === "sms-topup-custom") {
@@ -2897,7 +2913,7 @@ async function onClick(event) {
       const result = await api(path, { method: "POST", body: { phone } });
       state.pendingPhone = result.phone || phone;
       state.phoneCode = result.preview_code || "";
-      state.phoneNote = result.delivery === "sms" ? "کد تازه به شماره فرستاده شد." : "کد تازه روی همین صفحه ساخته شد.";
+      state.phoneNote = result.delivery === "sms" ? "کد تازه از ملی‌پیامک وب‌بیکری رفت." : "کد تازه روی همین صفحه است.";
       toast("کد دوباره فرستاده شد");
       render();
     });
@@ -3023,7 +3039,7 @@ async function onClick(event) {
       const body = document.getElementById("sms-body")?.value || "";
       const ids = [...document.querySelectorAll("input[name=sms-customer]:checked")].map((item) => Number(item.value));
       const result = await api("/api/sms/customers", { method: "POST", body: { body, ids } });
-      toast(result.failed ? `${num(result.sent)} پیام رفت و ${num(result.failed)} تا نرفت` : `${num(result.sent)} پیام برای مشتریان ثبت شد`);
+      toast(result.failed ? `${num(result.sent)} پیام رفت و ${num(result.failed)} تا نرفت` : `${num(result.sent)} پیام از ملی‌پیامک وب‌بیکری رفت`);
       await loaders.sms();
       render();
     });
