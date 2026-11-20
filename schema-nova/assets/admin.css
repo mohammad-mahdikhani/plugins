@@ -1,0 +1,273 @@
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap");
+
+.schema-nova-wrap,
+.sn-metabox {
+  --sn-ink: #14110c;
+  --sn-paper: #f6f1e7;
+  --sn-gold: #b8872a;
+  --sn-tile: #1c5d58;
+  --sn-tile-2: #2a8f86;
+  --sn-line: #e4d8c4;
+  --sn-warn: #9a4a32;
+  --sn-ok: #1c5d58;
+  font-family: "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  color: var(--sn-ink);
+}
+
+.schema-nova-wrap {
+  max-width: 1120px;
+  margin: 16px 12px 48px;
+}
+
+.schema-nova-wrap h1,
+.schema-nova-wrap h2 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sn-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  background:
+    radial-gradient(1200px 180px at 100% -20%, rgba(184, 135, 42, 0.18), transparent),
+    linear-gradient(180deg, #1b1712 0%, #241d16 100%);
+  color: #f6f1e7;
+  border-radius: 22px;
+  padding: 32px 36px;
+  margin: 12px 0 24px;
+}
+
+.sn-kicker {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  color: #d7b56a;
+}
+
+.sn-hero h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  color: #fff;
+}
+
+.sn-lede {
+  max-width: 62ch;
+  line-height: 1.7;
+  color: #5c5348;
+  font-size: 15px;
+}
+
+.sn-hero .sn-lede {
+  color: #e7dcc8;
+  margin: 0;
+}
+
+.sn-score {
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  border: 6px solid #d7b56a;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background: #14110c;
+}
+
+.sn-score strong {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.sn-score span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #d7b56a;
+}
+
+.sn-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.sn-card {
+  background: var(--sn-paper);
+  border: 1px solid var(--sn-line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 1px 0 rgba(20, 17, 12, 0.04);
+}
+
+.sn-card span {
+  font-size: 12px;
+  color: #7a7166;
+}
+
+.sn-card strong {
+  font-size: 18px;
+}
+
+.sn-card em {
+  font-style: normal;
+  color: var(--sn-tile);
+  font-size: 12px;
+}
+
+.sn-panel {
+  background: #fff;
+  border: 1px solid var(--sn-line);
+  border-radius: 18px;
+  padding: 22px 24px;
+  margin: 0 0 18px;
+}
+
+.sn-form .sn-field,
+.sn-metabox .sn-field {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.sn-field span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sn-field input,
+.sn-field select,
+.sn-field textarea {
+  width: 100%;
+  max-width: 720px;
+  border-radius: 10px;
+  border: 1px solid #d8cbb6;
+  padding: 8px 10px;
+  font-family: inherit;
+}
+
+.sn-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+}
+
+.sn-btn,
+.schema-nova-wrap .button-primary {
+  background: var(--sn-tile) !important;
+  border-color: var(--sn-tile) !important;
+  border-radius: 999px !important;
+  padding-inline: 18px !important;
+}
+
+.sn-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sn-table th,
+.sn-table td {
+  text-align: start;
+  border-bottom: 1px solid var(--sn-line);
+  padding: 8px 6px;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.sn-json {
+  background: #14110c;
+  color: #f4e7c8;
+  padding: 16px;
+  border-radius: 12px;
+  overflow: auto;
+  max-height: 360px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sn-issues {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sn-issues li {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--sn-line);
+}
+
+.sn-issues .is-error {
+  color: var(--sn-warn);
+}
+
+.sn-ok {
+  color: var(--sn-ok);
+  font-weight: 600;
+}
+
+.sn-help {
+  color: #6e665c;
+  font-size: 13px;
+}
+
+.sn-flash {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eef7f5;
+}
+
+.sn-metabox .sn-serp {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  max-width: 640px;
+}
+
+.sn-serp__url {
+  color: #202124;
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+
+.sn-serp__title {
+  color: #1a0dab;
+  font-size: 20px;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.sn-serp__desc {
+  color: #4d5156;
+  margin: 0;
+  font-size: 13px;
+}
+
+.sn-faq-row {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: var(--sn-paper);
+  border-radius: 10px;
+}
+
+.sn-more {
+  margin: 8px 0 16px;
+}
+
+@media (max-width: 960px) {
+  .sn-grid,
+  .sn-hero {
+    grid-template-columns: 1fr;
+  }
+}
