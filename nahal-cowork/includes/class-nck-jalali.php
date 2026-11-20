@@ -133,10 +133,33 @@ class NCK_Jalali {
 	public static function parse( $str ) {
 		$str = NCK_Phone::latin_digits( (string) $str );
 		$str = trim( $str );
+		if ( preg_match( '/^(\d{4})[\/\-](\d{1,2})$/', $str, $m ) ) {
+			$y = (int) $m[1];
+			$mo = (int) $m[2];
+			if ( $mo < 1 || $mo > 12 ) {
+				return null;
+			}
+			return array( 'y' => $y, 'm' => $mo, 'd' => 1 );
+		}
 		if ( ! preg_match( '/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/', $str, $m ) ) {
 			return null;
 		}
-		return array( 'y' => (int) $m[1], 'm' => (int) $m[2], 'd' => (int) $m[3] );
+		$mo = (int) $m[2];
+		if ( $mo < 1 || $mo > 12 ) {
+			return null;
+		}
+		return array( 'y' => (int) $m[1], 'm' => $mo, 'd' => (int) $m[3] );
+	}
+
+	public static function format_year_month( $jy, $jm ) {
+		return sprintf( '%04d/%02d', (int) $jy, (int) $jm );
+	}
+
+	public static function format_month_year( $jy, $jm ) {
+		$names = self::month_names();
+		$jm    = (int) $jm;
+		$name  = isset( $names[ $jm - 1 ] ) ? $names[ $jm - 1 ] : '';
+		return trim( $name . ' ' . self::fa_digits( (int) $jy ) );
 	}
 
 	public static function to_g_date( $jy, $jm, $jd ) {

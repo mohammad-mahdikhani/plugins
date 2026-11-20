@@ -421,7 +421,8 @@ echo "\n=== پذیرش فراگیر ===\n";
 $learner_ok = array(
 	'name'          => 'آوا محمدی',
 	'national_id'  => $nid,
-	'birth_date'    => '1392/06/15',
+	'birth_month'   => '6',
+	'birth_year'    => '1392',
 	'grade'         => 'هشتم',
 	'school'        => 'نمونه دولتی',
 	'phone'         => '',
@@ -442,6 +443,7 @@ $learner_ok = array(
 );
 $lr = NCK_Learner::validate( $learner_ok );
 $check( 'فرم پذیرش کامل قبول می‌شود', ! empty( $lr['ok'] ), isset( $lr['message'] ) ? $lr['message'] : '' );
+$check( 'تاریخ تولد ماه و سال ذخیره می‌شود', ! empty( $lr['ok'] ) && '1392/06' === $lr['payload']['birth_date'] );
 $check( 'تلفن تماس از پدر گرفته می‌شود', ! empty( $lr['payload']['contact_phone'] ) && '09121234567' === $lr['payload']['contact_phone'] );
 $check( 'گزینه ناشناس آشنایی حذف می‌شود', array( 'instagram' ) === $lr['payload']['heard'] );
 $check( 'دوره فصلی نامعتبر حذف می‌شود', array() === $lr['payload']['seasonal'] );
@@ -470,6 +472,25 @@ $check( 'بدون هدف رد می‌شود', empty( NCK_Learner::validate( $no_
 $no_pledge = $learner_ok;
 $no_pledge['agree_photo'] = '';
 $check( 'بدون موافقت تصویر رد می‌شود', empty( NCK_Learner::validate( $no_pledge )['ok'] ) );
+
+$no_grade = $learner_ok;
+$no_grade['grade'] = '';
+$check( 'بدون پایه تحصیلی رد می‌شود', empty( NCK_Learner::validate( $no_grade )['ok'] ) );
+$no_school = $learner_ok;
+$no_school['school'] = '';
+$check( 'بدون مدرسه رد می‌شود', empty( NCK_Learner::validate( $no_school )['ok'] ) );
+
+$no_birth = $learner_ok;
+unset( $no_birth['birth_month'], $no_birth['birth_year'] );
+$check( 'بدون ماه و سال تولد رد می‌شود', empty( NCK_Learner::validate( $no_birth )['ok'] ) );
+
+$legacy_birth = $learner_ok;
+unset( $legacy_birth['birth_month'], $legacy_birth['birth_year'] );
+$legacy_birth['birth_date'] = '1392/06/15';
+$lr_legacy = NCK_Learner::validate( $legacy_birth );
+$check( 'تاریخ کامل قدیمی به ماه و سال تبدیل می‌شود', ! empty( $lr_legacy['ok'] ) && '1392/06' === $lr_legacy['payload']['birth_date'] );
+$check( 'برچسب تولد ماه و سال است', 'شهریور ۱۳۹۲' === NCK_Learner::birth_label( '1392/06' ) );
+$check( 'پارس ماه و سال جلالی', null !== NCK_Jalali::parse( '1392/06' ) );
 
 $check( 'هشت گزینه آشنایی', 8 === count( NCK_Learner::heard_options() ) );
 $check( 'پنج دوره ترمی', 5 === count( NCK_Learner::term_options() ) );
@@ -697,6 +718,13 @@ $check( 'نوبت ۹۰ دقیقه‌ای در جاوااسکریپت هست', fa
 $learner_tpl = (string) file_get_contents( dirname( __DIR__ ) . '/templates/learner.php' );
 $check( 'پذیرش چیپ کارت ندارد', false === strpos( $learner_tpl, 'value="card"' ) );
 $check( 'پذیرش پرداخت سایت پنهان دارد', false !== strpos( $learner_tpl, 'name="payment" value="site"' ) );
+$check( 'پذیرش پایه تحصیلی دارد', false !== strpos( $learner_tpl, 'nck-grade' ) && false !== strpos( $learner_tpl, 'پایه تحصیلی' ) );
+$check( 'پذیرش فیلد مدرسه دارد', false !== strpos( $learner_tpl, 'nck-school' ) && false !== strpos( $learner_tpl, 'name="school"' ) );
+$check( 'پذیرش ماه تولد دارد', false !== strpos( $learner_tpl, 'name="birth_month"' ) );
+$check( 'پذیرش سال تولد دارد', false !== strpos( $learner_tpl, 'name="birth_year"' ) );
+$print_lr = (string) file_get_contents( dirname( __DIR__ ) . '/templates/print-learner.php' );
+$check( 'چاپ پذیرش پایه تحصیلی دارد', false !== strpos( $print_lr, 'پایه تحصیلی' ) );
+$check( 'چاپ پذیرش مدرسه دارد', false !== strpos( $print_lr, 'مدرسه' ) );
 $sign_tpl = (string) file_get_contents( dirname( __DIR__ ) . '/templates/sign-step.php' );
 $play_tpl = (string) file_get_contents( dirname( __DIR__ ) . '/templates/playroom.php' );
 $check( 'قالب مرحله امضا جدا است', false !== strpos( $sign_tpl, 'data-nck-require-sign' ) );
