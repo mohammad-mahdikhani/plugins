@@ -1,3 +1,202 @@
+if ( ! function_exists( 'as_cart_ajax' ) ) {
+	function as_cart_ajax() {
+		check_ajax_referer( 'as_cart', 'nonce' );
+		if ( function_exists( 'wc_load_cart' ) && ( ! function_exists( 'WC' ) || null === WC()->cart ) ) {
+			wc_load_cart();
+		}
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			wp_send_json_error( array( 'message' => 'سبد خرید در دسترس نیست.' ) );
+		}
+		wc_clear_notices();
+		$do = isset( $_POST['do'] ) ? sanitize_key( wp_unslash( $_POST['do'] ) ) : 'get';
+		if ( 'add' === $do ) {
+			$id  = absint( $_POST['product_id'] ?? 0 );
+			$qty = max( 1, min( 99, absint( $_POST['quantity'] ?? 1 ) ) );
+			$product = wc_get_product( $id );
+			if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() || ! $product->is_type( 'simple' ) ) {
+				wp_send_json_error( array( 'message' => 'این محصول را نمی‌توان از اینجا به سبد افزود.' ) );
+			}
+			$added = WC()->cart->add_to_cart( $id, $qty );
+			if ( ! $added ) {
+				$errs = wc_get_notices( 'error' );
+				wc_clear_notices();
+				$msg = 'افزودن به سبد انجام نشد.';
+				if ( $errs && ! empty( $errs[0]['notice'] ) ) {
+					$msg = wp_strip_all_tags( $errs[0]['notice'] );
+				}
+				wp_send_json_error( array( 'message' => $msg ) );
+			}
+		} elseif ( 'set' === $do || 'remove' === $do ) {
+			$key = wc_clean( wp_unslash( $_POST['key'] ?? '' ) );
+			if ( ! WC()->cart->get_cart_item( $key ) ) {
+				wp_send_json_error( array( 'message' => 'این مورد در سبد نیست.' ) );
+			}
+			if ( 'remove' === $do ) {
+				WC()->cart->remove_cart_item( $key );
+			} else {
+				$qty = max( 0, min( 99, absint( $_POST['quantity'] ?? 0 ) ) );
+				WC()->cart->set_quantity( $key, $qty );
+			}
+		}
+		WC()->cart->calculate_totals();
+		$items = array();
+		foreach ( WC()->cart->get_cart() as $key => $item ) {
+			$p = $item['data'];
+			if ( ! $p ) {
+				continue;
+			}
+			$items[] = array(
+				'key'   => $key,
+				'name'  => $p->get_name(),
+				'qty'   => (int) $item['quantity'],
+				'line'  => wp_strip_all_tags( WC()->cart->get_product_subtotal( $p, $item['quantity'] ) ),
+				'url'   => get_permalink( $p->get_id() ),
+				'image' => wp_get_attachment_image_url( $p->get_image_id(), 'thumbnail' ) ?: '',
+			);
+		}
+		wp_send_json_success(
+			array(
+				'count'    => WC()->cart->get_cart_contents_count(),
+				'total'    => wp_strip_all_tags( WC()->cart->get_cart_total() ),
+				'items'    => $items,
+				'checkout' => wc_get_checkout_url(),
+			)
+		);
+	}
+	add_action( 'wc_ajax_as_cart', 'as_cart_ajax' );
+}
+
+
+add_action('wp_footer', function () {
+	echo <<<'JS'
+<script data-no-optimize="1" data-no-defer="1">
+(function(){
+  function money(p){
+    if(!p||!p.prices||!p.prices.price) return "";
+    var n=Number(p.prices.price);
+    if(!n) return "";
+    return n.toLocaleString("fa-IR")+" تومان";
+  }
+  function bind(wrap){
+    if(!wrap || wrap.getAttribute("data-bound")) return;
+    wrap.setAttribute("data-bound","1");
+    var input=wrap.querySelector("input[type=search]");
+    var list=wrap.querySelector(".as-search-suggest");
+    if(!input||!list) return;
+    var t;
+    input.addEventListener("input", function(){
+      clearTimeout(t);
+      var q=input.value.trim();
+      if(q.length<2){ list.hidden=true; list.innerHTML=""; return; }
+      t=setTimeout(function(){
+        fetch("https://aquasafe.ir/wp-json/wc/store/v1/products?per_page=6&search="+encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(rows){
+            list.innerHTML="";
+            if(!rows||!rows.length||rows.message){
+              list.innerHTML="<p>محصولی با این نام پیدا نشد</p>";
+              list.hidden=false;
+              return;
+            }
+            rows.forEach(function(p){
+              var a=document.createElement("a");
+              a.href=p.permalink;
+              var price=money(p);
+              a.innerHTML=p.name+(price?"<b>"+price+"</b>":"");
+              list.appendChild(a);
+            });
+            list.hidden=false;
+          }).catch(function(){ list.hidden=true; });
+      }, 220);
+    });
+  }
+  function fit(){
+    var top=document.getElementById("as-top");
+    if(top) document.body.style.setProperty("padding-top", (top.offsetHeight+8)+"px", "important");
+  }
+  document.querySelectorAll(".as-search-wrap").forEach(bind);
+  var asQ=new URLSearchParams(location.search).get("s")||"";
+  if(asQ){ document.querySelectorAll("form.as-search input[type=search]").forEach(function(input){ if(!input.value) input.value=asQ; }); }
+  function asShowQuery(){
+    if(!document.body.classList.contains("search") || !asQ) return;
+    var head=document.querySelector(".as-page-head");
+    if(!head){
+      head=document.createElement("div");
+      head.className="as-page-head";
+      head.innerHTML="<p></p><h1></h1>";
+      var anchor=document.getElementById("as-top");
+      if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(head, anchor.nextSibling);
+      else document.body.insertBefore(head, document.body.firstChild);
+    }
+    var p=head.querySelector("p"); var h=head.querySelector("h1");
+    if(p) p.textContent="جستجوی محصول";
+    if(h) h.textContent="نتایج «"+asQ+"»";
+  }
+  asShowQuery();
+  window.addEventListener("load", asShowQuery);
+  setTimeout(asShowQuery, 400);
+  document.addEventListener("click", function(e){
+    if(e.target.closest(".as-search-wrap")) return;
+    document.querySelectorAll(".as-search-suggest").forEach(function(n){ n.hidden=true; });
+  });
+  if(document.body.classList.contains("home") && !document.querySelector(".as-search-wrap")){
+    var header=document.querySelector("#site-header");
+    if(header && header.parentNode){
+      var wrap=document.createElement("div");
+      wrap.className="as-search-wrap as-search-wrap--home";
+      wrap.innerHTML='<form class="as-search" role="search" method="get" action="https://aquasafe.ir/"><input type="search" name="s" placeholder="جستجوی محصول، مدل یا فیلتر" aria-label="جستجوی محصول" required><input type="hidden" name="post_type" value="product"><button type="submit">جستجو</button></form><div class="as-search-suggest" hidden></div>';
+      header.parentNode.insertBefore(wrap, header.nextSibling);
+      bind(wrap);
+    }
+  }
+  fit();
+  window.addEventListener("resize", fit);
+  window.addEventListener("load", fit);
+})();
+</script>
+JS;
+}, 6);
+
+
+add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
+	if ( is_admin() || ! $product instanceof WC_Product ) {
+		return $html;
+	}
+	if ( ! $product->is_type( 'simple' ) || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+		return $html;
+	}
+	if ( false !== strpos( $html, 'as-card-buy' ) ) {
+		return $html;
+	}
+	$qty = '<div class="as-qty"><button type="button" aria-label="کم کردن" onclick="event.preventDefault();event.stopPropagation();var w=this.closest(\'.as-card-buy\');var i=w.querySelector(\'input\');i.value=Math.max(1,(parseInt(i.value,10)||1)-1);window.asSyncQty&&asSyncQty(w);">−</button><input type="number" min="1" value="1" inputmode="numeric" aria-label="تعداد" onchange="window.asSyncQty&&asSyncQty(this.closest(\'.as-card-buy\'))" onclick="event.stopPropagation()"><button type="button" aria-label="زیاد کردن" onclick="event.preventDefault();event.stopPropagation();var w=this.closest(\'.as-card-buy\');var i=w.querySelector(\'input\');i.value=Math.max(1,(parseInt(i.value,10)||1)+1);window.asSyncQty&&asSyncQty(w);">+</button></div>';
+	$html = preg_replace( '/<a /', '<a onmousedown="window.asSyncQty&&asSyncQty(this.closest(\'.as-card-buy\'))" ', $html, 1 );
+	return '<div class="as-card-buy">' . $qty . $html . '</div>';
+}, 30, 2 );
+
+add_action( 'wp_footer', function () {
+	if ( is_admin() ) {
+		return;
+	}
+	echo <<<'JS'
+<script data-no-optimize="1" data-no-defer="1">
+window.asSyncQty=function(w){
+  if(!w) return;
+  var i=w.querySelector('.as-qty input');
+  var a=w.querySelector('a.add_to_cart_button');
+  if(!i||!a) return;
+  var n=Math.max(1, parseInt(i.value,10)||1);
+  i.value=n;
+  a.setAttribute('data-quantity', String(n));
+  if(window.jQuery){ try{ jQuery(a).data('quantity', n); }catch(e){} }
+  var h=a.getAttribute('href')||'';
+  if(h.indexOf('add-to-cart=')>=0){
+    a.setAttribute('href', h.indexOf('quantity=')<0 ? h+(h.indexOf('?')>=0?'&':'?')+'quantity='+n : h.replace(/quantity=\d+/, 'quantity='+n));
+  }
+};
+</script>
+JS;
+}, 5 );
+
 add_filter( 'woolentor_product_limit', function () { return 15; }, 99 );
 add_filter( 'woocommerce_shortcode_products_query', function ( $args ) {
 	if ( is_shop() || is_product_taxonomy() ) {
@@ -19,7 +218,28 @@ add_action( 'pre_get_posts', function ( $q ) {
 add_filter( 'loop_shop_per_page', function () { return 15; }, 99 );
 /** AquaSafe SEO: one H1 per page */
 add_action( 'wp_head', function () {
-  echo '<style id="as-one-h1">.single-post .page-header{display:none!important;}.tax-product_cat .woocommerce-products-header{display:none!important;}</style>' . "
+  echo '<style id="as-one-h1">.single-post .page-header{display:none!important;}.tax-product_cat .woocommerce-products-header{display:none!important;}
+.as-search-wrap{position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(16px,3.2vw,48px) 12px}
+.as-search{display:flex;align-items:center;gap:8px}
+.as-search input[type=search]{flex:1;min-width:0;height:44px;border:1px solid #d7e4ea;border-radius:999px;padding:0 16px;font-family:inherit;font-size:14px;color:#1e4b9a;background:#f7fbfc;outline:none}
+.as-search input[type=search]:focus{border-color:#76cdd9;background:#fff}
+.as-search button[type=submit],.as-search button[type=submit]:hover,.as-search button[type=submit]:focus{appearance:none;-webkit-appearance:none;border:0!important;border-radius:999px!important;background:#1e4b9a!important;color:#fff!important;font-weight:700;height:44px;padding:0 18px;cursor:pointer;box-shadow:none!important}
+.as-search button[type=submit]:hover{background:#163d7a!important}
+.as-search-suggest{position:absolute;top:48px;right:clamp(16px,3.2vw,48px);left:clamp(16px,3.2vw,48px);background:#fff;border:1px solid #e3eef2;border-radius:16px;box-shadow:0 16px 40px rgba(30,75,154,.12);z-index:40;overflow:hidden}
+.as-search-suggest a{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;color:#1e4b9a!important;font-size:13px;font-weight:600;text-decoration:none}
+.as-search-suggest a b{font-weight:500;color:#5b7388;white-space:nowrap}
+.as-search-suggest a:hover{background:#eefbfc}
+.as-search-suggest p{margin:0;padding:10px 14px;color:#5b7388;font-size:13px}
+body.home .as-search-wrap,body.home .as-search-wrap--home{width:min(760px,calc(100% - 32px));max-width:760px;margin:16px auto 8px;padding:0;display:block}body.home .as-search{width:100%}
+
+
+body.single-product .woocommerce-product-gallery{display:block!important;height:auto!important;min-height:0!important;opacity:1!important;overflow:visible!important}
+body.single-product .woocommerce-product-gallery .flex-viewport{height:auto!important;overflow:visible!important}
+body.single-product .woocommerce-product-gallery__wrapper{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;width:100%!important;max-width:100%!important;transform:none!important;gap:16px!important;height:auto!important}
+body.single-product .woocommerce-product-gallery__image{position:relative!important;float:none!important;width:100%!important;margin:0!important;left:auto!important;top:auto!important}
+body.single-product .woocommerce-product-gallery__image:not(:first-child) img{width:72%!important;max-height:260px!important}
+
+</style>' . "
 ";
 }, 99 );
 add_filter( 'loop_shop_columns', function () { return 3; }, 99 );
@@ -48,9 +268,9 @@ add_action( 'wp', function () {
 	if ( is_front_page() ) {
 		return;
 	}
-	if ( ! get_option( 'as_inner_style_v47' ) ) {
+	if ( ! get_option( 'as_inner_style_v53' ) ) {
 		do_action( 'litespeed_purging_all' );
-		update_option( 'as_inner_style_v47', 1 );
+		update_option( 'as_inner_style_v53', 1 );
 	}
 } );
 
@@ -281,6 +501,25 @@ body.single-product .elementor-element-4a79ee0a,body.single-product .elementor-e
 .as-buy .as-purchase__actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}
 .as-buy form.cart,.as-buy .wl-cart-wrap,.as-buy .wl-addto-cart{display:block;width:100%;max-width:none;margin:0;padding:0;float:none;height:auto}
 .as-buy .single_add_to_cart_button{width:100%!important;max-width:none!important;justify-content:center!important;white-space:nowrap!important;word-break:keep-all;box-sizing:border-box}
+.as-buy .as-purchase__modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;align-items:stretch}
+.as-buy .as-purchase__modes form.cart{min-width:0;margin:0}
+.as-buy .as-org-btn{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 10px;box-sizing:border-box;border-radius:999px;border:1px solid var(--as-teal);background:var(--as-mint);color:var(--as-navy);font-family:inherit;font-size:14px;font-weight:700;line-height:1;white-space:nowrap;word-break:keep-all;cursor:pointer}
+.as-buy .as-org-btn.is-on{box-shadow:inset 0 0 0 2px var(--as-navy)}
+.as-buy .as-purchase__org,.as-buy .as-purchase__invoice{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}
+.as-buy .as-purchase__org[hidden],.as-buy .as-purchase__invoice[hidden]{display:none!important}
+.as-buy .as-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.as-buy .as-field span{color:var(--as-mute);font-size:12px;font-weight:600;line-height:1.4;white-space:nowrap;word-break:keep-all}
+.as-buy .as-field input{width:100%;box-sizing:border-box;min-height:44px;padding:8px 12px;border:1px solid var(--as-line);border-radius:12px;background:#fff;color:var(--as-ink);font-family:inherit;font-size:14px;text-align:right}
+.as-buy .as-org-submit,.as-buy .as-call{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 14px;box-sizing:border-box;border:0;border-radius:999px;background:var(--as-navy);color:#fff;font-family:inherit;font-size:14px;font-weight:700;line-height:1;white-space:nowrap;word-break:keep-all;text-decoration:none;cursor:pointer}
+.as-buy .as-org-error{margin:0;color:#9a3b3b;font-size:12px;font-weight:700;white-space:nowrap;word-break:keep-all}
+.as-buy .as-purchase__invoice{background:var(--as-mint);border:1px solid var(--as-teal);border-radius:18px;padding:14px 14px 12px}
+.as-buy .as-invoice__title{margin:0;color:var(--as-navy);font-size:15px;font-weight:800;line-height:1.5;white-space:nowrap;word-break:keep-all}
+.as-buy .as-invoice__note{margin:0;color:#5d7082;font-size:12.5px;font-weight:600;line-height:1.8;word-break:keep-all;overflow-wrap:normal}
+.as-buy .as-invoice__row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
+.as-buy .as-invoice__row span{color:#5d7082;font-size:12px;font-weight:600;white-space:nowrap;word-break:keep-all}
+.as-buy .as-invoice__row b{color:var(--as-navy);font-size:13.5px;font-weight:700;word-break:keep-all;overflow-wrap:normal;text-align:left}
+.as-buy .as-invoice__amount{display:inline-flex;align-items:baseline;gap:6px;color:var(--as-navy);font-weight:800;white-space:nowrap;word-break:keep-all}
+.as-buy .as-org-edit{display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;padding:0 12px;box-sizing:border-box;border-radius:999px;border:1px solid var(--as-teal);background:#fff;color:var(--as-navy);font-family:inherit;font-size:13px;font-weight:700;white-space:nowrap;word-break:keep-all;cursor:pointer}
 body.single-product .wl-quantity-wrap{display:none!important}
 body.single-product .single_add_to_cart_button,body.single-product .wl-addto-cart .button{background:var(--as-navy)!important;color:#fff!important;border:0!important;border-radius:999px!important;height:48px!important;padding:0 22px!important;font-size:14px!important;font-weight:600!important;box-shadow:none!important;display:inline-flex!important;align-items:center;gap:8px}
 body.single-product .single_add_to_cart_button:after{content:"";width:18px;height:18px;display:inline-block;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23fff' stroke-width='2' viewBox='0 0 24 24'><circle cx='9' cy='20' r='1.4'/><circle cx='18' cy='20' r='1.4'/><path d='M3 4h2l2.4 11h9.2L21 7H7'/></svg>") center/contain no-repeat}
@@ -417,7 +656,7 @@ body.single-product .product_title{font-size:22px!important}
 body.single-product .woocommerce-product-gallery,body.single-product .as-well{min-height:280px;border-radius:28px;width:min(92vw,380px)!important}
 body.single-product .elementor-element-3ca5dac7,body.single-product .elementor-element-78144be5{width:100%!important;max-width:100%!important}
 body.single-product .elementor-element-23eeb16 > .elementor-container{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;grid-template-columns:unset!important}
-.as-buy{width:100%;max-width:none;border-radius:24px;flex-direction:column;align-items:stretch;flex-wrap:nowrap;justify-content:flex-start;padding:18px 16px 16px}.as-buy .as-purchase__num{font-size:26px}.as-buy .as-purchase__updated{font-size:12.5px}
+.as-buy{width:100%;max-width:none;border-radius:24px;flex-direction:column;align-items:stretch;flex-wrap:nowrap;justify-content:flex-start;padding:18px 16px 16px}.as-buy .as-purchase__num{font-size:26px}.as-buy .as-purchase__updated{font-size:12.5px}.as-buy .as-org-btn,.as-buy .as-org-submit,.as-buy .as-call{font-size:13px}.as-buy .as-purchase__modes{gap:6px}
 .as-specs .row{grid-template-columns:1fr;gap:2px 0;padding:10px 0;border-bottom:1px solid var(--as-line)}
 .as-specs .dots{display:none}
 .as-specs .v{max-width:none;white-space:normal}
@@ -770,6 +1009,7 @@ if ( ! function_exists( 'as_inner_header_html' ) ) {
 		}
 		$done = true;
 		$logo = 'https://aquasafe.ir/wp-content/uploads/2026/11/aquasafe-wordmark-color-1.png';
+		$as_cart_n = ( function_exists( 'WC' ) && WC()->cart ) ? (int) WC()->cart->get_cart_contents_count() : 0;
 		echo <<<HTML
 <header id="as-top">
   <div class="as-topbar"><span><b>آکواسیف</b> · نمایندگی نیشابور</span><a href="tel:09373211344">0937 321 1344</a></div>
@@ -803,10 +1043,17 @@ if ( ! function_exists( 'as_inner_header_html' ) ) {
     <ul>
       <li><a href="https://aquasafe.ir/%d8%aa%d9%85%d8%a7%d8%b3-%d8%a8%d8%a7-%d9%85%d8%a7/"><svg viewBox="0 0 24 24"><path d="M8 5h8v14H8z"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>تماس با ما</a></li>
       <li><a href="https://aquasafe.ir/%d8%af%d8%b1%d8%a8%d8%a7%d8%b1%d9%87-%d9%85%d8%a7/"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.4-3.2 3.8-5 7-5s5.6 1.8 7 5"/></svg>درباره ما</a></li>
-      <li><button type="button" class="as-head-cta" data-as-open>دستیار انتخاب</button></li>
-      <li class="as-li-cart"><a class="as-cart" href="https://aquasafe.ir/cart/"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.2" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.2" fill="currentColor" stroke="none"/><path d="M4 5h2l2.2 10h9.3L20 8H7"/></svg><b>0</b>سبد خرید</a></li>
+      <li class="as-li-cart"><a class="as-cart" href="https://aquasafe.ir/cart/"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.2" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.2" fill="currentColor" stroke="none"/><path d="M4 5h2l2.2 10h9.3L20 8H7"/></svg><b>{$as_cart_n}</b>سبد خرید</a></li>
     </ul>
   </nav>
+  </div>
+<div class="as-search-wrap">
+    <form class="as-search" role="search" method="get" action="https://aquasafe.ir/">
+      <input type="search" name="s" placeholder="جستجوی محصول، مدل یا فیلتر" aria-label="جستجوی محصول" required>
+      <input type="hidden" name="post_type" value="product">
+      <button type="submit">جستجو</button>
+    </form>
+    <div class="as-search-suggest" hidden></div>
   </div>
 </header>
 <div class="as-drawer" id="as-drawer">
@@ -818,7 +1065,6 @@ if ( ! function_exists( 'as_inner_header_html' ) ) {
   <a href="https://aquasafe.ir/%d8%aa%d9%85%d8%a7%d8%b3-%d8%a8%d8%a7-%d9%85%d8%a7/">تماس با ما</a>
   <a href="https://aquasafe.ir/%d8%af%d8%b1%d8%a8%d8%a7%d8%b1%d9%87-%d9%85%d8%a7/">درباره ما</a>
   <a href="https://aquasafe.ir/cart/">سبد خرید</a>
-  <button type="button" class="as-head-cta" data-as-open>دستیار انتخاب</button>
 </div>
 HTML;
 		if ( function_exists( 'is_shop' ) && is_shop() ) {
@@ -947,7 +1193,9 @@ HTML;
       else anchor.parentNode.appendChild(el);
     } else document.body.insertBefore(el, document.body.firstChild);
   }
-  if(document.body.classList.contains('woocommerce-shop')) asHead('فروشگاه','محصولات آکواسیف');
+  var asQuery=new URLSearchParams(location.search).get('s')||'';
+  if(document.body.classList.contains('search') && asQuery) asHead('جستجوی محصول','نتایج «'+asQuery+'»');
+  else if(document.body.classList.contains('woocommerce-shop')) asHead('فروشگاه','محصولات آکواسیف');
   if(document.body.classList.contains('tax-product_cat')){
     var catTitle=document.querySelector('.woocommerce-products-header h1, h1.page-title');
     asHead('دسته‌بندی', (catTitle && catTitle.textContent.trim()) || document.title.split('|')[0].trim() || 'محصولات');
@@ -1009,7 +1257,7 @@ HTML;
       function sync(){
         var n=Math.max(1, parseInt(input.value,10)||1);
         input.value=n;
-        a.setAttribute('data-quantity', String(n));
+        a.setAttribute('data-quantity', String(n)); if(window.jQuery){ try{ jQuery(a).data('quantity', n); }catch(e){} }
         var href=a.getAttribute('href')||'';
         if(href.indexOf('quantity=')===-1){ a.setAttribute('href', href+(href.indexOf('?')>=0?'&':'?')+'quantity='+n); }
         else { a.setAttribute('href', href.replace(/quantity=\d+/, 'quantity='+n)); }
@@ -1253,7 +1501,143 @@ HTML;
     }
     var actions=document.createElement('div');
     actions.className='as-purchase__actions';
-    if(form) actions.appendChild(form);
+    var modes=document.createElement('div');
+    modes.className='as-purchase__modes';
+    if(form) modes.appendChild(form);
+    var orgBtn=document.createElement('button');
+    orgBtn.type='button';
+    orgBtn.className='as-org-btn';
+    orgBtn.setAttribute('aria-pressed','false');
+    orgBtn.textContent='خرید سازمانی';
+    modes.appendChild(orgBtn);
+    actions.appendChild(modes);
+    var productName='';
+    var titleEl=document.querySelector('h1.product_title, h1.entry-title, .product_title');
+    if(titleEl) productName=clean(titleEl.textContent);
+    function field(name, labelText, opts){
+      var wrap=document.createElement('label');
+      wrap.className='as-field';
+      var cap=document.createElement('span');
+      cap.textContent=labelText;
+      var input=document.createElement('input');
+      input.name=name;
+      input.type='text';
+      input.autocomplete=opts.auto||'off';
+      input.inputMode=opts.mode||'text';
+      input.required=true;
+      wrap.appendChild(cap);
+      wrap.appendChild(input);
+      return {wrap:wrap, input:input};
+    }
+    var org=document.createElement('div');
+    org.className='as-purchase__org';
+    org.hidden=true;
+    var company=field('as_company','نام شرکت',{auto:'organization'});
+    var phone=field('as_company_phone','شماره تماس شرکت',{auto:'tel', mode:'tel'});
+    var postal=field('as_company_postal','کدپستی شرکت',{auto:'postal-code', mode:'numeric'});
+    var orgError=document.createElement('p');
+    orgError.className='as-org-error';
+    orgError.hidden=true;
+    var orgSubmit=document.createElement('button');
+    orgSubmit.type='button';
+    orgSubmit.className='as-org-submit';
+    orgSubmit.textContent='صدور پیش‌فاکتور';
+    org.appendChild(company.wrap);
+    org.appendChild(phone.wrap);
+    org.appendChild(postal.wrap);
+    org.appendChild(orgError);
+    org.appendChild(orgSubmit);
+    actions.appendChild(org);
+    var invoice=document.createElement('div');
+    invoice.className='as-purchase__invoice';
+    invoice.hidden=true;
+    actions.appendChild(invoice);
+    function digits(v){
+      var map={'۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9','٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+      return String(v||'').replace(/[۰-۹٠-٩]/g,function(ch){return map[ch]||ch;}).replace(/\D/g,'');
+    }
+    function showError(msg){
+      orgError.hidden=!msg;
+      orgError.textContent=msg||'';
+    }
+    function row(labelText, value){
+      var line=document.createElement('div');
+      line.className='as-invoice__row';
+      var k=document.createElement('span');
+      k.textContent=labelText;
+      var v=document.createElement('b');
+      v.textContent=value;
+      line.appendChild(k);
+      line.appendChild(v);
+      return line;
+    }
+    orgBtn.addEventListener('click',function(){
+      org.hidden=false;
+      invoice.hidden=true;
+      orgBtn.classList.add('is-on');
+      orgBtn.setAttribute('aria-pressed','true');
+      var first=org.querySelector('input');
+      if(first) first.focus();
+    });
+    orgSubmit.addEventListener('click',function(){
+      var companyName=clean(company.input.value);
+      var phoneText=clean(phone.input.value);
+      var postalText=clean(postal.input.value);
+      var phoneDigits=digits(phoneText);
+      var postalDigits=digits(postalText);
+      if(companyName.length<2){ showError('نام شرکت را وارد کنید'); return; }
+      if(phoneDigits.length<8 || phoneDigits.length>11){ showError('شماره تماس شرکت را وارد کنید'); return; }
+      if(postalDigits.length!==10){ showError('کدپستی شرکت را وارد کنید'); return; }
+      showError('');
+      invoice.textContent='';
+      var heading=document.createElement('p');
+      heading.className='as-invoice__title';
+      heading.textContent='پیش‌فاکتور سازمانی';
+      var note=document.createElement('p');
+      note.className='as-invoice__note';
+      note.textContent='فاکتور به نام شرکت صادر می‌شود. پرداخت این مسیر از درگاه بانکی انجام نمی‌شود.';
+      invoice.appendChild(heading);
+      invoice.appendChild(note);
+      invoice.appendChild(row('نام شرکت', companyName));
+      invoice.appendChild(row('شماره تماس شرکت', phoneText));
+      invoice.appendChild(row('کدپستی شرکت', postalText));
+      if(productName) invoice.appendChild(row('محصول', productName));
+      var money=document.createElement('div');
+      money.className='as-invoice__row';
+      var moneyLabel=document.createElement('span');
+      moneyLabel.textContent='مبلغ';
+      var moneyValue=document.createElement('b');
+      moneyValue.className='as-invoice__amount';
+      var moneyNum=document.createElement('span');
+      moneyNum.textContent=amount;
+      var moneyCur=document.createElement('span');
+      moneyCur.textContent='تومان';
+      moneyValue.appendChild(moneyNum);
+      moneyValue.appendChild(moneyCur);
+      money.appendChild(moneyLabel);
+      money.appendChild(moneyValue);
+      invoice.appendChild(money);
+      var next=document.createElement('p');
+      next.className='as-invoice__note';
+      next.textContent='برای نهایی شدن خرید با آکواسیف تماس بگیرید.';
+      invoice.appendChild(next);
+      var call=document.createElement('a');
+      call.className='as-call';
+      call.href='tel:09373211344';
+      call.textContent='تماس: ۰۹۳۷ ۳۲۱ ۱۳۴۴';
+      invoice.appendChild(call);
+      var edit=document.createElement('button');
+      edit.type='button';
+      edit.className='as-org-edit';
+      edit.textContent='ویرایش مشخصات';
+      edit.addEventListener('click',function(){
+        invoice.hidden=true;
+        org.hidden=false;
+      });
+      invoice.appendChild(edit);
+      org.hidden=true;
+      invoice.hidden=false;
+    });
     var gbtn=document.createElement('button');
     gbtn.type='button';
     gbtn.className='as-gallery-btn';
@@ -1271,8 +1655,11 @@ HTML;
     var bar=document.querySelector('.elementor-element-63068de');
     if(bar) bar.classList.add('as-hide');
   }
-  var btn=document.querySelector('.single_add_to_cart_button');
-  if(btn && btn.textContent.trim()==='خرید') btn.textContent='اضافه به سبد خرید';
+  var btn=document.querySelector('.as-buy .single_add_to_cart_button');
+  if(btn){
+    var btnText=btn.textContent.trim();
+    if(btnText==='خرید' || btnText==='اضافه به سبد خرید') btn.textContent='خرید عادی';
+  }
 })();
 </script>
 JS;
@@ -1392,3 +1779,197 @@ add_action('wp_footer', function () {
 </script>
 JS;
 }, 99);
+
+
+add_action('wp_footer', function () {
+	if (is_admin()) return;
+	$cfg = wp_json_encode(array(
+		'ajax' => home_url('/?wc-ajax=as_cart'),
+		'nonce' => wp_create_nonce('as_cart'),
+	));
+	echo '<style>
+.as-minicart{position:fixed;inset:0;z-index:10080;display:none}
+.as-minicart.is-open{display:block}
+.as-minicart-bg{position:absolute;inset:0;background:rgba(8,22,32,.45)}
+.as-minicart-panel{position:absolute;top:0;bottom:0;left:0;width:min(420px,100%);background:#fff;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(8,22,32,.2);font-family:Peyda,Vazirmatn,Tahoma,sans-serif}
+.as-minicart-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #e7eef2;color:#1e4b9a;font-weight:800}
+.as-minicart-x{border:0;background:#eefbfc;color:#1e4b9a;width:36px;height:36px;border-radius:999px;cursor:pointer;font-size:18px}
+.as-minicart-list{flex:1;overflow:auto;padding:8px 16px 16px}
+.as-mc-item{display:grid;grid-template-columns:64px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid #eef3f6}
+.as-mc-item img{width:64px;height:64px;object-fit:contain;background:#f4fbfb;border-radius:12px}
+.as-mc-item a{color:#1e4b9a;font-weight:700;font-size:13px;line-height:1.6;text-decoration:none}
+.as-mc-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.as-mc-qty{display:inline-flex;align-items:center;border:1px solid #d7e4ea;border-radius:999px;overflow:hidden}
+.as-mc-qty button{width:28px;height:30px;border:0;background:#eefbfc;color:#1e4b9a;cursor:pointer}
+.as-mc-qty b{min-width:22px;text-align:center;color:#1e4b9a;font-size:13px}
+.as-mc-line{color:#1e4b9a;font-size:12px;font-weight:700}
+.as-mc-remove{border:0;background:transparent;color:#c04545;font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:inherit}
+.as-mc-empty,.as-mc-err{padding:22px 8px;color:#5b7388;line-height:1.8}
+.as-minicart-ft{padding:14px 16px 18px;border-top:1px solid #e7eef2}
+.as-minicart-ft p{display:flex;justify-content:space-between;margin:0 0 12px;color:#1e4b9a;font-weight:800}
+.as-mc-go{display:flex;align-items:center;justify-content:center;height:46px;border-radius:999px;background:#1e4b9a;color:#fff!important;text-decoration:none;font-weight:800}
+a.add_to_cart_button.is-loading{opacity:.55;pointer-events:none}
+</style>';
+	echo '<div class="as-minicart" id="as-minicart" hidden><div class="as-minicart-bg" data-as-cart-close></div><aside class="as-minicart-panel" role="dialog" aria-label="سبد خرید"><div class="as-minicart-hd"><span>سبد خرید</span><button type="button" class="as-minicart-x" data-as-cart-close aria-label="بستن">×</button></div><div class="as-minicart-list"></div><div class="as-minicart-ft" hidden><p><span>جمع</span><b data-as-total></b></p><a class="as-mc-go" data-as-checkout href="https://aquasafe.ir/checkout/">ادامه ثبت سفارش</a></div></aside></div>';
+	echo '<script data-no-optimize="1" data-no-defer="1">window.asCartCfg=' . $cfg . ';</script>';
+	echo <<<'JS'
+<script data-no-optimize="1" data-no-defer="1">
+(function(){
+  var cfg = window.asCartCfg || {};
+  var root = document.getElementById("as-minicart");
+  if (!root || !cfg.ajax) return;
+  var list = root.querySelector(".as-minicart-list");
+  var foot = root.querySelector(".as-minicart-ft");
+  function openCart(){ root.hidden = false; root.classList.add("is-open"); }
+  function closeCart(){ root.classList.remove("is-open"); root.hidden = true; }
+  function setCount(n){
+    document.querySelectorAll(".as-cart b").forEach(function(b){ b.textContent = String(n); });
+  }
+  function render(data){
+    if (!data) return;
+    setCount(data.count || 0);
+    if (data.checkout) root.querySelector("[data-as-checkout]").href = data.checkout;
+    root.querySelector("[data-as-total]").textContent = data.total || "";
+    list.innerHTML = "";
+    if (data.message) {
+      var err = document.createElement("p");
+      err.className = "as-mc-err";
+      err.textContent = data.message;
+      list.appendChild(err);
+    }
+    if (!data.items || !data.items.length) {
+      if (!data.message) {
+        var empty = document.createElement("p");
+        empty.className = "as-mc-empty";
+        empty.textContent = "سبد خرید خالی است.";
+        list.appendChild(empty);
+      }
+      foot.hidden = true;
+      return;
+    }
+    foot.hidden = false;
+    data.items.forEach(function(it){
+      var row = document.createElement("article");
+      row.className = "as-mc-item";
+      var img = document.createElement("img");
+      img.alt = "";
+      img.src = it.image || "";
+      var body = document.createElement("div");
+      var a = document.createElement("a");
+      a.href = it.url || "#";
+      a.textContent = it.name || "";
+      var line = document.createElement("div");
+      line.className = "as-mc-row";
+      var qty = document.createElement("div");
+      qty.className = "as-mc-qty";
+      qty.innerHTML = '<button type="button" data-dq="-1" aria-label="کم کردن">−</button><b></b><button type="button" data-dq="1" aria-label="زیاد کردن">+</button>';
+      qty.querySelector("b").textContent = String(it.qty);
+      qty.dataset.key = it.key;
+      var price = document.createElement("span");
+      price.className = "as-mc-line";
+      price.textContent = it.line || "";
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "as-mc-remove";
+      del.setAttribute("data-remove", it.key);
+      del.textContent = "حذف";
+      line.appendChild(qty);
+      line.appendChild(price);
+      line.appendChild(del);
+      body.appendChild(a);
+      body.appendChild(line);
+      row.appendChild(img);
+      row.appendChild(body);
+      list.appendChild(row);
+    });
+  }
+  function send(data, btn){
+    data.action = "as_cart";
+    data.nonce = cfg.nonce;
+    if (btn) btn.classList.add("is-loading");
+    return fetch(cfg.ajax, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"},
+      body: new URLSearchParams(data).toString()
+    }).then(function(r){ return r.json(); }).then(function(res){
+      if (btn) btn.classList.remove("is-loading");
+      var payload = (res && res.data) || {};
+      if (!res || !res.success) payload.message = payload.message || "سبد به‌روز نشد.";
+      render(payload);
+      openCart();
+      return res;
+    }).catch(function(){
+      if (btn) btn.classList.remove("is-loading");
+      render({message:"ارتباط با سبد برقرار نشد.", items:[]});
+      openCart();
+    });
+  }
+  document.addEventListener("click", function(e){
+    if (e.target.closest("[data-as-cart-close]")) { e.preventDefault(); closeCart(); return; }
+    var cartLink = e.target.closest("a.as-cart");
+    if (cartLink) { e.preventDefault(); send({do:"get"}); return; }
+    var rm = e.target.closest("[data-remove]");
+    if (rm) { e.preventDefault(); send({do:"remove", key: rm.getAttribute("data-remove")}); return; }
+    var dq = e.target.closest(".as-mc-qty button");
+    if (dq) {
+      e.preventDefault();
+      var box = dq.closest(".as-mc-qty");
+      var now = parseInt(box.querySelector("b").textContent, 10) || 1;
+      send({do:"set", key: box.dataset.key, quantity: String(Math.max(0, now + parseInt(dq.getAttribute("data-dq"), 10)))});
+      return;
+    }
+    var btn = e.target.closest("a.add_to_cart_button");
+    if (!btn || !btn.classList.contains("product_type_simple")) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var wrap = btn.closest(".as-card-buy");
+    var input = wrap && wrap.querySelector(".as-qty input");
+    var n = input ? (parseInt(input.value, 10) || 1) : (parseInt(btn.getAttribute("data-quantity"), 10) || 1);
+    if (window.asSyncQty && wrap) asSyncQty(wrap);
+    send({do:"add", product_id: btn.getAttribute("data-product_id"), quantity: String(n)}, btn);
+  }, true);
+  document.addEventListener("submit", function(e){
+    var form = e.target;
+    if (!form || !form.matches || !form.matches("form.cart") || form.querySelector(".variations")) return;
+    var idEl = form.querySelector("[name=add-to-cart]");
+    var id = idEl ? idEl.value : "";
+    if (!id) return;
+    e.preventDefault();
+    var qtyEl = form.querySelector("input.qty");
+    var n = qtyEl ? (parseInt(qtyEl.value, 10) || 1) : 1;
+    send({do:"add", product_id: id, quantity: String(n)}, form.querySelector(".single_add_to_cart_button"));
+  }, true);
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeCart(); });
+})();
+</script>
+JS;
+}, 7);
+
+
+add_action('wp_footer', function () {
+	if (!is_product()) return;
+	echo <<<'JS'
+<script data-no-optimize="1" data-no-defer="1">
+(function(){
+  function stack(){
+    var g=document.querySelector(".woocommerce-product-gallery");
+    if(!g) return;
+    g.style.setProperty("opacity","1","important");
+    if(window.jQuery){
+      try{ var $g=jQuery(g); if($g.data("flexslider")) $g.flexslider("destroy"); }catch(e){}
+    }
+    var w=g.querySelector(".woocommerce-product-gallery__wrapper");
+    if(w){ w.style.setProperty("transform","none","important"); w.style.setProperty("width","100%","important"); }
+    var vp=g.querySelector(".flex-viewport");
+    if(vp){ vp.style.setProperty("height","auto","important"); vp.style.setProperty("overflow","visible","important"); }
+  }
+  stack();
+  window.addEventListener("load", stack);
+  setTimeout(stack, 300);
+  setTimeout(stack, 1000);
+})();
+</script>
+JS;
+}, 8);
