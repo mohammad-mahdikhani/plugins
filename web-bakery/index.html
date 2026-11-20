@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>وب بیکری — دانلود هوش‌اسکیما</title>
+  <meta name="description" content="دانلود افزونه وردپرس هوش‌اسکیما از وب بیکری. اسکیمای JSON-LD مطابق گوگل و تایتل هوشمند." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #14110c;
+      --paper: #f6f1e7;
+      --gold: #c9a24a;
+      --tile: #1c5d58;
+      --tile-2: #2a8f86;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Vazirmatn, Tahoma, sans-serif;
+      background:
+        radial-gradient(900px 280px at 0% -10%, rgba(201, 162, 74, 0.18), transparent),
+        linear-gradient(180deg, #f6f1e7 0%, #efe6d6 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    header {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 20px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-size: 20px;
+    }
+    .brand span { color: var(--tile); }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 20px 64px;
+    }
+    .hero {
+      background: linear-gradient(180deg, #1b1712 0%, #241d16 100%);
+      color: #f6f1e7;
+      border-radius: 28px;
+      padding: 40px 36px;
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 28px;
+      align-items: center;
+    }
+    .kicker {
+      color: var(--gold);
+      letter-spacing: 0.16em;
+      font-size: 12px;
+      margin: 0 0 8px;
+    }
+    h1 { margin: 0 0 12px; font-size: 34px; line-height: 1.35; }
+    .lede { color: #e7dcc8; line-height: 1.8; margin: 0 0 22px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--tile);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 999px;
+      padding: 14px 22px;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(28, 93, 88, 0.35);
+    }
+    .btn:hover { background: var(--tile-2); }
+    .meta { margin-top: 10px; font-size: 13px; color: #cbbfa8; }
+    .file {
+      background: #14110c;
+      border: 1px solid #3a3126;
+      border-radius: 18px;
+      padding: 22px;
+      text-align: center;
+    }
+    .file strong { display: block; font-size: 18px; margin-bottom: 6px; }
+    .file small { color: #cbbfa8; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 22px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e4d8c4;
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: #5c5348; line-height: 1.7; font-size: 14px; }
+    ol { line-height: 2; }
+    footer {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+      color: #6e665c;
+      font-size: 13px;
+    }
+    @media (max-width: 800px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">وب بیکری <span>· Web Bakery</span></div>
+    <div>دانلود افزونه وردپرس</div>
+  </header>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">SCHEMA NOVA</p>
+        <h1>هوش‌اسکیما آمادهٔ نصب روی وردپرس است</h1>
+        <p class="lede">فایل ZIP استاندارد وردپرس را از وب بیکری دانلود کنید، از افزونه‌ها → افزودن → بارگذاری افزونه نصب کنید. روی هر قالبی کار می‌کند.</p>
+        <a class="btn" href="schema-nova-1.0.0.zip" download>دانلود schema-nova-1.0.0.zip</a>
+        <p class="meta">نسخه ۱.۰.۰ · PHP ۸+ · وردپرس ۶+</p>
+      </div>
+      <div class="file">
+        <strong>schema-nova-1.0.0.zip</strong>
+        <small>پوشهٔ schema-nova داخل فایل است؛ همان را در وردپرس آپلود کنید.</small>
+      </div>
+    </section>
+    <section class="grid">
+      <article class="card">
+        <h2>اسکیمای گوگل</h2>
+        <p>گراف JSON-LD متصل برای مقاله، محصول، نان‌ریزه، ویدئو، رویداد و فروشگاه.</p>
+      </article>
+      <article class="card">
+        <h2>تایتل هوشمند</h2>
+        <p>اتصال به API آنالیتیکس یا سرچ کنسول و بازنویسی تایتل/متا بر اساس اینتنت جستجو.</p>
+      </article>
+      <article class="card">
+        <h2>نصب در سه قدم</h2>
+        <p>دانلود ZIP، آپلود در وردپرس، پر کردن هویت سازمان در منوی هوش‌اسکیما.</p>
+      </article>
+    </section>
+    <section class="card" style="margin-top:14px">
+      <h2>بعد از دانلود</h2>
+      <ol>
+        <li>در پیشخوان وردپرس: افزونه‌ها → افزودن → بارگذاری افزونه → انتخاب ZIP.</li>
+        <li>افزونه را فعال کنید. منوی «هوش‌اسکیما» ظاهر می‌شود.</li>
+        <li>هویت سازمان را پر کنید، سپس در «منبع داده» API آنالیتیکس را وصل کنید.</li>
+      </ol>
+    </section>
+  </main>
+  <footer>وب بیکری — محل دانلود هوش‌اسکیما. افزونه تحت GPL-2.0-or-later است.</footer>
+</body>
+</html>
