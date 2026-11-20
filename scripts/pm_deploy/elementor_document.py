@@ -66,6 +66,108 @@ def set_elementor_html(post_id: int, html: str) -> None:
     _push_elementor_page(post_id, tree)
 
 
+HOME_PAGE_ID = 13
+SLIDER_WIDGET_IDS = ("pmsld01", "pmsld02", "pmsld03")
+
+
+def slider_image_widget(index: int) -> dict:
+    """Empty Elementor image the homepage template uses as one slide background."""
+    label = f"تصویر اسلاید {index}"
+    return {
+        "id": SLIDER_WIDGET_IDS[index - 1],
+        "elType": "widget",
+        "widgetType": "image",
+        "isInner": False,
+        "settings": {
+            "image": {"url": "", "id": "", "alt": "", "source": "library"},
+            "image_size": "full",
+            "align": "center",
+            "caption_source": "custom",
+            "caption": f"{label} — پس‌زمینه اسلایدر صفحه اصلی",
+            "link_to": "none",
+            "_css_classes": f"pm-slider-image pm-slider-image--{index}",
+            "_title": label,
+        },
+        "elements": [],
+    }
+
+
+def _walk(nodes: list):
+    for node in nodes:
+        if isinstance(node, dict):
+            yield node
+            yield from _walk(node.get("elements") or [])
+
+
+def find_slider_widgets(tree: list | None) -> dict[int, dict]:
+    found: dict[int, dict] = {}
+    if not tree:
+        return found
+    for node in _walk(tree):
+        if node.get("widgetType") != "image":
+            continue
+        classes = str((node.get("settings") or {}).get("_css_classes") or "")
+        for index in (1, 2, 3):
+            if f"pm-slider-image--{index}" in classes or node.get("id") == SLIDER_WIDGET_IDS[index - 1]:
+                found[index] = node
+    return found
+
+
+def _slider_container(tree: list) -> dict | None:
+    for node in _walk(tree):
+        if node.get("elType") != "container":
+            continue
+        for child in node.get("elements") or []:
+            html = (child.get("settings") or {}).get("html")
+            if isinstance(html, str) and "pm-rev__bg--1" in html:
+                return node
+    return None
+
+
+def with_slider_image_controls(tree: list, existing: list | None = None) -> list:
+    """Keep three editable slide images above the homepage slider HTML."""
+    container = _slider_container(tree)
+    if container is None:
+        return tree
+    saved = find_slider_widgets(existing)
+    saved.update(find_slider_widgets(tree))
+    widgets = [saved.get(index) or slider_image_widget(index) for index in (1, 2, 3)]
+    widget_ids = {widget.get("id") for widget in widgets}
+    rest = []
+    for child in container.get("elements") or []:
+        classes = str((child.get("settings") or {}).get("_css_classes") or "")
+        if child.get("id") in widget_ids or "pm-slider-image--" in classes:
+            continue
+        rest.append(child)
+    container["elements"] = widgets + rest
+    return tree
+
+
+def _page_tree(post_id: int) -> list | None:
+    post = req("GET", f"{BASE}/pages/{post_id}?context=edit")
+    raw = (post.get("meta") or {}).get("_elementor_data")
+    if not isinstance(raw, str) or not raw:
+        return None
+    data = json.loads(raw)
+    return data if isinstance(data, list) else None
+
+
+def upsert_slider_image_controls(post_id: int = HOME_PAGE_ID) -> None:
+    tree = _page_tree(post_id)
+    if not tree:
+        raise RuntimeError(f"page {post_id} has no elementor data")
+    req(
+        "POST",
+        f"{BASE}/pages/{post_id}",
+        {
+            "meta": {
+                "_elementor_edit_mode": "builder",
+                "_elementor_data": json.dumps(with_slider_image_controls(tree), ensure_ascii=False),
+            },
+        },
+    )
+
+
 def set_elementor_html_split(
     post_id: int,
     header_html: str,
@@ -73,6 +175,8 @@ def set_elementor_html_split(
     footer_html: str,
 ) -> None:
     tree = html_widget_tree_split(header_html, main_html, footer_html)
+    if post_id == HOME_PAGE_ID:
+        tree = with_slider_image_controls(tree, _page_tree(post_id))
     _push_elementor_page(post_id, tree)
 
 
