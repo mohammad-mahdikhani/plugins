@@ -1514,6 +1514,13 @@ class DaftarchiTest(unittest.TestCase):
                 os.environ["DAFTARCHI_CHANNEL"] = prev
         self.assertEqual(appmod.clean_channel("RST"), "rst")
 
+    def test_customer_app_zip_matches_app_version(self):
+        zpath = Path(__file__).resolve().parents[1] / "deploy" / "channels" / "customer" / "Daftarchi-Customer-App.zip"
+        with zipfile.ZipFile(zpath) as archive:
+            app_text = archive.read("app.py").decode()
+        self.assertIn(f'APP_VERSION = "{appmod.APP_VERSION}"', app_text)
+        self.assertIn("def credit_enabled", app_text)
+
     def test_customer_update_prefers_the_webakery_release(self):
         self.assertIn("webakery.ir", appmod.UPDATE_ZIP_HOSTS)
         with self.assertRaises(appmod.AppError):
