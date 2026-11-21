@@ -590,10 +590,10 @@ summary { cursor: pointer; font-weight: 600; }
 .tile, #product-table tr, #inventory-box tr { content-visibility: auto; contain-intrinsic-size: auto 72px; }
 .chat-log { display: grid; gap: 8px; max-height: 240px; overflow: auto; }
 .bubble { background: var(--soft); color: var(--ink); border-radius: 14px; padding: 8px 10px; }
-.bubble.bug { background: #fff1f2; color: #4c0519; }
 .bubble p { margin: 0; }
-.bubble .toast-remedy { color: var(--accent); }
-.bubble.bug .toast-remedy { color: #9f1239; }
+.chat-compose { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.chat-compose textarea { min-height: 44px; max-height: 88px; resize: none; margin: 0; }
+.chat-sheet .empty { margin: 0; color: var(--muted); }
 .update-stats { grid-template-columns: 1fr 1fr; }
 @media (max-width: 860px) {
   .dock { bottom: calc(16px + env(safe-area-inset-bottom)); }

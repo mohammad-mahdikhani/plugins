@@ -250,8 +250,8 @@ function remedyFor(message) {
   if (text.includes("ووکامرس") || text.includes("Consumer") || text.includes("کلید مصرف")) return "در تنظیمات، کلید ووکامرس را با ck_ بچسبانید و دسترسی را خواندن و نوشتن بگذارید.";
   if (text.includes("صندوق")) return "از زبانه صندوق، صندوق را باز کنید و فروش را دوباره بزنید.";
   if (text.includes("وارد نشده")) return "یک بار خارج شوید و دوباره وارد شوید.";
-  if (text.includes("توکن") || text.includes("تلگرام") || text.includes("شناسه چت")) return "گزارش خطا و چت در پیشخوان وب‌بیکری می‌آید.";
-  return "اگر دوباره پیش آمد، گزارش خطا را بزنید تا در پیشخوان وب‌بیکری بیاید.";
+  if (text.includes("توکن") || text.includes("تلگرام") || text.includes("شناسه چت")) return "از چت بفرستید.";
+  return "اگر دوباره پیش آمد، از چت بفرستید.";
 }
 function markUpdated() {
   try {
@@ -331,19 +331,6 @@ async function captureApp() {
   if (!String(data).startsWith("data:image/") || data.length > 700000) throw new Error("اسکرین صفحه ساخته نشد");
   return data;
 }
-async function sendScreenToSupport() {
-  const image = await captureApp();
-  const where = TITLES[state.page] || "برنامه";
-  const result = await api("/api/support/messages", { method: "POST", body: {
-    kind: "bug",
-    body: state.lastError ? `اسکرین صفحه ${where}. ${state.lastError}` : `اسکرین صفحه ${where}`,
-    page: state.page || "",
-    error: state.lastError || "",
-    image,
-  } });
-  if (result.delivery !== "host") throw new Error(result.detail || "اسکرین به پشتیبان نرسید");
-  toast("اسکرین برای پشتیبان ارسال شد", { ok: true });
-}
 function withVip(title, vip) {
   return `${esc(title || "")}${vip ? " VIP" : ""}`;
 }
@@ -356,10 +343,9 @@ function toast(message, options) {
   }
   const problem = Boolean(options && options.error);
   if (problem) state.lastError = String(message || "");
-  const report = problem && state.user ? `<button type="button" class="btn" data-act="report-error">گزارش این خطا</button>` : "";
   el.classList.toggle("ok", Boolean(options && options.ok) && !problem);
   el.innerHTML = problem
-    ? `<p>${esc(message)}</p><p class="toast-remedy">${esc(remedyFor(message))}</p>${report}`
+    ? `<p>${esc(message)}</p><p class="toast-remedy">${esc(remedyFor(message))}</p>`
     : esc(message);
   el.classList.add("show");
   clearTimeout(toast.timer);
@@ -701,19 +687,12 @@ function updateBanner() {
   return "";
 }
 function supportHtml() {
-  const update = state.update;
-  const fresh = update?.update;
-  const log = state.supportLog || [];
+  const log = (state.supportLog || []).filter((item) => item.kind !== "bug");
   const bubbles = log.length
-    ? log.map((item) => `<article class="bubble ${item.kind === "bug" ? "bug" : ""}"><strong>${item.kind === "bug" ? "گزارش خطا" : "چت"}</strong><p>${esc(item.body)}</p>${item.detail ? `<p class="toast-remedy">${esc(item.detail)}</p>` : ""}</article>`).join("")
-    : `<p class="empty">هنوز پیامی نیست.</p>`;
-  const panel = state.supportTab === "bug"
-    ? `<form data-act="send-support"><input type="hidden" name="kind" value="bug"><div class="field"><label>چه اتفاقی افتاد؟</label><textarea name="body" required rows="4">${esc(state.lastError || "")}</textarea></div><p class="hint">با ارسال، اسکرین همین صفحه هم برای پشتیبان می‌رود. نیازی به انتخاب عکس نیست.</p><button class="btn primary" type="submit">ارسال اسکرین و خطا</button></form>`
-    : state.supportTab === "update"
-      ? `<div class="stats update-stats"><div class="stat"><small>نسخه شما</small><strong class="num">${esc(update?.current || "")}</strong></div><div class="stat"><small>نسخه انتشار</small><strong class="num">${esc(fresh ? update.version : (update?.current || ""))}</strong></div></div><p>${state.updating ? "در حال آپدیت همین برنامه." : fresh ? `نسخه ${esc(update.version)} آماده است. بعد از آپدیت برنامه بسته می‌شود و دوباره باز می‌شود.` : "همین نسخه آخر است. فروش‌ها با آپدیت پاک نمی‌شوند."}</p>${update?.notes ? `<p class="hint">${esc(update.notes)}</p>` : ""}<div class="row-actions"><button type="button" class="btn primary" data-act="self-update" ${state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>${resetProgramButton()}</div>`
-      : `<div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="field"><label>پیام</label><textarea name="body" required rows="3" placeholder="برای پشتیبانی بنویسید"></textarea></div><button class="btn primary" type="submit">ارسال به پشتیبانی</button></form>`;
-  const sheet = state.support ? `<section class="support-sheet" data-act="stop"><div class="row-actions"><strong>پشتیبانی دفترچی</strong><button type="button" class="btn" data-act="toggle-support">بستن</button></div><div class="seg">${[["chat", "چت"], ["bug", "گزارش خطا"], ["update", "به‌روزرسانی"]].map(([id, label]) => `<button type="button" class="${state.supportTab === id ? "on" : ""}" data-act="support-tab" data-tab="${id}">${label}</button>`).join("")}</div>${panel}</section>` : "";
-  return `${sheet}<button type="button" class="dock" data-act="toggle-support">${state.support ? "بستن پشتیبانی" : "پشتیبانی"}</button>`;
+    ? log.map((item) => `<article class="bubble"><p>${esc(item.body)}</p></article>`).join("")
+    : `<p class="empty">پیامی نیست.</p>`;
+  const sheet = state.support ? `<section class="support-sheet chat-sheet" data-act="stop"><div class="chat-log">${bubbles}</div><form data-act="send-support"><input type="hidden" name="kind" value="chat"><div class="chat-compose"><textarea name="body" required rows="2" placeholder="پیام" autocomplete="off"></textarea><button class="btn primary" type="submit">ارسال</button></div></form></section>` : "";
+  return `${sheet}<button type="button" class="dock" data-act="toggle-support">${state.support ? "بستن" : "چت"}</button>`;
 }
 function authProblem() {
   if (!state.authError) return "";
@@ -1184,7 +1163,7 @@ function paintChrome() {
   const status = document.getElementById("app-status");
   const todayPill = state.today?.label ? `<span class="pill date-pill">${esc(state.today.label)}</span>` : "";
   const updatePill = isAdmin() && state.update?.update ? `<button type="button" class="pill update" data-act="nav" data-page="updates">نسخه ${esc(state.update.version)} آماده</button>` : "";
-  if (status) status.innerHTML = `${todayPill}${accessPill}${pill}${updatePill}${mobileBrowser() ? mobileInstallButton() : ""}<button type="button" class="btn" data-act="report-error">ارسال اسکرین خطا</button><button type="button" class="btn" data-act="logout">خروج</button>`;
+  if (status) status.innerHTML = `${todayPill}${accessPill}${pill}${updatePill}${mobileBrowser() ? mobileInstallButton() : ""}<button type="button" class="btn" data-act="logout">خروج</button>`;
   const banner = document.getElementById("banner-host");
   if (banner) {
     banner.innerHTML = [
@@ -2538,17 +2517,14 @@ async function onSubmit(event) {
       toast("فاکتور اصلاح شد");
       render();
     } else if (act === "send-support") {
-      const image = data.kind === "bug" ? await captureApp() : "";
-      const result = await api("/api/support/messages", { method: "POST", body: {
-        kind: data.kind === "bug" ? "bug" : "chat",
+      await api("/api/support/messages", { method: "POST", body: {
+        kind: "chat",
         body: data.body,
         page: state.page,
-        error: state.lastError || "",
-        image,
       } });
       state.supportLog = (await api("/api/support/messages")).messages;
       state.support = true;
-      toast(result.detail || "پیام ثبت شد");
+      toast("ارسال شد", { ok: true });
       paintChrome();
     } else if (act === "verify") {
       await api("/api/auth/verify", { method: "POST", body: { ident: data.ident, code: data.code } });
@@ -3237,19 +3213,14 @@ async function onClick(event) {
     });
     return;
   }
-  if (act === "report-error") {
-    await guard(() => sendScreenToSupport());
-    return;
-  }
-  if (act === "toggle-support" || act === "support-tab") {
-    if (act === "toggle-support" && state.support && !el.dataset.tab) {
+  if (act === "toggle-support") {
+    if (state.support) {
       state.support = false;
       paintChrome();
       return;
     }
     await guard(async () => {
       state.support = true;
-      if (el.dataset.tab) state.supportTab = el.dataset.tab;
       state.supportLog = (await api("/api/support/messages")).messages;
       paintChrome();
     });
@@ -3388,10 +3359,8 @@ async function onClick(event) {
       reopenAfterUpdate();
     } else if (act === "check-update") {
       await loadUpdate();
-      state.support = true;
-      state.supportTab = "update";
+      await navigate("updates");
       toast(state.update?.update ? `نسخه ${state.update.version} آماده است` : "نسخه تازه‌ای نیست");
-      paintChrome();
     } else if (act === "commit-import") {
       if (!state.importFile || !state.modal?.preview?.total) return toast("اول فایل اکسل را انتخاب کنید");
       const body = new FormData();
