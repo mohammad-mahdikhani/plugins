@@ -132,7 +132,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.65"
+APP_VERSION = "1.1.66"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -5090,6 +5090,108 @@ def restart_app():
     return jsonify(ok=True, message="برنامه دوباره باز می‌شود")
 
 
+PRINT_CANCEL_PS = (
+    "$ErrorActionPreference='SilentlyContinue';"
+    "$jobs=@();"
+    "try{$jobs=@(Get-CimInstance -ClassName Win32_PrintJob)}catch{};"
+    "$n=$jobs.Count;"
+    "foreach($j in $jobs){try{Remove-CimInstance -InputObject $j}catch{}};"
+    "Write-Output $n"
+)
+
+
+def print_os_name() -> str:
+    return os.name
+
+
+def windows_spool_dir() -> Path:
+    root = os.environ.get("SystemRoot") or os.environ.get("WINDIR") or r"C:\Windows"
+    return Path(root) / "System32" / "spool" / "PRINTERS"
+
+
+def run_hidden(args, timeout=25):
+    kwargs = {"capture_output": True, "text": True, "timeout": timeout, "check": False}
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        return subprocess.run(list(args), **kwargs)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return subprocess.CompletedProcess(list(args), 1, "", str(exc))
+
+
+def _print_job_count(text: str) -> int:
+    for line in reversed((text or "").splitlines()):
+        digits = re.sub(r"\D", "", line.strip())
+        if digits:
+            try:
+                return max(0, int(digits))
+            except ValueError:
+                continue
+    return 0
+
+
+def _purge_windows_spool() -> bool:
+    folder = windows_spool_dir()
+    run_hidden(["net", "stop", "spooler"], timeout=40)
+    deleted = 0
+    if folder.is_dir():
+        for path in folder.iterdir():
+            if not path.is_file():
+                continue
+            try:
+                path.unlink()
+                deleted += 1
+            except OSError:
+                continue
+    run_hidden(["net", "start", "spooler"], timeout=40)
+    return deleted > 0
+
+
+def _clear_windows_print_queue() -> tuple[int, bool]:
+    done = run_hidden(
+        [
+            "powershell",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            PRINT_CANCEL_PS,
+        ],
+        timeout=40,
+    )
+    jobs = _print_job_count(done.stdout if done.returncode == 0 else "")
+    run_hidden(["wmic", "printjob", "delete"], timeout=25)
+    return jobs, _purge_windows_spool()
+
+
+def _clear_unix_print_queue() -> tuple[int, bool]:
+    listed = run_hidden(["lpstat", "-o"], timeout=8)
+    jobs = 0
+    if listed.returncode == 0:
+        jobs = len([line for line in (listed.stdout or "").splitlines() if line.strip()])
+    run_hidden(["cancel", "-a"], timeout=8)
+    return jobs, False
+
+
+def clear_print_memory() -> dict:
+    if print_os_name() == "nt":
+        jobs, spool = _clear_windows_print_queue()
+    else:
+        jobs, spool = _clear_unix_print_queue()
+    if jobs:
+        message = f"{jobs} کار چاپ از صف پاک شد. اگر پرینتر همان فاکتور را می‌زند، یک‌بار خاموش و روشن‌اش کنید."
+    else:
+        message = "حافظه چاپ پاک شد. اگر پرینتر همان فاکتور را می‌زند، یک‌بار خاموش و روشن‌اش کنید."
+    return {"ok": True, "jobs": jobs, "spool_cleared": spool, "message": message}
+
+
+@app.post("/api/printer/clear-memory")
+def printer_clear_memory():
+    require_user()
+    return jsonify(clear_print_memory())
+
+
 def telegram_text(user, kind: str, body: str, page: str, error: str, settings: dict) -> str:
     shop = settings.get("shop_name") or "دفترچی"
     lines = [
@@ -8754,7 +8856,7 @@ def sms_invoice_page(row, shop: str) -> str:
         f"<p><b>پرداخت‌شده: {payable} تومان</b></p>"
         f"<p>زیبال · <span dir='ltr'>{ref}</span></p>"
         "<p>این فاکتور برای مدیر فروشگاه صادر شد.</p>"
-        "<p class='no-print'><button onclick='DaftarchiPrinter.print()'>چاپ</button> · <button onclick='DaftarchiPrinter.open()'>تنظیم ابعاد چاپ</button> · <a href='/'>برگشت به دفترچی</a></p>"
+        "<p class='no-print'><button onclick='DaftarchiPrinter.print()'>چاپ یک نسخه</button> · <button onclick='DaftarchiPrinter.open()'>تنظیم ابعاد چاپ</button> · <button onclick=\"if(confirm('صف چاپ پاک شود؟ فاکتورهایی که در حافظه پرینتر یا ویندوز مانده‌اند دیگر چاپ نمی‌شوند.')) DaftarchiPrinter.clearMemory().then(function(d){alert(d.message)}).catch(function(e){alert(e.message)})\">پاک کردن حافظه چاپ</button> · <a href='/'>برگشت به دفترچی</a></p>"
         "</main></body></html>"
     )
 

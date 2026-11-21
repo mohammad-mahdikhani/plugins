@@ -938,7 +938,7 @@ function receiptHtml(modal) {
   const compact = (modal.layout || state.receiptMode) !== "invoice";
   const moadianLabel = { skipped: "شناسه کالا ندارد", failed: "ارسال نشد", sent: "در صف سامانه", pending: "در حال بررسی", success: "تأیید شد" }[sale.moadian_status] || "";
   const code = sale.invoice_code || `D${sale.id}`;
-  const rows = modal.items.map((item) => `<tr><td>${esc(item.name)} × ${num(item.qty)}${item.rate_per_gram ? `<small class="receipt-rate">هر گرم ${money(item.rate_per_gram)}</small>` : ""}</td><td class="num">${money(item.line_total)}</td></tr>`).join("");
+  const rows = (modal.items || []).filter((item) => Number(item.qty) > 0).map((item) => `<tr><td>${esc(item.name)} × ${num(item.qty)}${item.rate_per_gram ? `<small class="receipt-rate">هر گرم ${money(item.rate_per_gram)}</small>` : ""}</td><td class="num">${money(item.line_total)}</td></tr>`).join("");
   return `<div id="print-area" class="invoice thermal ${compact ? "receipt-compact" : "receipt-full"}">
     <div class="invoice-sheet">
       <header class="invoice-head">
@@ -958,7 +958,7 @@ function receiptHtml(modal) {
   ${modal.sms?.detail ? `<p class="hint">${esc(modal.sms.detail)}</p>` : ""}
   ${moadianLabel ? `<p class="hint">سامانه مودیان: ${esc(moadianLabel)}</p>` : ""}
   ${sale.moadian_error ? `<p class="hint">${esc(sale.moadian_error)}</p>` : ""}
-  <div class="row-actions"><button type="button" class="btn" data-act="receipt-layout" data-layout="receipt" aria-pressed="${compact}">رسید کوتاه</button><button type="button" class="btn" data-act="receipt-layout" data-layout="invoice" aria-pressed="${!compact}">فاکتور کامل</button><button type="button" class="btn" data-act="print">چاپ</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button>${sale.moadian_status === "success" ? "" : `<button type="button" class="btn primary" data-act="moadian-send" data-id="${sale.id}">ارسال به سامانه مودیان</button>`}${sale.moadian_reference ? `<button type="button" class="btn" data-act="moadian-inquiry" data-id="${sale.id}">استعلام مودیان</button>` : ""}</div>`;
+  <div class="row-actions"><button type="button" class="btn" data-act="receipt-layout" data-layout="receipt" aria-pressed="${compact}">رسید کوتاه</button><button type="button" class="btn" data-act="receipt-layout" data-layout="invoice" aria-pressed="${!compact}">فاکتور کامل</button><button type="button" class="btn primary" data-act="print" title="یک نسخه، به اندازه کالاهای همین فروش">چاپ یک نسخه</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button>${sale.moadian_status === "success" ? "" : `<button type="button" class="btn" data-act="moadian-send" data-id="${sale.id}">ارسال به سامانه مودیان</button>`}${sale.moadian_reference ? `<button type="button" class="btn" data-act="moadian-inquiry" data-id="${sale.id}">استعلام مودیان</button>` : ""}</div>`;
 }
 function homePage() {
   if (state.shopMode === "online") return "settings";
@@ -1921,7 +1921,7 @@ function smsInvoiceHtml(topup) {
       <p class="invoice-thanks">این فاکتور برای مدیر فروشگاه صادر شد</p>
     </div>
   </div>
-  <div class="row-actions"><button type="button" class="btn" data-act="print">چاپ</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button></div>`;
+  <div class="row-actions"><button type="button" class="btn primary" data-act="print" title="یک نسخه، به اندازه کالاهای همین فروش">چاپ یک نسخه</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button></div>`;
 }
 function purchaseReceiptHtml(modal) {
   const row = modal.purchase || {};
@@ -1941,7 +1941,7 @@ function purchaseReceiptHtml(modal) {
       <p class="invoice-thanks">بارکد را برای باز کردن همین رسید اسکن کنید</p>
     </div>
   </div>
-  <div class="row-actions"><button type="button" class="btn" data-act="print">چاپ</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button></div>`;
+  <div class="row-actions"><button type="button" class="btn primary" data-act="print" title="یک نسخه، به اندازه کالاهای همین فروش">چاپ یک نسخه</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button></div>`;
 }
 function smsHtml() {
   const wallet = state.smsWallet || {};
@@ -2056,7 +2056,7 @@ function settingsHtml() {
       <div class="field"><label>لوگوی فروشگاه</label><input type="file" name="logo_file" accept="image/*"></div>
       ${s.shop_logo ? `<img class="logo-preview" src="${esc(s.shop_logo)}" alt="">` : ""}
       <label class="check"><input type="checkbox" name="clear_shop_logo">برداشتن لوگو و برگشت به نشان دفترچی</label>
-      <button type="button" class="btn" data-act="printer-settings">تنظیم تصویری ابعاد چاپ</button><p class="hint">اندازهٔ کاغذ، حاشیه و نوشته را با پیش‌نمایش تنظیم کنید. تنظیمات چاپ برای همین مرورگر ذخیره می‌شوند.</p>
+      <div class="row-actions"><button type="button" class="btn" data-act="printer-settings">تنظیم تصویری ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button></div><p class="hint">چاپ فروش فقط یک نسخه است و طول کاغذ به کالاهای همان فاکتور است، نه صفحه خالی. اگر فاکتور قدیمی پشت‌سرهم چاپ می‌شود، حافظه چاپ را پاک کنید و پرینتر را یک‌بار خاموش و روشن کنید.</p>
     </section>`;
   const woo = `<section class="card"${mode === "online" ? "" : ` data-tour="woo"`}><h2 class="section-title">اتصال REST ووکامرس</h2>
       ${mode === "online" ? `${field("shop_name", "نام فروشگاه")}${wooFigure()}` : `<p class="hint">آدرس سایت و دو کلید REST را از ووکامرس، پیکربندی، پیشرفته بگیرید.</p>`}
@@ -3192,6 +3192,14 @@ async function onClick(event) {
     return;
   }
   if (act === "printer-settings") { window.DaftarchiPrinter.open(); return; }
+  if (act === "clear-print-memory") {
+    if (!window.confirm("صف چاپ پاک شود؟ فاکتورهایی که در حافظه پرینتر یا ویندوز مانده‌اند دیگر چاپ نمی‌شوند.")) return;
+    await guard(async () => {
+      const result = await window.DaftarchiPrinter.clearMemory();
+      toast(result.message || "حافظه چاپ پاک شد", { ok: true });
+    });
+    return;
+  }
   if (act === "print") { await guard(() => window.DaftarchiPrinter.print()); return; }
   if (act === "copy-text") {
     const node = document.getElementById(el.dataset.target || "");

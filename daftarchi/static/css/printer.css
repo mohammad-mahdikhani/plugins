@@ -34,7 +34,7 @@
 .printer-feedback { flex:1; font-size:12px; color:var(--warn,#9a3412); }
 .printer-dialog button.printer-save { background:#2459a0; border-color:#2459a0; color:#fff; }
 .printer-receipt, .printer-receipt * { box-sizing:border-box; }
-.printer-receipt { direction:rtl; display:block!important; width:100%!important; max-width:none!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; background:#fff!important; color:#111!important; font-size:var(--printer-font,12px)!important; overflow-wrap:anywhere; line-height:1.6; }
+.printer-receipt { direction:rtl; display:block!important; width:100%!important; max-width:none!important; height:auto!important; min-height:0!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; background:#fff!important; color:#111!important; font-size:var(--printer-font,12px)!important; overflow-wrap:anywhere; line-height:1.6; }
 .printer-receipt .invoice-sheet { padding:0!important; border-radius:0!important; color:#111; }
 .printer-receipt .invoice-head { gap:6px; flex-wrap:wrap; }
 .printer-receipt .invoice-brand { gap:5px; }

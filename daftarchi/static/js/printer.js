@@ -19,15 +19,26 @@
   }
   let saved = load(), editor = null, draft = null, source = null, restoreFocus = null, activePrint = null;
   const fa = value => new Intl.NumberFormat("fa-IR").format(value);
+  function isThermal(config, original) {
+    const width = normalize(config).width;
+    return width <= 80 || Boolean(original?.classList?.contains("thermal"));
+  }
+  function fitForReceipt(config, original) {
+    const p = normalize(config);
+    if (isThermal(p, original)) p.height = 0;
+    return p;
+  }
   function pageStyle(config, measuredHeight) {
     const p = normalize(config);
-    const height = p.height || Math.max(25, Math.ceil(measuredHeight * 10) / 10 + p.margin * 2 + 1);
+    const content = Math.max(18, Math.ceil((Number(measuredHeight) || 18) * 10) / 10);
+    const height = p.height || (content + p.margin * 2);
     return `@page { size: ${p.width}mm ${height}mm; margin: ${p.margin}mm; }
       @media print {
-        html, body { margin:0!important; padding:0!important; background:#fff!important; height:auto!important; min-height:0!important; }
+        html, body { margin:0!important; padding:0!important; background:#fff!important; height:auto!important; min-height:0!important; overflow:hidden!important; }
         body > * { display:none!important; }
         body > #daftarchi-print-root { display:block!important; position:static!important; visibility:visible!important;
-          width:${p.width - 2 * p.margin}mm!important; max-width:none!important; margin:0!important; padding:0!important; }
+          width:${p.width - 2 * p.margin}mm!important; max-width:none!important; margin:0!important; padding:0!important;
+          height:auto!important; min-height:0!important; overflow:hidden!important; page-break-after:avoid!important; page-break-inside:avoid!important; }
         #daftarchi-print-root, #daftarchi-print-root * { visibility:visible!important; }
         #daftarchi-print-root button, #daftarchi-print-root .no-print { display:none!important; }
       }`;
@@ -53,6 +64,22 @@
     document.getElementById("daftarchi-page-style")?.remove();
     activePrint = null;
   }
+  function clearMemory() {
+    cleanup();
+    return fetch("/api/printer/clear-memory", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    }).then(async response => {
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        return { ok: true, jobs: 0, message: "صف همین برنامه پاک شد. برای خالی‌کردن صف ویندوز وارد دفترچی شوید." };
+      }
+      if (!response.ok) throw new Error(data.error || "صف چاپ پاک نشد");
+      return data;
+    });
+  }
   function prepare(config = saved, original = document.getElementById("print-area")) {
     document.getElementById("daftarchi-print-root")?.remove();
     const p = normalize(config), root = document.createElement("div");
@@ -71,7 +98,7 @@
   }
   function print(config = saved, original = document.getElementById("print-area")) {
     if (activePrint) return Promise.resolve();
-    activePrint = { config: normalize(config), original };
+    activePrint = { config: fitForReceipt(config, original), original, copies: 1 };
     const fontsReady = document.fonts?.ready || Promise.resolve();
     return Promise.all([fontsReady, waitImages(original)]).then(async () => {
       if (!activePrint) return;
@@ -85,6 +112,7 @@
       root.classList.remove("printer-measuring");
       activePrint.prepared = true;
       window.print();
+      window.setTimeout(() => { if (activePrint?.prepared) cleanup(); }, 1600);
     }).catch(error => { cleanup(); throw error; });
   }
   function waitImages(element) {
@@ -145,9 +173,9 @@
     editor.innerHTML = `<section class="printer-dialog" role="dialog" aria-modal="true" aria-labelledby="printer-title" tabindex="-1"><header><div><h2 id="printer-title">تنظیم تصویری چاپ</h2><p>اندازه‌ها را تغییر بده و نتیجه را همان لحظه ببین.</p></div><button type="button" data-printer-action="close" aria-label="بستن تنظیمات چاپ">×</button></header>
       <div class="printer-layout"><div class="printer-controls"><div class="printer-presets">${Object.entries(PRESETS).map(([key, p]) => `<button type="button" data-printer-preset="${key}" aria-pressed="false"><span class="printer-paper-icon" style="width:${p.width === 58 ? 18 : p.width === 80 ? 24 : 30}px"></span><strong>${key === "a4" ? "A4" : key === "a5" ? "A5" : fa(p.width) + " میلی‌متر"}</strong></button>`).join("")}</div>
       ${control("width", "عرض کاغذ", 40, 216)}<label class="printer-auto"><input type="checkbox" data-printer-auto>ارتفاع خودکار برای کاغذ رولی</label>${control("height", "ارتفاع هر صفحه", 50, 500)}${control("margin", "حاشیه از هر طرف", 0, 15)}${control("font", "اندازهٔ نوشته", 9, 20)}
-      <p class="printer-note">عرض کاغذ را با دستگیرهٔ کنار پیش‌نمایش هم می‌توانی تغییر بدهی. تنظیمات برای همین مرورگر ذخیره می‌شوند.</p><p class="printer-note">در پنجرهٔ چاپ، کاغذ متناسب با پرینتر، مقیاس ۱۰۰٪ و سرصفحه و پاصفحهٔ خاموش را انتخاب کن.</p></div>
+      <p class="printer-note">عرض کاغذ را با دستگیرهٔ کنار پیش‌نمایش هم می‌توانی تغییر بدهی. تنظیمات برای همین مرورگر ذخیره می‌شوند.</p><p class="printer-note">چاپ فروش فقط یک نسخه است و طول کاغذ به تعداد کالاهای همان فاکتور است، نه صفحه خالی.</p><p class="printer-note">در پنجرهٔ چاپ تعداد را ۱، مقیاس را ۱۰۰٪ و سرصفحه و پاصفحه را خاموش بگذار.</p><p class="printer-note">اگر فاکتور قدیمی پشت‌سرهم چاپ می‌شود، حافظه چاپ را پاک کنید و پرینتر را یک‌بار خاموش و روشن کنید.</p></div>
       <div class="printer-preview"><p class="printer-width-label"></p><div class="printer-preview-viewport"><div class="printer-paper-frame"><div class="printer-paper"></div><button type="button" class="printer-resize-width" data-printer-drag="width" aria-label="تغییر عرض کاغذ با کشیدن یا کلیدهای جهت">↔</button><button type="button" class="printer-resize-height" data-printer-drag="height" aria-label="تغییر ارتفاع کاغذ با کشیدن یا کلیدهای جهت">↕</button></div></div><p class="printer-height-label"></p><p class="printer-overflow" hidden>فاکتور از یک صفحه بلندتر است و در چند صفحه چاپ می‌شود.</p><p class="printer-note">پیش‌نمایش کوچک‌شده است؛ اندازهٔ واقعی چاپ همان عدد میلی‌متری است.</p></div></div>
-      <footer><span class="printer-feedback" role="status"></span><button type="button" data-printer-action="reset">بازنشانی</button><button type="button" data-printer-action="test">چاپ آزمایشی</button><button type="button" class="printer-save" data-printer-action="save">ذخیره و بستن</button></footer></section>`;
+      <footer><span class="printer-feedback" role="status"></span><button type="button" data-printer-action="clear-memory">پاک کردن حافظه چاپ</button><button type="button" data-printer-action="reset">بازنشانی</button><button type="button" data-printer-action="test">چاپ آزمایشی</button><button type="button" class="printer-save" data-printer-action="save">ذخیره و بستن</button></footer></section>`;
     editor.querySelector(".printer-paper").append(receipt(original));
     document.body.append(editor); update(); editor.querySelector('[data-printer-action="close"]').focus();
     editor.addEventListener("input", event => {
@@ -164,6 +192,12 @@
       const action = event.target.closest("[data-printer-action]")?.dataset.printerAction;
       if (action === "close" || event.target === editor) close();
       if (action === "reset") { draft = { ...DEFAULT }; update(); }
+      if (action === "clear-memory") {
+        if (!window.confirm("صف چاپ پاک شود؟ فاکتورهایی که در حافظه پرینتر یا ویندوز مانده‌اند دیگر چاپ نمی‌شوند.")) return;
+        const feedback = editor.querySelector(".printer-feedback");
+        clearMemory().then(data => { if (feedback) feedback.textContent = data.message || "حافظه چاپ پاک شد"; })
+          .catch(error => { if (feedback) feedback.textContent = error.message; });
+      }
       if (action === "test") print(draft, source).catch(error => { if (editor) editor.querySelector(".printer-feedback").textContent = error.message; });
       if (action === "save") {
         saved = normalize(draft);
@@ -195,9 +229,11 @@
   }
   window.addEventListener("beforeprint", () => {
     const original = activePrint ? activePrint.original : document.getElementById("print-area");
-    if (!activePrint && original) prepare(saved, original);
+    if (!original) return;
+    if (activePrint?.prepared) return;
+    prepare(fitForReceipt(activePrint?.config || saved, original), original);
   });
   window.addEventListener("afterprint", cleanup);
   window.addEventListener("resize", () => { if (editor) update(); });
-  window.DaftarchiPrinter = { open, print, getSettings: () => ({ ...saved }), normalize, pageStyle };
+  window.DaftarchiPrinter = { open, print, clearMemory, getSettings: () => ({ ...saved }), normalize, pageStyle };
 })();
