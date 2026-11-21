@@ -646,8 +646,11 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn('"unlimited": true', preset)
         self.assertIn("اشرافی", preset)
         self.assertIn('"shop_mode": "offline"', preset)
+        self.assertIn('"allow_credit": "0"', preset)
         self.assertNotIn("studio_unlock", preset)
-        self.assertIn('APP_VERSION = "1.1.38"', app_text)
+        self.assertIn('APP_VERSION = "1.1.66"', app_text)
+        self.assertIn("def credit_enabled", app_text)
+        self.assertIn("refuse_credit", app_text)
         self.assertIn("def hide_console()", app_text)
         self.assertFalse(any("studio-unlock" in name for name in names))
         self.assertFalse(any(name.endswith(".dmg") for name in names))
@@ -662,6 +665,71 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("محل نصب", builder)
         self.assertTrue(all("دفترچی اشرافی.lnk" in line and "Start-Daftarchi.vbs" in line for line in shortcuts))
         self.assertTrue(all("Start-Daftarchi.bat" not in line for line in shortcuts))
+        page = self.client.get("/static/js/app.js?v=1.1.66").get_data(as_text=True)
+        self.assertIn("function allowCredit()", page)
+        self.assertIn("در این نسخه نسیه و چک نیست", page)
+
+    def test_ashrafi_preset_hides_credit_and_checks(self):
+        preset = Path(__file__).resolve().parents[1] / "deploy" / "customers" / "ashrafi" / "preset.json"
+        self.assertIn('"allow_credit": "0"', preset.read_text(encoding="utf-8"))
+        me = self.client.get("/api/auth/me").get_json()
+        self.assertTrue(me["shop"]["allow_credit"])
+        prev = os.environ.get("DAFTARCHI_PRESET")
+        os.environ["DAFTARCHI_PRESET"] = str(preset)
+        try:
+            folder = Path(os.environ["DAFTARCHI_DATA"])
+            for path in folder.glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            shop = self.client.get("/api/auth/me").get_json()["shop"]
+            self.assertEqual(shop["name"], "اشرافی")
+            self.assertFalse(shop["allow_credit"])
+            product = self.add_product(barcode="ashrafi-credit")
+            self.open_register(0)
+            cash = self.client.post("/api/sales", json={
+                "items": [{"product_id": product["id"], "qty": 1}],
+                "payment_method": "cash",
+            })
+            self.assertEqual(cash.status_code, 200, cash.get_json())
+            credit = self.client.post("/api/sales", json={
+                "items": [{"product_id": product["id"], "qty": 1}],
+                "payment_method": "credit",
+                "customer_first": "علی",
+                "customer_last": "اشرافی",
+                "customer_phone": "09123334444",
+            })
+            self.assertEqual(credit.status_code, 400, credit.get_json())
+            self.assertIn("نسیه و چک نیست", credit.get_json()["error"])
+            check = self.client.post("/api/checks", json={
+                "number": "11", "person": "خریدار", "amount": 1000, "due_on": appmod.jalali_clock()["date"], "kind": "in",
+            })
+            self.assertEqual(check.status_code, 400, check.get_json())
+            self.assertIn("نسیه و چک نیست", check.get_json()["error"])
+        finally:
+            if prev is None:
+                os.environ.pop("DAFTARCHI_PRESET", None)
+            else:
+                os.environ["DAFTARCHI_PRESET"] = prev
+            folder = Path(os.environ["DAFTARCHI_DATA"])
+            for path in folder.glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+
+        import sqlite3
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("INSERT INTO settings (key, value) VALUES ('site_id', 'ashrafi') ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        db.commit()
+        db.close()
+        self.assertFalse(self.client.get("/api/auth/me").get_json()["shop"]["allow_credit"])
+        product = self.add_product(barcode="ashrafi-site-id")
+        self.open_register(0)
+        blocked = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}],
+            "payment_method": "credit",
+            "customer_phone": "09123334444",
+            "customer_first": "علی",
+        })
+        self.assertEqual(blocked.status_code, 400, blocked.get_json())
 
     def test_atr_package_is_unlimited_and_not_studio(self):
         deploy = Path(__file__).resolve().parents[1] / "deploy"

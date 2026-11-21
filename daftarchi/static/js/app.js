@@ -20,6 +20,9 @@ const MORE = [
 const NAV = [...PRIMARY, ...MORE];
 const TITLES = Object.fromEntries(NAV.map(([id, title]) => [id, title]));
 const PAY = { cash: "نقد", card: "کارت", gateway: "درگاه وب‌بیکری", credit: "نسیه" };
+function allowCredit() {
+  return state.shop?.allow_credit !== false;
+}
 const THEMES = [["light", "روشن"], ["dark", "تیره"], ["sand", "کرم"], ["forest", "سبز"]];
 function themeId(value) {
   const text = String(value || state.settings?.ui_theme || state.shop?.theme || state.bootstrap?.theme || "").trim();
@@ -460,14 +463,16 @@ const loaders = {
     state.bankMessages = bank.messages || [];
   },
   async pos() {
-    const [products, pending, registerInfo, alerts] = await Promise.all([
-      api("/api/products"), api("/api/sales?status=pending&limit=20"), api("/api/register"), api("/api/checks/alerts"),
-    ]);
+    const requests = [
+      api("/api/products"), api("/api/sales?status=pending&limit=20"), api("/api/register"),
+    ];
+    if (allowCredit()) requests.push(api("/api/checks/alerts"));
+    const [products, pending, registerInfo, alerts] = await Promise.all(requests);
     state.products = stampProducts(products.products);
     state.posLimit = PAGE_SIZE;
     state.pending = pending.sales;
     state.registerInfo = registerInfo;
-    state.checkAlerts = alerts.alerts || [];
+    state.checkAlerts = allowCredit() ? (alerts?.alerts || []) : [];
     syncCartStock();
   },
   async products() {
@@ -968,6 +973,7 @@ function homePage() {
 function modeAllows(page) {
   if (page === "licenses") return true;
   if (page === "siteorders") return state.shopMode !== "offline" && state.user?.role !== "stock";
+  if (page === "checks" && !allowCredit()) return false;
   const allow = {
     offline: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "calendar", "customers", "sms", "settings", "updates"],
     hybrid: ["pos", "dashboard", "products", "register", "inventory", "checks", "invoices", "calendar", "customers", "sms", "settings", "updates"],
@@ -1352,13 +1358,13 @@ function saleEditHtml() {
     <div class="field"><label>افزودن کالا</label><div class="row-actions"><select id="edit-add">${stockChoices(state.products || [])}</select><button type="button" class="btn" data-act="edit-sale-add">اضافه</button></div></div>
     <div class="grid-2">
       <div class="field"><label>تخفیف، تومان</label><input id="edit-discount" inputmode="numeric" value="${esc(modal.discount || "")}"></div>
-      <div class="field"><label>روش پرداخت</label><select id="edit-method"><option value="cash" ${modal.method === "cash" ? "selected" : ""}>نقد</option><option value="card" ${modal.method === "card" ? "selected" : ""}>کارت</option><option value="credit" ${modal.method === "credit" ? "selected" : ""}>نسیه</option></select></div>
+      <div class="field"><label>روش پرداخت</label><select id="edit-method"><option value="cash" ${modal.method === "cash" ? "selected" : ""}>نقد</option><option value="card" ${modal.method === "card" ? "selected" : ""}>کارت</option>${allowCredit() ? `<option value="credit" ${modal.method === "credit" ? "selected" : ""}>نسیه</option>` : ""}</select></div>
     </div>
     <div class="grid-2">
       <div class="field"><label>نام</label><input id="edit-first" value="${esc(modal.first || "")}"></div>
       <div class="field"><label>نام خانوادگی</label><input id="edit-last" value="${esc(modal.last || "")}"></div>
     </div>
-    <div class="field"><label>موبایل</label><input id="edit-phone" class="ltr" value="${esc(modal.phone || "")}" inputmode="tel" placeholder="برای نسیه لازم است"></div>
+    <div class="field"><label>موبایل</label><input id="edit-phone" class="ltr" value="${esc(modal.phone || "")}" inputmode="tel" placeholder="${allowCredit() ? "برای نسیه لازم است" : "اختیاری"}"></div>
     <div class="field"><label>پیگیری کارت</label><input id="edit-pos" class="ltr" value="${esc(modal.posRef || "")}"></div>
     <p>جمع <strong class="num" id="edit-sub">${money(totals.subtotal)}</strong></p>
     <p>قابل پرداخت <strong class="num" id="edit-due">${money(totals.payable)}</strong></p>
@@ -1418,7 +1424,7 @@ function calendarHtml() {
   const days = (data.weeks || []).flat().map((cell) => {
     const cls = ["cal-day", cell.in_month ? "" : "out", cell.today ? "today" : "", cell.selected ? "selected" : ""].filter(Boolean).join(" ");
     const sales = cell.sales ? `<small>${num(cell.sales)} فروش</small>` : "";
-    const checks = cell.checks ? `<small class="warn-text">${num(cell.checks)} چک</small>` : "";
+    const checks = allowCredit() && cell.checks ? `<small class="warn-text">${num(cell.checks)} چک</small>` : "";
     const amount = cell.amount ? `<small class="num">${money(cell.amount)}</small>` : "";
     return `<button type="button" class="${cls}" data-act="cal-day" data-year="${cell.year}" data-month="${cell.month}" data-day="${cell.day}" ${cell.in_month ? "" : "disabled"}>
       <strong>${num(cell.day)}</strong>${sales}${amount}${checks}
@@ -1437,7 +1443,7 @@ function calendarHtml() {
         <button type="button" class="btn" data-act="cal-month" data-delta="1">ماه بعد</button>
         <button type="button" class="btn" data-act="cal-today">امروز</button>
       </div>
-      <p class="hint">تقویم دفترچی شمسی است. شنبه اول هفته است. روز را بزنید تا فروش و چک همان روز بیاید.</p>
+      <p class="hint">تقویم دفترچی شمسی است. شنبه اول هفته است. روز را بزنید تا فروش${allowCredit() ? " و چک" : ""} همان روز بیاید.</p>
       <div class="cal-weekdays">${head}</div>
       <div class="cal-grid month">${days}</div>
     </section>
@@ -1445,10 +1451,10 @@ function calendarHtml() {
       <h2 class="section-title">فروش ${esc(data.selected)} — ${money(data.total || 0)}، ${num(data.count || 0)} فاکتور</h2>
       ${sales}
     </section>
-    <section class="card">
+    ${allowCredit() ? `<section class="card">
       <h2 class="section-title">چک‌های همین روز</h2>
       ${data.checks?.length ? `<ul>${checks}</ul>` : checks}
-    </section>
+    </section>` : ""}
   </div>`;
 }
 
@@ -1539,7 +1545,7 @@ function posHtml() {
         <div class="field"><label>نام خانوادگی</label><input id="buyer-last" value="${esc(state.buyerLast)}" autocomplete="off"></div>
       </div>
       <div class="field"><label>شماره موبایل</label><input id="buyer-phone" class="ltr" value="${esc(state.buyerPhone)}" inputmode="tel" autocomplete="off" placeholder="09..."></div>
-      <p class="hint">${state.shopMode === "offline" ? "نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید در مشتریان حضوری ذخیره می‌شود." : "نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید، در مشتریان حضوری برنامه و سایت برای باشگاه مشتریان ذخیره می‌شود. برای نسیه موبایل لازم است."}</p>
+      <p class="hint">${state.shopMode === "offline" ? "نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید در مشتریان حضوری ذخیره می‌شود." : `نام، نام خانوادگی و موبایل اختیاری است. اگر بنویسید، در مشتریان حضوری برنامه و سایت برای باشگاه مشتریان ذخیره می‌شود.${allowCredit() ? " برای نسیه موبایل لازم است." : ""}`}</p>
       </div>
       <p>جمع <strong class="num" id="pay-sub">${money(subtotal)}</strong></p>
       <p>تخفیف <strong class="num" id="pay-disc">${money(discount)}</strong></p>
@@ -1549,7 +1555,7 @@ function posHtml() {
       <div class="pay-row" data-tour="pay">
         <button type="button" class="btn primary" data-act="pay" data-method="cash">نقد</button>
         <button type="button" class="btn" data-act="pay" data-method="card">کارت‌خوان</button>
-        <button type="button" class="btn" data-act="pay" data-method="credit">نسیه / چک</button>
+        ${allowCredit() ? `<button type="button" class="btn" data-act="pay" data-method="credit">نسیه / چک</button>` : ""}
         ${state.shop?.site_connected ? `<button type="button" class="btn" data-act="nav" data-page="siteorders">پرداخت‌های سایت / اسنپ‌پی / ترب‌پی</button>` : ""}
       </div>
       ${pending}
@@ -1629,6 +1635,7 @@ function lowStockBanner(rows) {
   return notice(id, `موجودی این کالاها به زیر حد هشدار رسیده: ${low.slice(0, 8).map((product) => esc(product.name)).join("، ")}`);
 }
 function checkAlertBanner() {
+  if (!allowCredit()) return "";
   const alerts = state.checkAlerts || [];
   if (!alerts.length) return "";
   const id = `checks:${alerts.map((row) => row.id || row.number).join(",")}`;
@@ -1716,6 +1723,7 @@ function inventoryHtml() {
 }
 
 function checksHtml() {
+  if (!allowCredit()) return `<div class="stack"><section class="card"><p class="empty">در این نسخه چک و نسیه نیست.</p></section></div>`;
   const data = state.checks;
   if (!data) return "";
   const rows = (data.checks || []).map((row) => `<tr><td class="ltr">${esc(row.number)}</td><td>${esc(row.person)}</td><td class="num">${money(row.amount)}</td><td>${esc(row.due_jalali)}</td><td>${row.kind === "out" ? "صادره" : "وارده"}</td><td>${row.status === "collected" ? "وصول شد" : "باز"}</td><td>${row.status === "pending" ? `<button type="button" class="btn" data-act="collect-check" data-id="${row.id}">وصول و برداشت از صندوق</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="7">چکی ثبت نشده.</td></tr>`;
@@ -1891,7 +1899,7 @@ function pendingLicenses(data) {
 }
 
 function customersHtml() {
-  const debtors = state.customers.filter((row) => row.balance > 0 && row.account_id);
+  const debtors = allowCredit() ? state.customers.filter((row) => row.balance > 0 && row.account_id) : [];
   const walk = state.customers.filter((row) => row.walk_in);
   const table = (rows) => rows.map((row) => `<tr><td>${esc(row.name)}</td><td class="ltr">${esc(row.phone || "—")}</td><td class="num">${num(row.purchases)}</td><td class="num">${money(row.amount)}</td><td>${esc(row.side)}</td></tr>`).join("") || `<tr><td colspan="5">موردی نیست.</td></tr>`;
   return `<div class="stack"><section class="card">${debtors.length && isAdmin() ? `<form data-act="receipt"><div class="grid-2"><div class="field"><label>مشتری بدهکار</label><select name="account_id">${debtors.map((row) => `<option value="${row.account_id}">${esc(row.name)} — ${money(row.balance)}</option>`).join("")}</select></div><div class="field"><label>مبلغ</label><input name="amount" inputmode="numeric" required></div></div><div class="field"><label>روش</label><select name="payment_method"><option value="cash">نقد</option><option value="card">کارت</option></select></div><button class="btn primary" type="submit">دریافت طلب</button></form>` : `<p class="empty">مانده نسیه‌ای برای دریافت نیست.</p>`}</section>
@@ -2201,7 +2209,9 @@ function modalHtml() {
   if (modal.type === "invoice-read" && modal.invoice) inner = invoiceReadHtml(modal.invoice);
   if (modal.type === "pro") inner = `<h2 class="section-title">اکانت Pro</h2><p>${esc(modal.title || "بسته توکن")} · ${money(modal.payable)}</p><p class="hint">صفحه زیبال را باز کنید و پرداخت را تمام کنید. تا وقتی بانک تأیید نکند توکنی اضافه نمی‌شود. این توکن لایسنس فروشگاه و VIP نیست.</p><div class="row-actions">${modal.credit?.pay_url ? `<a class="btn" href="${esc(modal.credit.pay_url)}" target="_blank" rel="noopener">باز کردن زیبال</a>` : ""}<button type="button" class="btn primary" data-act="confirm-pro" data-id="${modal.credit?.id || ""}">پرداخت را انجام دادم</button></div>`;
   if (modal.type === "card" && modal.waiting) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "")}</p><p class="hint">مبلغ روی دستگاه است. مشتری کارت را می‌کشد و رمز را روی دستگاه می‌زند. تا تأیید نیاید فاکتور صادر نمی‌شود.</p>`;
-  if (modal.type === "credit") inner = `<form data-act="credit-payment"><h2 class="section-title">نسیه / چک</h2><p class="hint">موبایل مشتری لازم است. چک تا زمان وصول به‌عنوان طلب مشتری ثبت می‌شود.</p><div class="field"><label>نوع تسویه</label><select id="credit-kind" name="credit_kind"><option value="credit">نسیه</option><option value="check">چک</option></select></div><div id="check-payment-fields" hidden><div class="field"><label>شماره چک</label><input name="check_number" maxlength="40"></div><div class="field"><label>سررسید (شمسی)</label><input name="check_due" placeholder="۱۴۰۵/۰۹/۲۰" autocomplete="off"></div></div><button type="submit" class="btn primary">ثبت فروش</button></form>`;
+  if (modal.type === "credit") inner = allowCredit()
+    ? `<form data-act="credit-payment"><h2 class="section-title">نسیه / چک</h2><p class="hint">موبایل مشتری لازم است. چک تا زمان وصول به‌عنوان طلب مشتری ثبت می‌شود.</p><div class="field"><label>نوع تسویه</label><select id="credit-kind" name="credit_kind"><option value="credit">نسیه</option><option value="check">چک</option></select></div><div id="check-payment-fields" hidden><div class="field"><label>شماره چک</label><input name="check_number" maxlength="40"></div><div class="field"><label>سررسید (شمسی)</label><input name="check_due" placeholder="۱۴۰۵/۰۹/۲۰" autocomplete="off"></div></div><button type="submit" class="btn primary">ثبت فروش</button></form>`
+    : `<h2 class="section-title">نسیه / چک</h2><p class="empty">در این نسخه نسیه و چک نیست.</p>`;
   if (modal.type === "card" && modal.approved) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "پرداخت روی کارت‌خوان تأیید شد.")}</p>${modal.ref ? `<p class="ltr">پیگیری ${esc(modal.ref)}</p>` : ""}<p class="hint">اگر فاکتور را می‌خواهید، صدور فاکتور را بزنید. بدون این دکمه فاکتوری ثبت نمی‌شود.</p><div class="row-actions"><button type="button" class="btn primary" data-act="confirm-card">صدور فاکتور</button><button type="button" class="btn" data-act="close-modal">بستن بدون فاکتور</button></div>`;
   if (modal.type === "card" && !modal.waiting && !modal.approved) inner = `<h2 class="section-title">کارت‌خوان</h2><p>${esc(modal.message || "کارت‌خوان وصل نشد.")}</p><p class="hint">فاکتوری ثبت نشد. آدرس را در تنظیمات ذخیره کنید و دوباره کارت‌خوان را بزنید.</p>`;
   if (modal.type === "gateway") inner = `<h2 class="section-title">پرداخت در مرورگر</h2><p>کد <span class="ltr">${esc(modal.sale.invoice_code || "")}</span> · فاکتور ${num(modal.sale.id)} · ${money(modal.sale.payable)}</p>${gatewayPanel(modal.sale)}<div class="row-actions"><button type="button" class="btn primary" data-act="verify-sale" data-id="${modal.sale.id}">استعلام تأیید</button><button type="button" class="btn danger" data-act="cancel-sale" data-id="${modal.sale.id}">لغو</button></div><form data-act="manual-gateway"><input type="hidden" name="id" value="${modal.sale.id}"><div class="field"><label>اگر در پنل درگاه پرداخت را دیدید، پیگیری را بنویسید</label><input name="ref" required></div><button class="btn" type="submit">ثبت دستی</button></form>`;
@@ -2512,6 +2522,7 @@ async function onSubmit(event) {
         .replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
         .replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit))
         .replace(/\D/g, "");
+      if (modal.method === "credit" && !allowCredit()) return toast("در این نسخه نسیه و چک نیست");
       if (modal.method === "credit" && !/^09\d{9}$/.test(phone)) return toast("برای نسیه شماره موبایل لازم است");
       const result = await api(`/api/sales/${modal.sale.id}`, {
         method: "PUT",
@@ -2585,12 +2596,14 @@ async function onSubmit(event) {
       state.siteOrderPage = 1; state.siteOrderSearch = data.search || ""; state.siteOrderStatus = data.status || "any";
       await loaders.siteorders(); render();
     } else if (act === "credit-payment") {
+      if (!allowCredit()) return toast("در این نسخه نسیه و چک نیست");
       state.creditKind = data.credit_kind === "check" ? "check" : "credit";
       state.checkDetails = state.creditKind === "check" ? { number: data.check_number, due_on: data.check_due } : null;
       await submitSale("credit", "");
     } else if (act === "save-product") await saveProduct(form, data);
     else if (act === "save-settings") await saveSettings(form);
     else if (act === "save-check") {
+      if (!allowCredit()) return toast("در این نسخه چک نیست");
       await api("/api/checks", { method: "POST", body: data });
       await loaders.checks();
       toast("چک ثبت شد");
@@ -2769,7 +2782,7 @@ async function saveSettings(form) {
     if (box) data[key] = box.checked ? "1" : "0";
   }
   state.settings = (await api("/api/settings", { method: "PUT", body: data })).settings;
-  state.shop = { name: state.settings.shop_name || "دفترچی", logo: state.settings.shop_logo || "", theme: state.settings.ui_theme || "light", moadian_enabled: state.settings.moadian_enabled === "1", site_connected: Boolean(state.settings.wp_url && state.settings.woo_key && state.settings.woo_secret) };
+  state.shop = { name: state.settings.shop_name || "دفترچی", logo: state.settings.shop_logo || "", theme: state.settings.ui_theme || "light", moadian_enabled: state.settings.moadian_enabled === "1", site_connected: Boolean(state.settings.wp_url && state.settings.woo_key && state.settings.woo_secret), allow_credit: allowCredit() };
   state.siteTerms = {};
   applyTheme(state.settings.ui_theme);
   toast("تنظیمات ذخیره شد");
@@ -2859,6 +2872,10 @@ async function submitSale(method, posRef, popup) {
     closePopup(popup);
     if (!buyer) return;
     return toast("سبد خالی است");
+  }
+  if (method === "credit" && !allowCredit()) {
+    closePopup(popup);
+    return toast("در این نسخه نسیه و چک نیست");
   }
   if (method === "credit" && !/^09\d{9}$/.test(buyer.phone)) {
     closePopup(popup);
@@ -3289,6 +3306,7 @@ async function onClick(event) {
       if (el.dataset.method === "card") {
         await sendCartToCardReader();
       } else if (el.dataset.method === "credit") {
+        if (!allowCredit()) return toast("در این نسخه نسیه و چک نیست");
         state.modal = { type: "credit" }; render();
       } else await submitSale(el.dataset.method, "");
     } else if (act === "confirm-card") {
@@ -3393,6 +3411,7 @@ async function onClick(event) {
       toast(result.errors?.length ? `${num(saved)} کالا ثبت شد و ${num(result.errors.length)} ردیف رد شد` : `${num(saved)} کالا ثبت شد`);
       render();
     } else if (act === "collect-check") {
+      if (!allowCredit()) return toast("در این نسخه چک نیست");
       await api(`/api/checks/${el.dataset.id}/collect`, { method: "POST", body: {} });
       await loaders.checks();
       toast("وصول چک در حسابداری ثبت شد");

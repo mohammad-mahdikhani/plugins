@@ -7,6 +7,7 @@
   "unlimited": true,
   "settings": {
     "shop_name": "اشرافی",
-    "shop_mode": "offline"
+    "shop_mode": "offline",
+    "allow_credit": "0"
   }
 }

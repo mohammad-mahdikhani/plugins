@@ -120,6 +120,7 @@ DEFAULT_SETTINGS = {
     "woo_auto_sync": "1",
     "ui_theme": "light",
     "backup_auto": "1",
+    "allow_credit": "1",
 }
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
@@ -5306,6 +5307,18 @@ def clean_theme(value) -> str:
     return text if text in UI_THEMES else "light"
 
 
+def credit_enabled(settings: dict | None = None) -> bool:
+    data = settings or {}
+    if str(data.get("site_id") or "").strip().lower() == "ashrafi":
+        return False
+    return str(data.get("allow_credit") or "1") != "0"
+
+
+def refuse_credit(settings: dict | None = None) -> None:
+    if not credit_enabled(settings):
+        raise AppError("در نسخه اشرافی نسیه و چک نیست")
+
+
 def shop_profile(conn) -> dict:
     settings = get_settings(conn)
     return {
@@ -5314,6 +5327,7 @@ def shop_profile(conn) -> dict:
         "theme": clean_theme(settings.get("ui_theme")),
         "site_connected": bool(woo_auto_ready(settings)),
         "moadian_enabled": settings.get("moadian_enabled") == "1",
+        "allow_credit": credit_enabled(settings),
     }
 
 
@@ -6973,6 +6987,7 @@ def create_check():
         raise AppError("نوع چک نامعتبر است")
     note = clean_text(payload.get("note"), "شرح", 160)
     with connect() as conn:
+        refuse_credit(get_settings(conn))
         cur = conn.execute(
             """INSERT INTO checks (number, person, amount, due_on, kind, status, note, user_id, created_at)
                VALUES (?,?,?,?,?,'pending',?,?,?)""",
@@ -7824,6 +7839,9 @@ def create_sale():
             raise AppError("صندوق بسته است. از صفحه صندوق آن را باز کنید.")
         if method == "card" and (get_settings(conn).get("pos_host") or "").strip() and not pos_ref:
             raise AppError("فاکتور کارت فقط بعد از تأیید کارت‌خوان صادر می‌شود")
+        settings = get_settings(conn)
+        if method == "credit":
+            refuse_credit(settings)
         items, subtotal = load_cart(conn, payload.get("items"))
         discount = calc_discount(subtotal, dtype, payload.get("discount_value"))
         customer = walk_in_customer(conn, payload, method == "credit")
@@ -7972,6 +7990,8 @@ def revise_sale(sale_id: int):
     pos_ref = clean_text(payload.get("pos_ref"), "پیگیری", 64)
     with connect() as conn:
         require_access(conn)
+        if method == "credit":
+            refuse_credit(get_settings(conn))
         sale = conn.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
         if not sale:
             raise AppError("فاکتور پیدا نشد", 404)
