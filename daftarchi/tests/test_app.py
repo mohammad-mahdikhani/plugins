@@ -645,6 +645,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertNotIn("DAFTARCHI_UNLOCK", bat)
         self.assertIn('"unlimited": true', preset)
         self.assertIn("اشرافی", preset)
+        self.assertIn('"buyer_name": "سید بهنام حسینی"', preset)
         self.assertIn('"shop_mode": "offline"', preset)
         self.assertIn('"allow_credit": "0"', preset)
         self.assertNotIn("studio_unlock", preset)
