@@ -97,8 +97,6 @@ const state = {
   products: [],
   archivedProducts: [],
   showArchivedProducts: false,
-  outOfStockOnly: false,
-  posOutOfStockOnly: false,
   siteTerms: {},
   siteOrders: null,
   siteOrderPage: 1,
@@ -114,7 +112,6 @@ const state = {
   productLimit: PAGE_SIZE,
   inventoryLimit: PAGE_SIZE,
   inventoryQuery: "",
-  lowInventoryOnly: false,
   invoiceQuery: "",
   invoiceDate: "",
   invoices: [],
@@ -190,7 +187,7 @@ function siteOrdersHtml() {
     <p class="hint">سفارش‌ها، وضعیت و روش پرداخت از سایت خوانده می‌شوند. اسنپ‌پی و ترب‌پی از درگاه فعال همان سایت انجام می‌شوند.</p>
     <form data-act="search-site-orders" class="row-actions"><input type="search" name="search" aria-label="جستجوی سفارش سایت" placeholder="شماره، نام یا اطلاعات سفارش" value="${esc(state.siteOrderSearch)}"><select name="status" aria-label="وضعیت سفارش"><option value="any">همه وضعیت‌ها</option>${Object.entries(SITE_STATUS).map(([key, label]) => `<option value="${key}" ${state.siteOrderStatus === key ? "selected" : ""}>${label}</option>`).join("")}</select><button class="btn primary" type="submit">جستجو / تازه‌سازی</button></form>
     <div class="site-methods"><strong>روش‌های فعال سایت:</strong> ${methods.map(item => `<span class="pill">${esc(item.title || item.id)}</span>`).join(" ") || "روشی دریافت نشده است"}</div>${data.methods_error ? `<p class="hint">${esc(data.methods_error)}</p>` : ""}
-    </section><section class="card stack">${(data.orders || []).map(order => `<article class="site-order"><div class="row-actions"><strong>سفارش ${esc(order.number)}</strong><span class="pill">${esc(SITE_STATUS[order.status] || order.status)}</span><strong class="num">${siteAmount(order.total, order.currency)}</strong></div><p>${esc(order.customer || "مشتری مهمان")} <span class="ltr">${esc(order.phone)}</span></p><p class="hint">${esc(order.date.replace("T", " "))} · روش پرداخت: <strong>${esc(order.payment_title || "ثبت نشده")}</strong></p><details><summary>کالاهای سفارش</summary><table><tbody>${order.items.map(item => `<tr><td>${esc(item.name)} × ${num(item.qty)}</td><td class="num">${siteAmount(item.total, order.currency)}</td></tr>`).join("")}</tbody></table>${order.payment_url && safeImg(order.payment_url) ? `<a class="btn" href="${esc(order.payment_url)}" target="_blank" rel="noopener">ادامه پرداخت در سایت</a>` : ""}</details></article>`).join("") || `<p class="empty">سفارشی با این جستجو و وضعیت پیدا نشد.</p>`}
+    </section><section class="card stack">${(data.orders || []).map(order => `<article class="site-order"><div class="row-actions"><strong>سفارش ${esc(order.number)}</strong><span class="pill">${esc(SITE_STATUS[order.status] || order.status)}</span><strong class="num">${siteAmount(order.total, order.currency)}</strong></div><p>${esc(order.customer || "مشتری مهمان")} <span class="ltr">${esc(order.phone)}</span></p><p><strong>${(order.items || []).map((item) => esc(item.name)).filter(Boolean).join("، ") || "—"}</strong></p><p class="hint">${esc(order.date.replace("T", " "))} · روش پرداخت: <strong>${esc(order.payment_title || "ثبت نشده")}</strong></p><details><summary>کالاهای سفارش</summary><table><tbody>${order.items.map(item => `<tr><td>${esc(item.name)} × ${num(item.qty)}</td><td class="num">${siteAmount(item.total, order.currency)}</td></tr>`).join("")}</tbody></table>${order.payment_url && safeImg(order.payment_url) ? `<a class="btn" href="${esc(order.payment_url)}" target="_blank" rel="noopener">ادامه پرداخت در سایت</a>` : ""}</details></article>`).join("") || `<p class="empty">سفارشی با این جستجو و وضعیت پیدا نشد.</p>`}
     <div class="row-actions"><button type="button" class="btn" data-act="site-orders-page" data-page="${state.siteOrderPage - 1}" ${state.siteOrderPage <= 1 ? "disabled" : ""}>قبلی</button><span>صفحه ${num(state.siteOrderPage)}</span><button type="button" class="btn" data-act="site-orders-page" data-page="${state.siteOrderPage + 1}" ${data.has_more ? "" : "disabled"}>بعدی</button></div><p class="hint">برای دیدن سفارش‌های تازه، «تازه‌سازی» را بزنید. این فهرست سند فروش حضوری جدید ثبت نمی‌کند.</p></section></div>`;
 }
 function termField(kind) {
@@ -1215,10 +1212,13 @@ function bars(summary) {
 function canEditSale(sale) {
   return state.user && state.user.role !== "stock" && (!sale || (sale.status === "paid" && sale.payment_method !== "gateway"));
 }
+function saleProductLabel(sale) {
+  return esc(sale.item_names || "—");
+}
 function salesTable(rows, actions) {
   if (!rows.length) return `<p class="empty">هنوز فروشی ثبت نشده.</p>`;
-  return `<table><thead><tr><th>فاکتور</th><th>زمان</th><th>خریدار</th><th>روش</th><th>مبلغ</th>${actions ? "<th></th>" : ""}</tr></thead><tbody>
-    ${rows.map((sale) => `<tr><td class="num">${num(sale.id)}</td><td>${esc(sale.at_jalali)}</td><td>${esc(sale.customer_name || "—")}</td><td>${PAY[sale.payment_method] || ""}</td><td class="num">${money(sale.payable)}</td>${actions && canEditSale(sale) ? `<td><button type="button" class="btn" data-act="edit-sale" data-id="${sale.id}">اصلاح</button></td>` : (actions ? "<td></td>" : "")}</tr>`).join("")}
+  return `<table><thead><tr><th>فاکتور</th><th>کالا</th><th>زمان</th><th>خریدار</th><th>روش</th><th>مبلغ</th>${actions ? "<th></th>" : ""}</tr></thead><tbody>
+    ${rows.map((sale) => `<tr><td class="num">${num(sale.id)}</td><td>${saleProductLabel(sale)}</td><td>${esc(sale.at_jalali)}</td><td>${esc(sale.customer_name || "—")}</td><td>${PAY[sale.payment_method] || ""}</td><td class="num">${money(sale.payable)}</td>${actions && canEditSale(sale) ? `<td><button type="button" class="btn" data-act="edit-sale" data-id="${sale.id}">اصلاح</button></td>` : (actions ? "<td></td>" : "")}</tr>`).join("")}
   </tbody></table>`;
 }
 function invoiceReadHtml(invoice) {
@@ -1251,7 +1251,7 @@ function filteredInvoices() {
   const query = state.invoiceQuery.trim();
   const day = String(state.invoiceDate || "").trim();
   return (state.invoices || []).filter((sale) => {
-    const hay = `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""}`;
+    const hay = `${sale.id} ${sale.invoice_code || ""} ${sale.customer_name || ""} ${sale.customer_phone || ""} ${sale.item_names || ""}`;
     if (query && !hay.includes(query)) return false;
     if (day && !(sale.at_jalali || "").startsWith(day)) return false;
     return true;
@@ -1415,7 +1415,7 @@ function dashboardHtml() {
     <section class="card stack"><div class="report-title"><h2 class="section-title">مقایسهٔ فروش با ${previousLabel}</h2><div class="seg"><button type="button" class="${count ? "" : "on"}" data-act="report-metric" data-metric="total">مبلغ فروش</button><button type="button" class="${count ? "on" : ""}" data-act="report-metric" data-metric="count">تعداد فاکتور</button></div></div>${reportChart(summary.points, series, !count)}</section>
     <div class="report-grid">${reportProducts(summary)}<section class="card stack"><h2 class="section-title">روش‌های پرداخت</h2>${(summary.payments || []).map(payment => `<div class="report-payment"><div><strong>${esc(PAY[payment.method] || payment.method)}</strong><span>${num(payment.count)} فاکتور</span><b>${money(payment.total)}</b></div><progress max="${Math.max(1, summary.total)}" value="${payment.total}"></progress></div>`).join("") || `<p class="empty">پرداختی ثبت نشده است.</p>`}<p class="hint">فقط فاکتورهای پرداخت‌شده؛ فاکتور لغوشده یا منتظر تأیید در نمودارها محاسبه نمی‌شود.</p></section></div>
     <section class="card stack"><h2 class="section-title">ساعت‌های پرفروش به وقت ایران</h2><div class="report-peaks">${peaks.map(point => `<span><strong>${num(point.hour)} تا ${num(point.hour + 1)}</strong>${money(point.total)} · ${num(point.count)} فاکتور</span>`).join("") || `<span class="hint">هنوز ساعت پرفروشی ثبت نشده است.</span>`}</div>${reportChart(hours, series, !count)}<p class="hint">ساعت‌ها در کل بازه جمع می‌شوند؛ رتبه‌بندی براساس ${count ? "تعداد فاکتور" : "مبلغ فروش"} است. برای دیدن عددها روی ستون بمانید یا با کلید Tab انتخابش کنید.</p></section>${cashflow}
-    <section class="card"><h2 class="section-title">آخرین فروش‌ها</h2>${salesTable(state.sales, true)}</section></div>`;
+    <section class="card"><h2 class="section-title">آخرین سفارشات</h2>${salesTable(state.sales, true)}</section></div>`;
 }
 function calendarHtml() {
   const data = state.calendar;
@@ -1501,8 +1501,7 @@ function stockChoices(products) {
 }
 function posTiles() {
   const terms = productSearchTerms(state.posQuery);
-  const pool = state.posOutOfStockOnly ? state.products.filter(isSoldOut) : state.products;
-  const rows = terms.length ? pool.filter((product) => productMatches(product, terms)) : pool;
+  const rows = terms.length ? state.products.filter((product) => productMatches(product, terms)) : state.products;
   if (!rows.length) return `<p class="empty">کالایی پیدا نشد.</p>`;
   const shown = rows.slice(0, state.posLimit);
   return `<div class="product-grid">${shown.map((product) => {
@@ -1530,7 +1529,6 @@ function posHtml() {
   return `<div class="pos">
     <section class="card cart">
       ${closed ? `<div class="banner">صندوق بسته است. <button type="button" class="btn" data-act="nav" data-page="register">باز کردن صندوق</button></div>` : ""}
-      ${lowStockBanner(state.products)}
       ${checkAlertBanner()}
       <div class="field" data-tour="barcode"><label>بارکدخوان</label><input id="barcode" data-barcode="1" class="ltr" autocomplete="off" placeholder="بارکد کالا یا بارکد پایین فاکتور را بگیرید"></div>
       ${state.scanHit ? notice(`scan:${state.scanHit.name}:${state.scanHit.stock}`, `همین بارکد: <strong>${esc(state.scanHit.name)}</strong> · قیمت ${money(state.scanHit.price)} · موجودی ${num(state.scanHit.stock)}`) : ""}
@@ -1562,7 +1560,7 @@ function posHtml() {
     </section>
     <section class="stack pos-catalog">
       <input id="pos-query" value="${esc(state.posQuery)}" placeholder="جستجوی نام، کد یا بارکد">
-      <div class="row-actions"><button type="button" class="btn" data-act="toggle-pos-out" aria-pressed="${state.posOutOfStockOnly}">${state.posOutOfStockOnly ? "همه کالاها" : `ناموجودها (${num(state.products.filter(isSoldOut).length)})`}</button></div><div id="pos-grid">${posTiles()}</div>
+      <div id="pos-grid">${posTiles()}</div>
     </section>
   </div>`;
 }
@@ -1607,8 +1605,7 @@ function productRows() {
   const archived = state.showArchivedProducts && isAdmin();
   const products = archived ? state.archivedProducts : state.products;
   const sorted = sortedProducts(products, state.productSort);
-  const pool = !archived && state.outOfStockOnly ? sorted.filter(isSoldOut) : sorted;
-  const rows = terms.length ? pool.filter((product) => productMatches(product, terms)) : pool;
+  const rows = terms.length ? sorted.filter((product) => productMatches(product, terms)) : sorted;
   if (!rows.length) return `<p class="empty">کالایی در این فهرست نیست.</p>`;
   const shown = rows.slice(0, state.productLimit);
   return `<table><thead><tr><th></th><th>نام</th><th>بارکد</th><th>مودیان</th><th>قیمت فروش</th><th>موجودی</th><th></th></tr></thead><tbody>
@@ -1628,12 +1625,6 @@ function notice(id, inner) {
   if (!inner || dismissedNotices()[id]) return "";
   return `<div class="banner notice"><div class="notice-text">${inner}</div><button type="button" class="notice-x" data-act="dismiss" data-id="${esc(id)}" aria-label="بستن">×</button></div>`;
 }
-function lowStockBanner(rows) {
-  const low = (rows || []).filter((product) => product.low);
-  if (!low.length) return "";
-  const id = `low:${low.map((product) => product.id).sort((a, b) => a - b).join(",")}`;
-  return notice(id, `موجودی این کالاها به زیر حد هشدار رسیده: ${low.slice(0, 8).map((product) => esc(product.name)).join("، ")}`);
-}
 function checkAlertBanner() {
   if (!allowCredit()) return "";
   const alerts = state.checkAlerts || [];
@@ -1647,7 +1638,7 @@ function productsHtml() {
     ${imported.ids?.length ? `<button type="button" class="btn" data-act="woo-push-ids">ارسال همین‌ها به ووکامرس</button>` : ""}
     ${imported.errors?.length ? `<div>${imported.errors.map((row) => `<div>ردیف ${num(row.row)}: ${esc(row.error)}</div>`).join("")}</div>` : ""}`) : "";
   const woo = state.shopMode !== "offline";
-  return `<div class="stack"><section class="card product-search"><label for="product-query">جست‌وجوی کالا با نام، بارکد یا کد</label><input type="search" id="product-query" value="${esc(state.productQuery)}" autocomplete="off" placeholder="نام کالا را اینجا بنویسید"><p class="hint">نتیجه با نوشتن نام نمایش داده می‌شود. برای تغییر قیمت و موجودی، دکمهٔ «ویرایش قیمت و موجودی» کنار کالا را بزنید.</p></section>${lowStockBanner(state.products)}${banner}
+  return `<div class="stack"><section class="card product-search"><label for="product-query">جست‌وجوی کالا با نام، بارکد یا کد</label><input type="search" id="product-query" value="${esc(state.productQuery)}" autocomplete="off" placeholder="نام کالا را اینجا بنویسید"><p class="hint">نتیجه با نوشتن نام نمایش داده می‌شود. برای تغییر قیمت و موجودی، دکمهٔ «ویرایش قیمت و موجودی» کنار کالا را بزنید.</p></section>${banner}
     ${isAdmin() ? `<section class="card"><h2 class="section-title">افزودن با بارکد</h2>
       <div class="field"><label>بارکدخوان</label><input id="add-barcode" data-barcode="add" class="ltr" autocomplete="off" placeholder="بارکد را بگیرید"></div>
       <p class="hint">بارکد را بگیرید. بعد نام، قیمت خرید، قیمت فروش و تعداد را بنویسید. اگر ووکامرس وصل باشد، کالا در سایت هم ساخته می‌شود.</p>
@@ -1663,44 +1654,19 @@ function productsHtml() {
         <label>مرتب‌سازی <select id="product-sort">${Object.entries(productSortOptions).map(([value, label]) => `<option value="${value}" ${state.productSort === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
         ${isAdmin() ? `<button type="button" class="btn" data-act="toggle-product-archive" aria-pressed="${state.showArchivedProducts}">بایگانی کالاها</button>` : ""}
       </div>
-      <button type="button" class="btn" data-act="toggle-product-out" aria-pressed="${state.outOfStockOnly}" ${state.showArchivedProducts ? "disabled" : ""}>${state.outOfStockOnly ? "نمایش همه کالاها" : `ناموجودها (${num(state.products.filter(isSoldOut).length)})`}</button>
       ${state.showArchivedProducts && isAdmin() ? `<h2 class="section-title">کالاهای بایگانی‌شده</h2><p class="hint">کالاهای متصل، هنگام بایگانی در سایت پیش‌نویس می‌شوند. برای بایگانی‌های قدیمی، «پیش‌نویس در سایت» را بزنید. حذف، کالا را از این فهرست برمی‌دارد و در سایت به زباله‌دان می‌فرستد؛ سوابق فاکتورها باقی می‌مانند.</p>` : ""}
       <div id="product-table">${productRows()}</div>
     </section>
   </div>`;
 }
 
-const lowInventoryLists = new WeakMap();
-function lowInventoryRows(products) {
-  if (lowInventoryLists.has(products)) return lowInventoryLists.get(products);
-  const rows = [];
-  for (const product of products) {
-    if (product.price_per_gram > 0) continue;
-    if (product.type === "variable") {
-      for (const variation of product.variations || []) {
-        if (variation.tracked && Number.isFinite(variation.stock) && variation.stock < 2) {
-          rows.push({ ...product, hay: "", name: `${product.name} ـ ${variation.label}`, type: "simple", variations: [],
-            stock: variation.stock, price: variation.price, barcode: variation.barcode || "", sku: variation.sku || "" });
-        }
-      }
-    } else if (Number.isFinite(product.stock) && product.stock < 2) {
-      rows.push(product);
-    }
-  }
-  rows.sort((first, second) => first.stock - second.stock || productNameOrder.compare(first.name, second.name) || first.id - second.id);
-  lowInventoryLists.set(products, rows);
-  return rows;
-}
 function inventoryChoices() {
   const products = state.inventory?.products || [];
   const terms = productSearchTerms(state.inventoryQuery);
   return terms.length ? products.filter(product => productMatches(product, terms)) : products;
 }
 function inventoryFiltered() {
-  if (!state.lowInventoryOnly) return inventoryChoices();
-  const rows = lowInventoryRows(state.inventory?.products || []);
-  const terms = productSearchTerms(state.inventoryQuery);
-  return terms.length ? rows.filter(product => productMatches(product, terms)) : rows;
+  return inventoryChoices();
 }
 function inventoryTable() {
   const rows = inventoryFiltered();
@@ -1713,7 +1679,7 @@ function inventoryHtml() {
   if (!data) return "";
   const options = stockChoices(inventoryChoices().slice(0, PAGE_SIZE));
   const pay = data.pay_accounts.map((account) => `<option value="${esc(account.code)}">${esc(account.name)}</option>`).join("");
-  return `<div class="stack">${lowStockBanner(data.products)}<section class="card"><div class="row-actions"><h2 class="section-title">${state.lowInventoryOnly ? "موجودی زیر ۲ عدد" : "موجودی کالاها"}</h2><button type="button" class="btn ${state.lowInventoryOnly ? "primary" : ""}" data-act="toggle-low-inventory" aria-pressed="${state.lowInventoryOnly}">${state.lowInventoryOnly ? "نمایش همهٔ کالاها" : `موجودی زیر ۲ عدد (${num(lowInventoryRows(data.products).length)})`}</button></div>${state.lowInventoryOnly ? `<p class="hint">از کمترین موجودی و سپس نام کالا مرتب شده است. موجودی هر نوع کالا جداگانه نمایش داده می‌شود.</p>` : ""}<input id="inventory-query" value="${esc(state.inventoryQuery)}" placeholder="جستجوی کالا برای دیدن موجودی"><div id="inventory-box">${inventoryTable()}</div>
+  return `<div class="stack"><section class="card"><h2 class="section-title">موجودی کالاها</h2><input id="inventory-query" value="${esc(state.inventoryQuery)}" placeholder="جستجوی کالا برای دیدن موجودی"><div id="inventory-box">${inventoryTable()}</div>
     ${isAdmin() ? `<details><summary>تعدیل موجودی</summary><form data-act="adjust"><div class="field"><label>کالا</label><select name="product_id">${options}</select><p class="hint">اگر کالا در فهرست نیست، نامش را بالا بنویسید.</p></div><div class="field"><label>موجودی جدید</label><input name="stock" inputmode="numeric" required></div><div class="field"><label>شرح</label><input name="note"></div><button class="btn primary" type="submit">ثبت</button></form></details>` : `<p class="hint">این حساب موجودی را می‌بیند. تغییر موجودی با مدیر است.</p>`}
     ${isAdmin() ? `<details><summary>رسید خرید</summary><form data-act="purchase"><div class="grid-2"><div class="field"><label>کالا</label><select name="product_id">${options}</select></div><div class="field"><label>تعداد</label><input name="qty" inputmode="numeric" required></div></div><div class="grid-2"><div class="field"><label>فی خرید</label><input name="unit_cost" inputmode="numeric" required></div><div class="field"><label>پرداخت از</label><select name="pay_code">${pay}</select></div></div><p class="hint">اگر فی خرید وارد شود، میانگین قیمت خرید عوض می‌شود و سند حسابداری می‌خورد. بعد از ثبت، بارکد روی رسید چاپ می‌شود.</p><button class="btn primary" type="submit">ثبت خرید</button></form></details>` : ""}
   </section>
@@ -3329,9 +3295,6 @@ async function onClick(event) {
       await api(`/api/sales/${el.dataset.id}`, { method: "DELETE" }); state.modal = null; await navigate("pos"); toast("فاکتور ابطال شد؛ رسید تازه را از فروش ثبت کنید");
     } else if (act === "receipt-layout") {
       if (state.modal?.type === "receipt") { state.modal.layout = el.dataset.layout === "invoice" ? "invoice" : "receipt"; render(); }
-    } else if (act === "toggle-product-out" || act === "toggle-pos-out") {
-      const key = act === "toggle-product-out" ? "outOfStockOnly" : "posOutOfStockOnly";
-      state[key] = !state[key]; state.productLimit = PAGE_SIZE; state.posLimit = PAGE_SIZE; render();
     } else if (act === "site-orders-page") {
       state.siteOrderPage = Math.max(1, Number(el.dataset.page) || 1); await loaders.siteorders(); render();
     } else if (act === "load-site-terms") {
@@ -3432,10 +3395,6 @@ async function onClick(event) {
       }
       state.showArchivedProducts = !state.showArchivedProducts;
       state.productLimit = PAGE_SIZE;
-      render();
-    } else if (act === "toggle-low-inventory") {
-      state.lowInventoryOnly = !state.lowInventoryOnly;
-      state.inventoryLimit = PAGE_SIZE;
       render();
     } else if (act === "archive-product" || act === "draft-archived-product") {
       const product = [...state.products, ...state.archivedProducts].find((item) => item.id === Number(el.dataset.id));

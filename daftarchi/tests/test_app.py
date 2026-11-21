@@ -101,6 +101,32 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn('html[data-theme="sand"]', sheet)
         self.assertIn('html[data-theme="forest"]', sheet)
 
+    def test_recent_orders_show_product_names_without_stock_alerts(self):
+        first = self.add_product(name="عطر یاس", barcode="yas-ui", stock=8)
+        second = self.add_product(name="ادکلن گل", barcode="gol-ui", stock=4, price=22000)
+        self.open_register()
+        sold = self.client.post("/api/sales", json={
+            "items": [
+                {"product_id": first["id"], "qty": 2},
+                {"product_id": second["id"], "qty": 1},
+            ],
+            "payment_method": "cash",
+        })
+        self.assertEqual(sold.status_code, 200, sold.get_json())
+        self.assertEqual(sold.get_json()["sale"]["item_names"], "عطر یاس، ادکلن گل")
+        listed = self.client.get("/api/sales?limit=8").get_json()["sales"]
+        self.assertEqual(listed[0]["item_names"], "عطر یاس، ادکلن گل")
+        page = self.client.get("/static/js/app.js?v=1.1.66").get_data(as_text=True)
+        self.assertIn("آخرین سفارشات", page)
+        self.assertIn("<th>کالا</th>", page)
+        self.assertIn("sale.item_names", page)
+        self.assertNotIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
+        self.assertNotIn("ناموجودها", page)
+        self.assertNotIn("موجودی زیر ۲ عدد", page)
+        self.assertNotIn("toggle-low-inventory", page)
+        self.assertNotIn("toggle-pos-out", page)
+        self.assertNotIn("toggle-product-out", page)
+
     def test_login_and_health(self):
         health = self.client.get("/api/health")
         self.assertEqual(health.get_json()["name"], "دفترچی")
@@ -132,6 +158,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertGreaterEqual(cell["sales"], 1)
         self.assertGreater(cell["amount"], 0)
         self.assertTrue(any(row["id"] == sold.get_json()["sale"]["id"] for row in filled["sales"]))
+        self.assertEqual(next(row["item_names"] for row in filled["sales"] if row["id"] == sold.get_json()["sale"]["id"]), "چای تقویم")
         created = self.client.post("/api/checks", json={
             "number": "77", "person": "خریدار", "amount": 1000, "due_on": today["date"], "kind": "in",
         })
@@ -1877,7 +1904,9 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(clash.status_code, 409)
         page = self.client.get("/static/js/app.js?v=1.1.66").get_data(as_text=True)
         self.assertIn('data-act="dismiss"', page)
-        self.assertIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
+        self.assertNotIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
+        self.assertNotIn("ناموجودها", page)
+        self.assertNotIn("موجودی زیر ۲ عدد", page)
         self.assertIn('aria-label="بستن"', page)
         self.assertIn('data-barcode="add"', page)
         self.assertIn("قیمت خرید، تومان", page)

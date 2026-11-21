@@ -1676,11 +1676,33 @@ def finalize_sale(conn, sale_id: int, user_id: int) -> list[str]:
     return alerts
 
 
+def attach_sale_item_names(conn, sales: list[dict]) -> list[dict]:
+    if not sales:
+        return sales
+    ids = [int(sale["id"]) for sale in sales]
+    placeholders = ",".join("?" * len(ids))
+    names: dict[int, list[str]] = {sale_id: [] for sale_id in ids}
+    seen: dict[int, set[str]] = {sale_id: set() for sale_id in ids}
+    for row in conn.execute(
+        f"SELECT sale_id, name FROM sale_items WHERE sale_id IN ({placeholders}) ORDER BY id",
+        ids,
+    ):
+        sale_id = int(row["sale_id"])
+        name = (row["name"] or "").strip()
+        if name and name not in seen[sale_id]:
+            seen[sale_id].add(name)
+            names[sale_id].append(name)
+    for sale in sales:
+        sale["item_names"] = "، ".join(names.get(int(sale["id"]), []))
+    return sales
+
+
 def sale_payload(conn, sale_id: int) -> dict:
     sale = conn.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
     items = conn.execute("SELECT * FROM sale_items WHERE sale_id=? ORDER BY id", (sale_id,)).fetchall()
     data = dict(sale)
     data["at_jalali"] = to_jalali(data["created_at"])
+    data["item_names"] = "، ".join(dict.fromkeys((item["name"] or "").strip() for item in items if (item["name"] or "").strip()))
     return {"sale": data, "items": [dict(item) for item in items]}
 
 
@@ -2673,6 +2695,7 @@ def shamsi_month(conn, year: int, month: int, selected: int | None = None) -> di
             (iso(day_start), iso(day_end)),
         ).fetchall()
     ]
+    attach_sale_item_names(conn, sales)
     checks = [check_row(row) for row in conn.execute(
         "SELECT * FROM checks WHERE due_on=? ORDER BY id",
         (chosen_g.isoformat(),),
@@ -7922,6 +7945,7 @@ def list_sales():
             item = dict(row)
             item["at_jalali"] = to_jalali(row["created_at"])
             sales.append(item)
+        attach_sale_item_names(conn, sales)
     return jsonify(sales=sales)
 
 
