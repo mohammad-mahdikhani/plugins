@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-04",
+  "label": "پوشاک VIP",
+  "note": "کسب‌وکار VIP شماره ۴",
+  "settings": {
+    "shop_name": "پوشاک VIP",
+    "wp_url": "https://example-shop-04.ir",
+    "gateway_callback": "https://example-shop-04.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

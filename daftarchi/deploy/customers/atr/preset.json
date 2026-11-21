@@ -1,0 +1,12 @@
+{
+  "customer_no": "atr",
+  "site_id": "atr",
+  "channel": "customer",
+  "label": "عطر فروشی",
+  "buyer_name": "عطر فروشی",
+  "unlimited": true,
+  "settings": {
+    "shop_name": "عطر فروشی",
+    "shop_mode": "offline"
+  }
+}
