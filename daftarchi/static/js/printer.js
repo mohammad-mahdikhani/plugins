@@ -32,15 +32,17 @@
     const p = normalize(config);
     const content = Math.max(18, Math.ceil((Number(measuredHeight) || 18) * 10) / 10);
     const height = p.height || (content + p.margin * 2);
-    return `@page { size: ${p.width}mm ${height}mm; margin: ${p.margin}mm; }
+    return `@page { size: ${p.width}mm ${height}mm; margin: 0; }
       @media print {
-        html, body { margin:0!important; padding:0!important; background:#fff!important; height:auto!important; min-height:0!important; overflow:hidden!important; }
+        html, body { direction:ltr!important; margin:0!important; padding:0!important; background:#fff!important; height:auto!important; min-height:0!important; overflow:hidden!important; text-align:center!important; }
         body > * { display:none!important; }
-        body > #daftarchi-print-root { display:block!important; position:static!important; visibility:visible!important;
-          width:${p.width - 2 * p.margin}mm!important; max-width:none!important; margin:0!important; padding:0!important;
+        body > #daftarchi-print-root { display:block!important; position:static!important; visibility:visible!important; direction:rtl!important;
+          width:${p.width}mm!important; max-width:${p.width}mm!important; margin:0 auto!important; padding:${p.margin}mm!important; box-sizing:border-box!important;
           height:auto!important; min-height:0!important; overflow:hidden!important; page-break-after:avoid!important; page-break-inside:avoid!important; }
         #daftarchi-print-root, #daftarchi-print-root * { visibility:visible!important; }
         #daftarchi-print-root button, #daftarchi-print-root .no-print { display:none!important; }
+        #daftarchi-print-root .invoice-sheet { margin:0 auto!important; width:100%!important; max-width:none!important; text-align:center!important; }
+        #daftarchi-print-root .invoice-barcode svg { fill:#000!important; margin:0 auto!important; display:block!important; }
       }`;
   }
   function sample() {

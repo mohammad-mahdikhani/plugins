@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.68") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.69") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.68") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.69") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.68") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.69") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -414,8 +414,10 @@ button.pill { font: inherit; cursor: pointer; min-height: 0; box-shadow: none; }
 .invoice.thermal .invoice-brand strong { font-size: 16px; }
 .invoice.thermal .invoice-meta b { font-size: 14px; }
 .invoice-barcode { text-align: center; margin: 10px 0 4px; }
-.invoice-barcode svg { width: 100%; max-width: 240px; height: 48px; background: #fff; }
+.invoice-barcode svg { display: block; width: 100%; max-width: 68mm; height: 48px; margin: 0 auto; background: #fff; fill: #000; }
 .invoice-barcode span { display: block; margin-top: 4px; font-size: 12px; letter-spacing: 1px; }
+.invoice.thermal .invoice-sheet { width: min(74mm, 100%); margin: 0 auto; text-align: center; }
+.invoice.thermal .invoice-head, .invoice.thermal .invoice-total, .invoice.thermal .invoice-line { justify-content: space-between; text-align: right; }
 .logo-preview { width: 72px; height: 72px; object-fit: contain; border: 1px solid var(--line); border-radius: 12px; background: var(--lift); margin-top: 8px; }
 .stock-badge { display:inline-flex; justify-content:center; align-items:center; padding:8px 12px; border-radius:12px; font-size:19px; font-weight:800; line-height:1.5; border:1px solid currentColor; }
 .stock-ready { background:#dcfce7; color:#14532d; }

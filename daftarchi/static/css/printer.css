@@ -34,8 +34,8 @@
 .printer-feedback { flex:1; font-size:12px; color:var(--warn,#9a3412); }
 .printer-dialog button.printer-save { background:#2459a0; border-color:#2459a0; color:#fff; }
 .printer-receipt, .printer-receipt * { box-sizing:border-box; }
-.printer-receipt { direction:rtl; display:block!important; width:100%!important; max-width:none!important; height:auto!important; min-height:0!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; background:#fff!important; color:#111!important; font-size:var(--printer-font,12px)!important; overflow-wrap:anywhere; line-height:1.6; }
-.printer-receipt .invoice-sheet { padding:0!important; border-radius:0!important; color:#111; }
+.printer-receipt { direction:rtl; display:block!important; width:100%!important; max-width:none!important; height:auto!important; min-height:0!important; margin:0 auto!important; padding:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; background:#fff!important; color:#111!important; font-size:var(--printer-font,12px)!important; overflow-wrap:anywhere; line-height:1.6; text-align:center; }
+.printer-receipt .invoice-sheet { padding:0!important; border-radius:0!important; color:#111; margin:0 auto!important; width:100%!important; }
 .printer-receipt .invoice-head { gap:6px; flex-wrap:wrap; }
 .printer-receipt .invoice-brand { gap:5px; }
 .printer-receipt .invoice-brand strong { font-size:calc(var(--printer-font,12px)*1.25)!important; }
@@ -54,7 +54,8 @@
 .printer-receipt.receipt-compact p { margin:3px 0; }
 .printer-receipt .receipt-rate { display:block; font-size:calc(var(--printer-font,12px)*.9); color:#000; }
 .printer-receipt .invoice-barcode { text-align:center; margin:6px 0 2px; }
-.printer-receipt .invoice-barcode svg { width:100%; max-width:none; height:14mm; background:#fff; }
+.printer-receipt .invoice-barcode svg { display:block; width:100%; max-width:none; height:14mm; margin:0 auto; background:#fff; fill:#000; }
+.printer-receipt .invoice-barcode rect { fill:#000; }
 .printer-receipt .invoice-barcode span { display:block; margin-top:2px; letter-spacing:1px; color:#000!important; }
 .printer-receipt .printer-calibration { font-size:10px; text-align:center; margin:12px 0 4px; }
 .printer-calibration-line { width:20mm; border-top:1px solid #111; margin:0 auto; }

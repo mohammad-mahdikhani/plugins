@@ -134,7 +134,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.68"
+APP_VERSION = "1.1.69"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -478,6 +478,33 @@ def ean13_check(body: str) -> str:
     digits = [int(char) for char in body]
     total = sum(digit * (1 if index % 2 == 0 else 3) for index, digit in enumerate(digits))
     return str((10 - (total % 10)) % 10)
+
+
+EAN13_L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"]
+EAN13_G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"]
+EAN13_R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"]
+EAN13_PARITY = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"]
+
+
+def ean13_digits(code: str) -> str:
+    digits = re.sub(r"\D", "", str(code or ""))
+    return digits if len(digits) == 13 else ""
+
+
+def ean13_bits(code: str) -> str:
+    digits = ean13_digits(code)
+    if not digits:
+        return ""
+    left = EAN13_PARITY[int(digits[0])]
+    bits = ["101"]
+    for index in range(6):
+        table = EAN13_L if left[index] == "L" else EAN13_G
+        bits.append(table[int(digits[index + 1])])
+    bits.append("01010")
+    for index in range(7, 13):
+        bits.append(EAN13_R[int(digits[index])])
+    bits.append("101")
+    return "".join(bits)
 
 
 def barcode_taken(conn, code: str, except_id: int | None = None) -> bool:
@@ -5140,7 +5167,12 @@ PRINT_LIST_PS = (
     "}) | ConvertTo-Json -Compress -Depth 3"
 )
 PRINT_RECEIPT_PS = r"""
-param([Parameter(Mandatory=$true)][string]$Printer,[Parameter(Mandatory=$true)][string]$Receipt)
+param(
+  [Parameter(Mandatory=$true)][string]$Printer,
+  [Parameter(Mandatory=$true)][string]$Receipt,
+  [string]$BarcodeBits = '',
+  [string]$BarcodeDigits = ''
+)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Drawing
 $text = [System.IO.File]::ReadAllText($Receipt)
@@ -5150,19 +5182,47 @@ $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "پرینتر $Printer پیدا نشد" }
 $doc.PrinterSettings.Copies = 1
 $doc.DocumentName = 'Daftarchi-1'
-$width = [int](80.0 / 25.4 * 100)
+$ticket = [int](80.0 / 25.4 * 100)
 $lines = @($text -split "`r?`n").Count
-$height = [Math]::Max(90, 36 + $lines * 22)
-$doc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('DaftarchiReceipt', $width, $height)
-$doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(8,8,8,8)
-$font = New-Object System.Drawing.Font('Tahoma', 10)
+$barExtra = if ($BarcodeBits) { 90 } else { 0 }
+$height = [Math]::Max(120, 40 + $lines * 20 + $barExtra)
+$doc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('Daftarchi80', $ticket, $height)
+$doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,8,8)
+$doc.DefaultPageSettings.Landscape = $false
+$font = New-Object System.Drawing.Font('Tahoma', 9)
 $fmt = New-Object System.Drawing.StringFormat
+$fmt.Alignment = [System.Drawing.StringAlignment]::Center
+$fmt.LineAlignment = [System.Drawing.StringAlignment]::Near
 $fmt.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
 $script:done = $false
 $doc.add_PrintPage({
   param($sender, $page)
   if ($script:done) { $page.HasMorePages = $false; return }
-  $page.Graphics.DrawString($text, $font, [System.Drawing.Brushes]::Black, $page.MarginBounds, $fmt)
+  $pageW = $page.PageBounds.Width
+  $ticketW = [Math]::Min($ticket, $pageW)
+  $x = [int](($pageW - $ticketW) / 2)
+  $pad = 10
+  $box = New-Object System.Drawing.RectangleF(($x + $pad), $page.MarginBounds.Top, ($ticketW - 2 * $pad), [Math]::Max(40, $page.MarginBounds.Height - $barExtra))
+  $page.Graphics.DrawString($text, $font, [System.Drawing.Brushes]::Black, $box, $fmt)
+  if ($BarcodeBits) {
+    $measured = $page.Graphics.MeasureString($text, $font, [int]$box.Width, $fmt)
+    $barTop = $box.Y + $measured.Height + 6
+    $barH = 56
+    $areaW = $ticketW - 2 * $pad
+    $module = [double]$areaW / [double]$BarcodeBits.Length
+    $startX = $x + $pad
+    for ($i = 0; $i -lt $BarcodeBits.Length; $i++) {
+      if ($BarcodeBits[$i] -eq '1') {
+        $page.Graphics.FillRectangle([System.Drawing.Brushes]::Black, [single]($startX + $i * $module), [single]$barTop, [single]([Math]::Max(0.8, $module)), [single]$barH)
+      }
+    }
+    if ($BarcodeDigits) {
+      $digitFmt = New-Object System.Drawing.StringFormat
+      $digitFmt.Alignment = [System.Drawing.StringAlignment]::Center
+      $digitBox = New-Object System.Drawing.RectangleF($startX, ($barTop + $barH + 2), $areaW, 18)
+      $page.Graphics.DrawString($BarcodeDigits, $font, [System.Drawing.Brushes]::Black, $digitBox, $digitFmt)
+    }
+  }
   $page.HasMorePages = $false
   $script:done = $true
 })
@@ -5388,35 +5448,50 @@ def format_sale_receipt(sale: dict, items: list, shop_name: str) -> str:
     if discount:
         lines.append(f"تخفیف    {discount:,}")
     lines.append(f"قابل پرداخت    {int(sale.get('payable') or 0):,}")
-    barcode = str(sale.get("barcode") or "").strip()
-    if barcode:
-        lines.append(barcode)
     return "\n".join(line for line in lines if line is not None).strip() + "\n"
 
 
-def send_receipt_to_windows_printer(printer: str, text: str) -> None:
+def format_purchase_receipt(row: dict, shop_name: str) -> str:
+    shop = str(shop_name or "دفترچی").strip() or "دفترچی"
+    qty = int(row.get("qty") or 0)
+    name = str(row.get("product_name") or "کالا").strip() or "کالا"
+    total = int(row.get("total") or 0)
+    lines = [
+        shop,
+        str(row.get("invoice_code") or f"P{row.get('id') or ''}"),
+        str(row.get("at_jalali") or ""),
+        "------------------------",
+        f"{name} × {qty}    {total:,}",
+        f"مبلغ خرید    {total:,}",
+    ]
+    return "\n".join(lines).strip() + "\n"
+
+
+def send_receipt_to_windows_printer(printer: str, text: str, barcode: str = "") -> None:
     folder = Path(tempfile.mkdtemp(prefix="daftarchi-print-"))
     receipt = folder / "receipt.txt"
     script = folder / "print.ps1"
     receipt.write_text(text, encoding="utf-8-sig")
     script.write_text(PRINT_RECEIPT_PS, encoding="utf-8")
+    bits = ean13_bits(barcode)
+    digits = ean13_digits(barcode)
+    args = [
+        "powershell",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(script),
+        "-Printer",
+        printer,
+        "-Receipt",
+        str(receipt),
+    ]
+    if bits:
+        args.extend(["-BarcodeBits", bits, "-BarcodeDigits", digits])
     try:
-        done = run_hidden(
-            [
-                "powershell",
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(script),
-                "-Printer",
-                printer,
-                "-Receipt",
-                str(receipt),
-            ],
-            timeout=40,
-        )
+        done = run_hidden(args, timeout=40)
     finally:
         for path in (receipt, script):
             try:
@@ -5452,17 +5527,19 @@ def send_receipt_to_unix_printer(printer: str, text: str) -> None:
         raise AppError(detail or "پرینتر چاپ نکرد")
 
 
-def print_receipt_job(printer: str, text: str) -> dict:
+def print_receipt_job(printer: str, text: str, barcode: str = "") -> dict:
     if not str(printer or "").strip():
         raise AppError("پرینتر وصل پیدا نشد")
     body = str(text or "").strip()
     if not body:
         raise AppError("رسید خالی است")
+    mark = ean13_digits(barcode)
     if print_os_name() == "nt":
-        send_receipt_to_windows_printer(printer, body + "\n")
+        send_receipt_to_windows_printer(printer, body + "\n", barcode=mark)
     else:
-        send_receipt_to_unix_printer(printer, body + "\n")
-    return {"ok": True, "printer": printer, "copies": 1}
+        unix_body = body + (f"\n{mark}\n" if mark else "\n")
+        send_receipt_to_unix_printer(printer, unix_body)
+    return {"ok": True, "printer": printer, "copies": 1, "barcode": mark}
 
 
 def printer_status() -> dict:
@@ -5498,9 +5575,25 @@ def print_sale_receipt(sale_id: int) -> dict:
     if not chosen:
         raise AppError("پرینتر وصل پیدا نشد. کابل را بزنید یا دکمه شناسایی پرینتر را بزنید.")
     text = format_sale_receipt(sale, payload.get("items") or [], shop)
-    printed = print_receipt_job(chosen["name"], text)
+    printed = print_receipt_job(chosen["name"], text, barcode=str(sale.get("barcode") or ""))
     printed["sale_id"] = sale_id
     printed["message"] = f"یک نسخه رسید روی «{chosen['name']}» چاپ شد."
+    return printed
+
+
+def print_purchase_receipt(purchase_id: int) -> dict:
+    with connect() as conn:
+        row = purchase_payload(conn, purchase_id)
+        shop = get_settings(conn).get("shop_name") or "دفترچی"
+    if not row:
+        raise AppError("فاکتور خرید پیدا نشد", 404)
+    chosen = pick_connected_printer()
+    if not chosen:
+        raise AppError("پرینتر وصل پیدا نشد. کابل را بزنید یا دکمه شناسایی پرینتر را بزنید.")
+    text = format_purchase_receipt(row, shop)
+    printed = print_receipt_job(chosen["name"], text, barcode=str(row.get("barcode") or ""))
+    printed["purchase_id"] = purchase_id
+    printed["message"] = f"یک نسخه رسید خرید روی «{chosen['name']}» چاپ شد."
     return printed
 
 
@@ -5520,10 +5613,12 @@ def printer_detect():
 def printer_print_sale():
     require_user()
     payload = body_json()
-    sale_id = parse_money(payload.get("sale_id"), "فاکتور")
     copies = parse_money(payload.get("copies") or 1, "تعداد چاپ", allow_empty=True)
     if copies not in (0, 1):
         raise AppError("چاپ فروش فقط یک نسخه است")
+    if payload.get("purchase_id") and not payload.get("sale_id"):
+        return jsonify(print_purchase_receipt(int(parse_money(payload.get("purchase_id"), "فاکتور خرید"))))
+    sale_id = parse_money(payload.get("sale_id"), "فاکتور")
     return jsonify(print_sale_receipt(int(sale_id)))
 
 

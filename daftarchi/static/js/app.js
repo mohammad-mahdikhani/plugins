@@ -58,8 +58,8 @@ function ean13Svg(code) {
   bits += "01010";
   for (let i = 7; i < 13; i += 1) bits += R[Number(digits[i])];
   bits += "101";
-  const bars = [...bits].map((bit, i) => (bit === "1" ? `<rect x="${i}" y="0" width="1" height="48"/>` : "")).join("");
-  return `<div class="invoice-barcode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${bits.length} 48" preserveAspectRatio="none" aria-label="${esc(digits)}">${bars}</svg><span class="ltr">${esc(digits)}</span></div>`;
+  const bars = [...bits].map((bit, i) => (bit === "1" ? `<rect x="${i}" y="0" width="1" height="48" fill="#000"/>` : "")).join("");
+  return `<div class="invoice-barcode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${bits.length} 48" preserveAspectRatio="none" aria-label="${esc(digits)}" fill="#000">${bars}</svg><span class="ltr">${esc(digits)}</span></div>`;
 }
 function gatewayPanel(sale) {
   const target = `pay-url-${sale.id}`;
@@ -932,7 +932,7 @@ function receiptHtml(modal) {
       <p class="invoice-total"><span>قابل پرداخت</span><span class="num">${money(sale.payable)}</span></p>
       ${compact ? "" : `<p class="invoice-pay">${sale.credit_kind === "check" ? "چک · در انتظار وصول" : PAY[sale.payment_method] || ""}</p>`}
       ${sale.moadian_taxid ? `<p class="invoice-tax ltr">${esc(sale.moadian_taxid)}</p>` : ""}
-      ${ean13Svg(sale.barcode)}
+      ${ean13Svg(sale.barcode) || `<p class="invoice-barcode"><span class="ltr">${esc(sale.barcode || code)}</span></p>`}
       ${compact ? "" : `<p class="invoice-thanks">با تشکر از خرید شما</p>`}
     </div>
   </div>
@@ -1890,7 +1890,7 @@ function purchaseReceiptHtml(modal) {
         <tr><td>${esc(row.product_name || "")} × ${num(row.qty)}</td><td class="num">${money(row.total)}</td></tr>
       </tbody></table>
       <p class="invoice-total"><span>مبلغ خرید</span><span class="num">${money(row.total)}</span></p>
-      ${ean13Svg(row.barcode)}
+      ${ean13Svg(row.barcode) || `<p class="invoice-barcode"><span class="ltr">${esc(row.barcode || code)}</span></p>`}
       <p class="invoice-thanks">بارکد را برای باز کردن همین رسید اسکن کنید</p>
     </div>
   </div>
@@ -2262,6 +2262,21 @@ async function printIssuedReceipt(sale) {
   } catch (err) {
     toast(err.message || "پرینتر وصل پیدا نشد", { error: true });
   }
+}
+
+async function printCurrentDocument() {
+  const modal = state.modal;
+  if (modal?.type === "receipt" && modal.sale?.id) {
+    const result = await api("/api/printer/print", { method: "POST", body: { sale_id: modal.sale.id, copies: 1 } });
+    toast(result.message || "یک نسخه چاپ شد", { ok: true });
+    return;
+  }
+  if (modal?.type === "purchase-receipt" && modal.purchase?.id) {
+    const result = await api("/api/printer/print", { method: "POST", body: { purchase_id: modal.purchase.id, copies: 1 } });
+    toast(result.message || "یک نسخه چاپ شد", { ok: true });
+    return;
+  }
+  throw new Error("فاکتور فروش یا خرید برای چاپ پیدا نشد");
 }
 
 function maybeAutoPrintReceipt() {
@@ -3191,7 +3206,7 @@ async function onClick(event) {
     });
     return;
   }
-  if (act === "print") { await guard(() => window.DaftarchiPrinter.print()); return; }
+  if (act === "print") { await guard(() => printCurrentDocument()); return; }
   if (act === "copy-text") {
     const node = document.getElementById(el.dataset.target || "");
     const text = node?.value || node?.textContent || "";
