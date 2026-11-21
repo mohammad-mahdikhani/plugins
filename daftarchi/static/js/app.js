@@ -2030,7 +2030,7 @@ function settingsHtml() {
       <div class="field"><label>لوگوی فروشگاه</label><input type="file" name="logo_file" accept="image/*"></div>
       ${s.shop_logo ? `<img class="logo-preview" src="${esc(s.shop_logo)}" alt="">` : ""}
       <label class="check"><input type="checkbox" name="clear_shop_logo">برداشتن لوگو و برگشت به نشان دفترچی</label>
-      <div class="row-actions"><button type="button" class="btn" data-act="printer-settings">تنظیم تصویری ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button></div><p class="hint">چاپ فروش فقط یک نسخه است و طول کاغذ به کالاهای همان فاکتور است، نه صفحه خالی. اگر فاکتور قدیمی پشت‌سرهم چاپ می‌شود، حافظه چاپ را پاک کنید و پرینتر را یک‌بار خاموش و روشن کنید.</p>
+      <div class="row-actions"><button type="button" class="btn" data-act="detect-printer">شناسایی پرینتر</button><button type="button" class="btn" data-act="printer-settings">تنظیم تصویری ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button></div><p class="hint">بعد از صدور فاکتور، پرینتر وصل پیدا می‌شود و همان یک نسخه رسید خودکار چاپ می‌شود. طول کاغذ به کالاهای همان فاکتور است، نه صفحه خالی. اگر صف گیر کرد، حافظه چاپ را پاک کنید و پرینتر را یک‌بار خاموش و روشن کنید.</p>
     </section>`;
   const woo = `<section class="card"${mode === "online" ? "" : ` data-tour="woo"`}><h2 class="section-title">اتصال REST ووکامرس</h2>
       ${mode === "online" ? `${field("shop_name", "نام فروشگاه")}${wooFigure()}` : `<p class="hint">آدرس سایت و دو کلید REST را از ووکامرس، پیکربندی، پیشرفته بگیرید.</p>`}
@@ -2270,6 +2270,31 @@ function render() {
     const active = document.activeElement;
     if (!active || active === document.body) document.getElementById("product-query")?.focus();
   }
+  maybeAutoPrintReceipt();
+}
+
+async function printIssuedReceipt(sale) {
+  if (!sale?.id) return;
+  if (state.lastAutoPrint === sale.id) return;
+  state.lastAutoPrint = sale.id;
+  try {
+    const result = await api("/api/printer/print", { method: "POST", body: { sale_id: sale.id, copies: 1 } });
+    toast(result.message || "یک نسخه چاپ شد", { ok: true });
+  } catch (err) {
+    toast(err.message || "پرینتر وصل پیدا نشد", { error: true });
+  }
+}
+
+function maybeAutoPrintReceipt() {
+  const modal = state.modal;
+  if (!modal || modal.type !== "receipt" || !modal.autoPrint) return;
+  modal.autoPrint = false;
+  const sale = modal.sale;
+  window.setTimeout(() => {
+    if (state.modal?.type === "receipt" && Number(state.modal.sale?.id) === Number(sale.id)) {
+      printIssuedReceipt(sale);
+    }
+  }, 200);
 }
 
 function closePopup(popup) {
@@ -2882,7 +2907,7 @@ async function submitSale(method, posRef, popup) {
     state.buyerFirst = "";
     state.buyerLast = "";
     state.buyerPhone = "";
-    state.modal = state.receiptMode === "none" ? null : { type: "receipt", layout: state.receiptMode, sale: result.sale, items: result.items, sms: result.sms };
+    state.modal = state.receiptMode === "none" ? null : { type: "receipt", layout: state.receiptMode, sale: result.sale, items: result.items, sms: result.sms, autoPrint: true };
     state.sendMoadian = false;
     state.checkDetails = null;
     state.creditKind = "credit";
@@ -3175,6 +3200,13 @@ async function onClick(event) {
     return;
   }
   if (act === "printer-settings") { window.DaftarchiPrinter.open(); return; }
+  if (act === "detect-printer") {
+    await guard(async () => {
+      const result = await api("/api/printer");
+      toast(result.message || "پرینتر بررسی شد", { ok: Boolean(result.ready), error: !result.ready });
+    });
+    return;
+  }
   if (act === "clear-print-memory") {
     if (!window.confirm("صف چاپ پاک شود؟ فاکتورهایی که در حافظه پرینتر یا ویندوز مانده‌اند دیگر چاپ نمی‌شوند.")) return;
     await guard(async () => {
@@ -3427,7 +3459,7 @@ async function onClick(event) {
       const id = el.dataset.id;
       if (act === "verify-sale") {
         const result = await api(`/api/sales/${id}/confirm`, { method: "POST", body: { mode: "verify" } });
-        state.modal = state.receiptMode === "none" ? null : { type: "receipt", layout: state.receiptMode, sale: result.sale, items: result.items, sms: result.sms };
+        state.modal = state.receiptMode === "none" ? null : { type: "receipt", layout: state.receiptMode, sale: result.sale, items: result.items, sms: result.sms, autoPrint: true };
         state.sendMoadian = false;
         state.cart = [];
       } else {

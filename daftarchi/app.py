@@ -19,6 +19,7 @@ import smtplib
 import socket
 import sqlite3
 import subprocess
+import tempfile
 import threading
 import zipfile
 import urllib.error
@@ -133,7 +134,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.67"
+APP_VERSION = "1.1.68"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -5131,6 +5132,55 @@ PRINT_CANCEL_PS = (
     "foreach($j in $jobs){try{Remove-CimInstance -InputObject $j}catch{}};"
     "Write-Output $n"
 )
+PRINT_LIST_PS = (
+    "$ErrorActionPreference='SilentlyContinue';"
+    "@(Get-CimInstance Win32_Printer | ForEach-Object {"
+    "[ordered]@{Name=$_.Name;Default=[bool]$_.Default;Offline=[bool]$_.WorkOffline;"
+    "Status=[int]$_.PrinterStatus;Port=[string]$_.PortName}"
+    "}) | ConvertTo-Json -Compress -Depth 3"
+)
+PRINT_RECEIPT_PS = r"""
+param([Parameter(Mandatory=$true)][string]$Printer,[Parameter(Mandatory=$true)][string]$Receipt)
+$ErrorActionPreference='Stop'
+Add-Type -AssemblyName System.Drawing
+$text = [System.IO.File]::ReadAllText($Receipt)
+if ([string]::IsNullOrWhiteSpace($text)) { throw 'رسید خالی است' }
+$doc = New-Object System.Drawing.Printing.PrintDocument
+$doc.PrinterSettings.PrinterName = $Printer
+if (-not $doc.PrinterSettings.IsValid) { throw "پرینتر $Printer پیدا نشد" }
+$doc.PrinterSettings.Copies = 1
+$doc.DocumentName = 'Daftarchi-1'
+$width = [int](80.0 / 25.4 * 100)
+$lines = @($text -split "`r?`n").Count
+$height = [Math]::Max(90, 36 + $lines * 22)
+$doc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('DaftarchiReceipt', $width, $height)
+$doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(8,8,8,8)
+$font = New-Object System.Drawing.Font('Tahoma', 10)
+$fmt = New-Object System.Drawing.StringFormat
+$fmt.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
+$script:done = $false
+$doc.add_PrintPage({
+  param($sender, $page)
+  if ($script:done) { $page.HasMorePages = $false; return }
+  $page.Graphics.DrawString($text, $font, [System.Drawing.Brushes]::Black, $page.MarginBounds, $fmt)
+  $page.HasMorePages = $false
+  $script:done = $true
+})
+$doc.Print()
+$font.Dispose()
+$doc.Dispose()
+Write-Output '1'
+"""
+VIRTUAL_PRINTERS = (
+    "microsoft print to pdf",
+    "microsoft xps document writer",
+    "fax",
+    "onenote",
+    "send to onenote",
+    "adobe pdf",
+    "foxit",
+    "cutepdf",
+)
 
 
 def print_os_name() -> str:
@@ -5219,10 +5269,262 @@ def clear_print_memory() -> dict:
     return {"ok": True, "jobs": jobs, "spool_cleared": spool, "message": message}
 
 
+def is_virtual_printer(name: str) -> bool:
+    text = str(name or "").strip().lower()
+    return any(marker in text for marker in VIRTUAL_PRINTERS)
+
+
+def _printer_rows(raw) -> list[dict]:
+    if not raw:
+        return []
+    if isinstance(raw, dict):
+        raw = [raw]
+    rows = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("Name") or item.get("name") or "").strip()
+        if not name:
+            continue
+        status = item.get("Status") if "Status" in item else item.get("status")
+        try:
+            status_n = int(status or 0)
+        except (TypeError, ValueError):
+            status_n = 0
+        rows.append({
+            "name": name,
+            "default": bool(item.get("Default") if "Default" in item else item.get("default")),
+            "offline": bool(item.get("Offline") if "Offline" in item else item.get("offline")),
+            "status": status_n,
+            "port": str(item.get("Port") or item.get("port") or ""),
+        })
+    return rows
+
+
+def list_windows_printers() -> list[dict]:
+    done = run_hidden(
+        [
+            "powershell",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            PRINT_LIST_PS,
+        ],
+        timeout=20,
+    )
+    if done.returncode != 0 or not (done.stdout or "").strip():
+        return []
+    try:
+        payload = json.loads(done.stdout)
+    except json.JSONDecodeError:
+        return []
+    return _printer_rows(payload)
+
+
+def list_unix_printers() -> list[dict]:
+    listed = run_hidden(["lpstat", "-p", "-d"], timeout=8)
+    printers: list[dict] = []
+    default = ""
+    for line in (listed.stdout or "").splitlines():
+        text = line.strip()
+        lower = text.lower()
+        if lower.startswith("system default destination:"):
+            default = text.split(":", 1)[-1].strip()
+            continue
+        if not lower.startswith("printer "):
+            continue
+        parts = text.split()
+        if len(parts) < 2:
+            continue
+        name = parts[1]
+        offline = any(mark in lower for mark in ("disabled", "offline", "paused"))
+        printers.append({"name": name, "default": False, "offline": offline, "status": 7 if offline else 3, "port": ""})
+    for row in printers:
+        row["default"] = row["name"] == default
+    return printers
+
+
+def list_printers() -> list[dict]:
+    if print_os_name() == "nt":
+        return list_windows_printers()
+    return list_unix_printers()
+
+
+def pick_connected_printer(printers: list[dict] | None = None) -> dict | None:
+    rows = printers if printers is not None else list_printers()
+    live = [
+        row for row in rows
+        if not is_virtual_printer(row.get("name") or "")
+        and not row.get("offline")
+        and int(row.get("status") or 0) != 7
+    ]
+    for row in live:
+        if row.get("default"):
+            return row
+    if live:
+        return live[0]
+    fallback = [row for row in rows if not is_virtual_printer(row.get("name") or "")]
+    return fallback[0] if fallback else None
+
+
+def format_sale_receipt(sale: dict, items: list, shop_name: str) -> str:
+    shop = str(shop_name or "دفترچی").strip() or "دفترچی"
+    lines = [
+        shop,
+        str(sale.get("invoice_code") or f"D{sale.get('id') or ''}"),
+        str(sale.get("at_jalali") or ""),
+        "------------------------",
+    ]
+    for item in items:
+        qty = int(item.get("qty") or 0)
+        if qty <= 0:
+            continue
+        name = str(item.get("name") or "کالا").strip() or "کالا"
+        total = int(item.get("line_total") or 0)
+        lines.append(f"{name} × {qty}    {total:,}")
+    discount = int(sale.get("discount") or 0)
+    if discount:
+        lines.append(f"تخفیف    {discount:,}")
+    lines.append(f"قابل پرداخت    {int(sale.get('payable') or 0):,}")
+    barcode = str(sale.get("barcode") or "").strip()
+    if barcode:
+        lines.append(barcode)
+    return "\n".join(line for line in lines if line is not None).strip() + "\n"
+
+
+def send_receipt_to_windows_printer(printer: str, text: str) -> None:
+    folder = Path(tempfile.mkdtemp(prefix="daftarchi-print-"))
+    receipt = folder / "receipt.txt"
+    script = folder / "print.ps1"
+    receipt.write_text(text, encoding="utf-8-sig")
+    script.write_text(PRINT_RECEIPT_PS, encoding="utf-8")
+    try:
+        done = run_hidden(
+            [
+                "powershell",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script),
+                "-Printer",
+                printer,
+                "-Receipt",
+                str(receipt),
+            ],
+            timeout=40,
+        )
+    finally:
+        for path in (receipt, script):
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        try:
+            folder.rmdir()
+        except OSError:
+            pass
+    if done.returncode != 0:
+        detail = (done.stderr or done.stdout or "پرینتر چاپ نکرد").strip()[:180]
+        raise AppError(detail or "پرینتر چاپ نکرد")
+
+
+def send_receipt_to_unix_printer(printer: str, text: str) -> None:
+    folder = Path(tempfile.mkdtemp(prefix="daftarchi-print-"))
+    receipt = folder / "receipt.txt"
+    receipt.write_text(text, encoding="utf-8")
+    try:
+        done = run_hidden(["lp", "-d", printer, "-n", "1", "-o", "copies=1", str(receipt)], timeout=20)
+    finally:
+        try:
+            receipt.unlink()
+        except OSError:
+            pass
+        try:
+            folder.rmdir()
+        except OSError:
+            pass
+    if done.returncode != 0:
+        detail = (done.stderr or done.stdout or "پرینتر چاپ نکرد").strip()[:180]
+        raise AppError(detail or "پرینتر چاپ نکرد")
+
+
+def print_receipt_job(printer: str, text: str) -> dict:
+    if not str(printer or "").strip():
+        raise AppError("پرینتر وصل پیدا نشد")
+    body = str(text or "").strip()
+    if not body:
+        raise AppError("رسید خالی است")
+    if print_os_name() == "nt":
+        send_receipt_to_windows_printer(printer, body + "\n")
+    else:
+        send_receipt_to_unix_printer(printer, body + "\n")
+    return {"ok": True, "printer": printer, "copies": 1}
+
+
+def printer_status() -> dict:
+    printers = list_printers()
+    chosen = pick_connected_printer(printers)
+    if not chosen:
+        return {
+            "ok": True,
+            "ready": False,
+            "printer": "",
+            "printers": printers,
+            "copies": 1,
+            "message": "پرینتر وصل پیدا نشد. کابل یا وای‌فای پرینتر را بررسی کنید.",
+        }
+    return {
+        "ok": True,
+        "ready": True,
+        "printer": chosen["name"],
+        "printers": printers,
+        "copies": 1,
+        "message": f"پرینتر وصل: {chosen['name']}. بعد از صدور فاکتور همان یک نسخه رسید خودکار چاپ می‌شود.",
+    }
+
+
+def print_sale_receipt(sale_id: int) -> dict:
+    with connect() as conn:
+        payload = sale_payload(conn, sale_id)
+        shop = get_settings(conn).get("shop_name") or "دفترچی"
+    sale = payload.get("sale")
+    if not sale:
+        raise AppError("فاکتور پیدا نشد", 404)
+    chosen = pick_connected_printer()
+    if not chosen:
+        raise AppError("پرینتر وصل پیدا نشد. کابل را بزنید یا دکمه شناسایی پرینتر را بزنید.")
+    text = format_sale_receipt(sale, payload.get("items") or [], shop)
+    printed = print_receipt_job(chosen["name"], text)
+    printed["sale_id"] = sale_id
+    printed["message"] = f"یک نسخه رسید روی «{chosen['name']}» چاپ شد."
+    return printed
+
+
 @app.post("/api/printer/clear-memory")
 def printer_clear_memory():
     require_user()
     return jsonify(clear_print_memory())
+
+
+@app.get("/api/printer")
+def printer_detect():
+    require_user()
+    return jsonify(printer_status())
+
+
+@app.post("/api/printer/print")
+def printer_print_sale():
+    require_user()
+    payload = body_json()
+    sale_id = parse_money(payload.get("sale_id"), "فاکتور")
+    copies = parse_money(payload.get("copies") or 1, "تعداد چاپ", allow_empty=True)
+    if copies not in (0, 1):
+        raise AppError("چاپ فروش فقط یک نسخه است")
+    return jsonify(print_sale_receipt(int(sale_id)))
 
 
 def telegram_text(user, kind: str, body: str, page: str, error: str, settings: dict) -> str:
