@@ -2044,8 +2044,8 @@ function settingsHtml() {
       <div class="field"><label>شرکت</label><select name="pos_provider">${options([["manual", "دستی"], ["saman", "سامان کیش"], ["behpardakht", "به‌پرداخت ملت"], ["parsian", "پارسیان"], ["irankish", "ایران‌کیش"], ["sepehr", "سپهر"], ["asanpardakht", "آسان‌پرداخت"], ["pardakhtnovin", "پرداخت نوین"]], s.pos_provider)}</select></div>
       <div class="grid-2">${field("pos_host", "آدرس یا IP")}${field("pos_port", "پورت")}</div>
       ${field("pos_terminal", "شماره پایانه")}
-      <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش اتصال</button>
-      <p class="hint">شرکت را «پرداخت نوین» بگذارید، IP همان رایانه‌ای که برنامه پرداخت نوین روی آن است (اغلب 127.0.0.1) و پورت ۱۳۶۲ را بنویسید، بعد ذخیره کنید. با زدن کارت‌خوان روی صندوق، مبلغ به دستگاه می‌رود؛ فاکتور فقط بعد از تأیید پرداخت و زدن صدور فاکتور ثبت می‌شود.</p>
+      <button type="button" class="btn" data-act="test-setting" data-kind="pos">آزمایش ارسال مبلغ</button>
+      <p class="hint">شرکت دستی یا پرداخت نوین، هر دو مبلغ را به دستگاه می‌فرستند. IP را مثل ۱۹۲.۱۶۸.۱.۲ بنویسید (صفر اضافه حذف می‌شود)، پورت ۱۳۶۲، ذخیره کنید. آزمایش، مبلغ ۱۰۰۰ تومان را واقعاً به کارت‌خوان می‌فرستد نه فقط پینگ TCP. روی صندوق با زدن کارت‌خوان، مبلغ فاکتور به ریال (×۱۰) روی دستگاه می‌آید؛ مشتری فقط کارت و رمز را روی دستگاه می‌زند. پین در دفترچی وارد نمی‌شود. فاکتور بعد از تأیید دستگاه و صدور فاکتور ثبت می‌شود.</p>
     </section>`;
   const extra = `<details><summary>تنظیمات بیشتر</summary>
       <h2 class="section-title">درگاه پرداخت</h2>
@@ -2813,7 +2813,7 @@ async function openSaleEdit(id) {
 async function sendCartToCardReader() {
   const amount = cartSubtotal() - cartDiscount();
   if (amount <= 0) return toast("مبلغ باید بیشتر از صفر باشد");
-  state.modal = { type: "card", waiting: true, approved: false, message: "مبلغ به کارت‌خوان فرستاده شد. مبلغ را روی دستگاه ببینید، کارت را بکشید و رمز را بزنید." };
+  state.modal = { type: "card", waiting: true, approved: false, message: `مبلغ ${money(amount)} (${num(amount * 10)} ریال) به کارت‌خوان فرستاده شد. مبلغ را روی دستگاه ببینید، کارت را بکشید و رمز را روی دستگاه بزنید. پین را در دفترچی وارد نکنید.` };
   render();
   let paid;
   try {
@@ -3492,6 +3492,9 @@ async function onClick(event) {
         woo_secret: data.woo_secret || "",
         pos_host: data.pos_host || "",
         pos_port: data.pos_port || "",
+        pos_provider: data.pos_provider || "",
+        pos_terminal: data.pos_terminal || "",
+        amount: el.dataset.kind === "pos" ? 1000 : "",
         manager_phone: data.manager_phone || "",
         sms_pattern_manager: data.sms_pattern_manager || "",
       } });

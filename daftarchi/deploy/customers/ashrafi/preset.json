@@ -8,6 +8,10 @@
   "settings": {
     "shop_name": "اشرافی",
     "shop_mode": "offline",
-    "allow_credit": "0"
+    "allow_credit": "0",
+    "pos_provider": "pardakhtnovin",
+    "pos_host": "192.168.1.2",
+    "pos_port": "1362",
+    "pos_terminal": "1186042"
   }
 }

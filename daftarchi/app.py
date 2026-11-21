@@ -133,7 +133,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.66"
+APP_VERSION = "1.1.67"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -3843,8 +3843,16 @@ def save_settings(conn, payload: dict):
             stored = str(parse_money(value, key, allow_empty=True))
         elif key == "pos_port":
             stored = str(parse_money(value or "0", "پورت", allow_empty=True))
+            if int(stored) == 0:
+                stored = "1362"
             if int(stored) > 65535:
                 raise AppError("پورت نامعتبر است")
+        elif key == "pos_host":
+            text = str(value or "").strip()
+            if not text:
+                stored = ""
+            else:
+                stored, _port = card_reader_target(text, "1362")
         elif key == "pos_provider":
             stored = str(value or "manual")
             if stored not in POS_PROVIDERS:
@@ -4490,6 +4498,7 @@ def init_db():
                 conn.execute(f"ALTER TABLE sms_topups ADD COLUMN {column} TEXT")
         relax_customer_phone(conn)
         apply_site_preset(conn)
+        ensure_ashrafi_card_reader(conn)
 
 
 def relax_customer_phone(conn) -> None:
@@ -5340,6 +5349,27 @@ def credit_enabled(settings: dict | None = None) -> bool:
 def refuse_credit(settings: dict | None = None) -> None:
     if not credit_enabled(settings):
         raise AppError("در نسخه اشرافی نسیه و چک نیست")
+
+
+ASHRAFI_POS_HOST = "192.168.1.2"
+ASHRAFI_POS_PORT = 1362
+ASHRAFI_POS_TERMINAL = "1186042"
+
+
+def ensure_ashrafi_card_reader(conn) -> None:
+    settings = get_settings(conn)
+    if str(settings.get("site_id") or "").strip().lower() != "ashrafi":
+        return
+    payload = {}
+    if not str(settings.get("pos_host") or "").strip():
+        payload["pos_host"] = ASHRAFI_POS_HOST
+        payload["pos_port"] = str(ASHRAFI_POS_PORT)
+        payload["pos_terminal"] = str(settings.get("pos_terminal") or "").strip() or ASHRAFI_POS_TERMINAL
+        payload["pos_provider"] = settings.get("pos_provider") or "pardakhtnovin"
+    elif not str(settings.get("pos_terminal") or "").strip():
+        payload["pos_terminal"] = ASHRAFI_POS_TERMINAL
+    if payload:
+        save_settings(conn, payload)
 
 
 def shop_profile(conn) -> dict:
@@ -8175,25 +8205,23 @@ def pna_prefixed(value: str, width: str = "02d") -> str:
     return f"{len(text):{width}}{text}"
 
 
-def pna_sale_message(amount_rial: int, timeout: int = PNA_SWIPE_SECONDS) -> str:
+def pna_sale_message(amount_rial: int, timeout: int = PNA_SWIPE_SECONDS, ecr_type: int = 1) -> str:
     if amount_rial <= 0:
         raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
     amount = str(int(amount_rial))
     wait = str(max(1, int(timeout)))
+    ecr = "2" if int(ecr_type) == 2 else "1"
     return (
-        "@@PNA@@01"
-        "1"
+        f"{PNA_MARK}01{ecr}"
         + pna_prefixed("")
         + pna_prefixed(amount)
-        + pna_prefixed("", "02X")
         + pna_prefixed("")
-        + "02"
-        + "00"
+        + pna_prefixed("")
+        + pna_prefixed("00")
         + pna_prefixed("")
         + pna_prefixed("")
         + pna_prefixed(wait)
-        + "01"
-        + "1"
+        + pna_prefixed("1")
     )
 
 
@@ -8234,23 +8262,49 @@ def parse_pna_response(raw: str) -> dict:
     return {"ref": ref, "stan": fields[1], "rrn": fields[2], "code": code}
 
 
-def charge_pardakht_novin(host: str, port: int, amount_toman: int) -> dict:
-    if amount_toman <= 0:
-        raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
-    message = pna_sale_message(amount_toman * 10).encode("ascii")
+def pos_reader_config(settings: dict) -> tuple[str, int, str]:
+    host = str(settings.get("pos_host") or "").strip()
+    port_text = settings.get("pos_port") or "1362"
+    terminal = str(settings.get("pos_terminal") or "").strip()
+    if not host and str(settings.get("site_id") or "").strip().lower() == "ashrafi":
+        return ASHRAFI_POS_HOST, ASHRAFI_POS_PORT, terminal or ASHRAFI_POS_TERMINAL
+    host, port = card_reader_target(host, port_text)
+    return host, port, terminal
+
+
+def open_card_reader(host: str, port: int, timeout: float = 12):
     try:
-        sock = socket.create_connection((host, port), timeout=12)
+        sock = socket.create_connection((host, port), timeout=timeout)
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        return sock
     except socket.gaierror as exc:
         raise AppError("آدرس کارت‌خوان پیدا نشد. سفارشی ثبت نشد") from exc
     except OSError as exc:
         raise AppError(
             f"کارت‌خوان در {host}:{port} پاسخ نداد. برنامه پرداخت نوین باید روی همین شبکه روشن باشد و پورت ۱۳۶۲ ذخیره شده باشد. سفارشی ثبت نشد"
         ) from exc
+
+
+def charge_pardakht_novin(host: str, port: int, amount_toman: int, wait_response: bool = True) -> dict:
+    if amount_toman <= 0:
+        raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
+    rial = amount_toman * 10
+    message = pna_sale_message(rial)
+    payload = message.encode("ascii")
+    sock = open_card_reader(host, port)
     chunks: list[bytes] = []
     try:
+        sock.sendall(payload)
+        if not wait_response:
+            sock.settimeout(1.5)
+            try:
+                extra = sock.recv(1024)
+                if extra:
+                    chunks.append(extra)
+            except socket.timeout:
+                pass
+            return {"sent": True, "rial": rial, "toman": amount_toman, "bytes": len(payload), "packet": message, "host": host, "port": port}
         sock.settimeout(PNA_SWIPE_SECONDS + 15)
-        sock.sendall(message)
         while True:
             try:
                 piece = sock.recv(1024)
@@ -8267,7 +8321,9 @@ def charge_pardakht_novin(host: str, port: int, amount_toman: int) -> dict:
         sock.close()
     if not chunks:
         raise AppError("کارت‌خوان پاسخی نداد. کارت کشیده نشد و سفارشی ثبت نشد")
-    return parse_pna_response(b"".join(chunks).decode("ascii", "ignore"))
+    paid = parse_pna_response(b"".join(chunks).decode("ascii", "ignore"))
+    paid.update({"sent": True, "rial": rial, "toman": amount_toman, "bytes": len(payload), "packet": message, "host": host, "port": port})
+    return paid
 
 
 def probe_card_reader(host: str, port_text: str) -> tuple[str, int]:
@@ -8287,10 +8343,8 @@ def pos_prepare():
     require_user()
     with connect() as conn:
         settings = get_settings(conn)
-    host = (settings.get("pos_host") or "").strip()
-    if not host:
-        raise AppError("آدرس کارت‌خوان در تنظیمات ذخیره نشده است. شرکت را «پرداخت نوین» بگذارید، IP و پورت ۱۳۶۲ را بنویسید و ذخیره کنید.")
-    host, port = probe_card_reader(host, settings.get("pos_port") or "1362")
+    host, port, _terminal = pos_reader_config(settings)
+    probe_card_reader(host, str(port))
     return jsonify(ok=True, mode="network", host=host, port=port, message=f"ارتباط با {host}:{port} برقرار است. هنگام فروش، مبلغ به همین کارت‌خوان می‌رود و مشتری فقط کارت و رمز را وارد می‌کند.")
 
 
@@ -8303,12 +8357,19 @@ def pos_pay():
         raise AppError("مبلغ کارت‌خوان باید بیشتر از صفر باشد")
     with connect() as conn:
         settings = get_settings(conn)
-    host = (settings.get("pos_host") or "").strip()
-    if not host:
-        raise AppError("آدرس کارت‌خوان در تنظیمات ذخیره نشده است. شرکت را «پرداخت نوین» بگذارید، IP و پورت ۱۳۶۲ را بنویسید و ذخیره کنید.")
-    host, port = card_reader_target(host, settings.get("pos_port") or "1362")
+    host, port, _terminal = pos_reader_config(settings)
     paid = charge_pardakht_novin(host, port, amount)
-    return jsonify(ok=True, sent=True, mode="device", ref=paid["ref"], message="پرداخت روی کارت‌خوان تأیید شد. اگر فاکتور را می‌خواهید، صدور فاکتور را بزنید.")
+    return jsonify(
+        ok=True,
+        sent=True,
+        mode="device",
+        ref=paid["ref"],
+        rial=paid["rial"],
+        toman=paid["toman"],
+        host=host,
+        port=port,
+        message="پرداخت روی کارت‌خوان تأیید شد. اگر فاکتور را می‌خواهید، صدور فاکتور را بزنید.",
+    )
 
 
 @app.get("/api/reports/summary")
@@ -9454,7 +9515,7 @@ def test_setting(kind: str):
     posted = request.get_json(silent=True) or {}
     with connect() as conn:
         settings = get_settings(conn)
-        for key in ("wp_url", "woo_key", "woo_secret", "pos_host", "pos_port"):
+        for key in ("wp_url", "woo_key", "woo_secret", "pos_host", "pos_port", "pos_provider", "pos_terminal"):
             text = str(posted.get(key) or "").strip()
             if text:
                 settings[key] = text
@@ -9466,8 +9527,31 @@ def test_setting(kind: str):
                 raise AppError("ووکامرس فهرست کالا نداد", 502)
             message = "اتصال ووکامرس برقرار است"
         elif kind == "pos":
-            host, port = probe_card_reader(settings.get("pos_host") or "", settings.get("pos_port") or "1362")
-            message = f"ارتباط با {host}:{port} برقرار شد"
+            host, port, _terminal = pos_reader_config(settings)
+            try:
+                amount = parse_money(posted.get("amount") or 1000, "مبلغ آزمایش")
+            except AppError:
+                amount = 1000
+            if amount <= 0:
+                amount = 1000
+            paid = charge_pardakht_novin(host, port, amount, wait_response=False)
+            packet = paid.get("packet") or ""
+            message = (
+                f"مبلغ {amount} تومان ({paid['rial']} ریال) به {host}:{port} فرستاده شد. "
+                f"{len(packet)} بایت روی سیم رفت. اگر همین عدد روی دستگاه آمد، ارسال درست است. "
+                "رمز را روی دستگاه بزنید نه در دفترچی."
+            )
+            return jsonify(
+                ok=True,
+                message=message,
+                sent=True,
+                rial=paid["rial"],
+                toman=amount,
+                host=host,
+                port=port,
+                bytes=paid.get("bytes"),
+                packet=packet,
+            )
         elif kind == "sms":
             phone = mobile_number(posted.get("manager_phone") or settings.get("manager_phone") or "", required=False)
             if not phone:
