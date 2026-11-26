@@ -1415,6 +1415,201 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   background: var(--pm-mint-500);
 }
 
+/* 3D category sliders inside the homepage hero */
+.pm-rev--cat3d {
+  background: linear-gradient(180deg, #e7f4ef 0%, var(--pm-bg) 70%);
+}
+
+.pm-rev--cat3d .pm-rev__viewport {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pm-rev--cat3d .pm-rev__slide,
+.pm-rev--cat3d .pm-rev__arrow,
+.pm-rev--cat3d .pm-rev__bullets {
+  display: none;
+}
+
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-header__bar {
+  background: color-mix(in srgb, var(--pm-cream) 88%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--pm-shadow-sm);
+  border-radius: var(--pm-radius-lg);
+}
+
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-seg__link,
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-seg__link.is-active,
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-search__icon,
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-header__icon-btn {
+  color: var(--pm-teal-900);
+}
+
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-seg__link.is-active {
+  box-shadow: inset 0 -2px 0 var(--pm-mint-600);
+}
+
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-search__input {
+  color: var(--pm-teal-900);
+  background: #fff;
+}
+
+.pm-site--has-hero:has(.pm-rev--cat3d) .pm-header:not(.is-scrolled) .pm-search__input::placeholder {
+  color: var(--pm-teal-700);
+}
+
+.pm-cat3d {
+  position: relative;
+  z-index: 2;
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: clamp(5.5rem, 12vw, 7.5rem) 0 1.5rem;
+}
+
+.pm-cat3d__intro {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.pm-cat3d__intro h1 {
+  margin: 0;
+  color: var(--pm-teal-900);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+}
+
+.pm-cat3d__intro p {
+  margin: 0.4rem 0 0;
+  color: var(--pm-teal-700);
+}
+
+.pm-cat3d__band {
+  margin-top: 1.25rem;
+  padding: 1rem 1rem 0.25rem;
+  border-radius: 28px;
+  background: color-mix(in srgb, #fff 72%, var(--pm-mint-50));
+  box-shadow: var(--pm-shadow-sm);
+}
+
+.pm-cat3d__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-inline: 0.4rem;
+}
+
+.pm-cat3d__kicker {
+  margin: 0;
+  color: var(--pm-mint-600);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.pm-cat3d__head h2 {
+  margin: 0.1rem 0 0;
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  font-weight: 800;
+}
+
+.pm-cat3d__head h2 a {
+  color: var(--pm-teal-900);
+}
+
+.pm-cat3d__stage {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1100px;
+  overflow: hidden;
+}
+
+.pm-cat3d__ring {
+  position: relative;
+  width: 168px;
+  height: 214px;
+  transform-style: preserve-3d;
+  animation: pm-cat3d-spin 26s linear infinite;
+}
+
+.pm-cat3d__band:hover .pm-cat3d__ring,
+.pm-cat3d__band:focus-within .pm-cat3d__ring {
+  animation-play-state: paused;
+}
+
+.pm-cat3d__card {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--pm-teal-900) 22%, transparent);
+  transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(250px);
+  backface-visibility: hidden;
+}
+
+.pm-cat3d__card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes pm-cat3d-spin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(-360deg); }
+}
+
+@media (max-width: 720px) {
+  .pm-cat3d__stage {
+    height: 250px;
+  }
+
+  .pm-cat3d__ring {
+    width: 136px;
+    height: 176px;
+  }
+
+  .pm-cat3d__card {
+    transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(168px);
+  }
+
+  .pm-cat3d__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-cat3d__stage {
+    height: auto;
+    overflow: visible;
+    perspective: none;
+  }
+
+  .pm-cat3d__ring {
+    width: 100%;
+    height: auto;
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    animation: none;
+    transform: none;
+  }
+
+  .pm-cat3d__card {
+    position: relative;
+    inset: auto;
+    flex: 0 0 140px;
+    height: 176px;
+    transform: none;
+  }
+}
+
 /* Sections */
 .pm-section {
   padding: 2.25rem 0;
