@@ -996,7 +996,11 @@ html.pm-drawer-open {
 }
 
 html.pm-has-dock body {
-  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: 0;
+}
+
+html.pm-has-dock .pm-footer {
+  padding-bottom: calc(5.6rem + env(safe-area-inset-bottom, 0px));
 }
 
 html.pm-drawer-open body {
@@ -1598,6 +1602,59 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   font-weight: 700;
 }
 
+.pm-card.pm-has-discount,
+.pm-product.pm-has-discount,
+li.product.pm-has-discount {
+  position: relative;
+  overflow: hidden;
+}
+
+.pm-sale-ribbon {
+  position: absolute;
+  top: 22px;
+  right: -46px;
+  left: auto;
+  z-index: 6;
+  width: 168px;
+  margin: 0;
+  padding: 6px 0;
+  background: linear-gradient(180deg, #ff5a6a 0%, #d10f28 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+  transform: rotate(45deg);
+  clip-path: none;
+  box-shadow: 0 8px 16px rgba(209, 15, 40, 0.38);
+  pointer-events: none;
+}
+
+.pm-card__price ins,
+.pm-product__price ins,
+.price ins,
+.pm-card__price ins .woocommerce-Price-amount,
+.pm-product__price ins .woocommerce-Price-amount,
+.price ins .woocommerce-Price-amount,
+.price ins .woocommerce-Price-currencySymbol {
+  color: #e1062c;
+  font-weight: 900;
+  text-decoration: none;
+  background: none;
+}
+
+.pm-card__price del,
+.pm-product__price del,
+.price del,
+.pm-card__price del .woocommerce-Price-amount,
+.pm-product__price del .woocommerce-Price-amount,
+.price del .woocommerce-Price-amount {
+  color: #8d9792;
+  font-weight: 600;
+  font-size: 0.84em;
+}
+
 .pm-card__badge {
   position: absolute;
   top: 0.75rem;
@@ -1653,11 +1710,30 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   opacity: var(--pm-text-muted-opacity);
 }
 
+/* Short pages: pin the footer to the viewport bottom. */
+body.pm-wc-shell,
+body.elementor-template-canvas > .elementor {
+  min-height: 100vh;
+}
+
+body.pm-wc-shell,
+body.elementor-template-canvas > .elementor,
+body.elementor-template-canvas > .elementor > .e-con:has(.pm-footer) {
+  display: flex;
+  flex-direction: column;
+}
+
+body.elementor-template-canvas > .elementor > .e-con:has(.pm-footer),
+body.pm-wc-shell > .pm-footer,
+.elementor-widget-html:has(.pm-footer) {
+  margin-top: auto;
+}
+
 /* Footer */
 .pm-footer {
   position: relative;
   margin-top: 2.5rem;
-  padding: 3rem 0 1.25rem;
+  padding: 2.25rem 0 1.5rem;
   color: var(--pm-cream);
   background: var(--pm-teal-900);
   overflow: hidden;
