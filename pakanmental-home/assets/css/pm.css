@@ -3904,6 +3904,28 @@ body.woocommerce-checkout:not(.woocommerce-order-received) #customer_details .co
 }
 
 body.woocommerce-checkout:not(.woocommerce-order-received) .woocommerce-billing-fields,
+body.woocommerce-checkout:not(.woocommerce-order-received) ul.woocommerce-shipping-methods {
+  margin: 0;
+  padding: 0;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received) ul.woocommerce-shipping-methods li {
+  margin: 0 0 0.45rem;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received) .pm-ship-head {
+  list-style: none;
+  margin: 0.9rem 0 0.4rem !important;
+  padding: 0;
+  color: var(--pm-teal-900);
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received) .pm-ship-head:first-child {
+  margin-top: 0 !important;
+}
+
 body.woocommerce-checkout:not(.woocommerce-order-received) .woocommerce-shipping-fields,
 body.woocommerce-checkout:not(.woocommerce-order-received) .woocommerce-additional-fields {
   background: var(--pm-surface);

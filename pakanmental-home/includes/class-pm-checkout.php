@@ -21,6 +21,9 @@ final class PM_Checkout {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ), 30 );
 		add_filter( 'woocommerce_checkout_fields', array( __CLASS__, 'persian_fields' ), 99999 );
 		add_filter( 'woocommerce_ship_to_different_address_checked', '__return_false' );
+		add_filter( 'woocommerce_package_rates', array( __CLASS__, 'neyshabur_pickup_only' ), 100, 2 );
+		add_filter( 'woocommerce_cart_shipping_method_full_label', array( __CLASS__, 'shipping_label' ), 20, 2 );
+		add_action( 'wp_footer', array( __CLASS__, 'shipping_groups' ), 30 );
 		add_filter( 'gettext', array( __CLASS__, 'persian_strings' ), 20, 3 );
 		add_action( 'template_redirect', array( __CLASS__, 'translate_optin' ) );
 	}
@@ -225,6 +228,91 @@ final class PM_Checkout {
 				'nonce' => wp_create_nonce( 'pm-checkout-item' ),
 			)
 		);
+	}
+
+	/**
+	 * Carrier name only. The group heading says whether it is freight-collect or the DigiExpress fee.
+	 *
+	 * @param string           $label  Full method label.
+	 * @param WC_Shipping_Rate $method Rate.
+	 */
+	/**
+	 * In-person pickup is only offered when the customer city is Neyshabur.
+	 *
+	 * @param array<string, WC_Shipping_Rate> $rates   Rates.
+	 * @param array<string, mixed>            $package Package.
+	 * @return array<string, WC_Shipping_Rate>
+	 */
+	public static function neyshabur_pickup_only( array $rates, array $package ): array {
+		$city = isset( $package['destination']['city'] ) ? (string) $package['destination']['city'] : '';
+		if ( self::is_neyshabur( $city ) ) {
+			return $rates;
+		}
+		foreach ( $rates as $id => $rate ) {
+			$name = wp_strip_all_tags( $rate->get_label() );
+			if ( 'local_pickup' === $rate->get_method_id() || 'تحویل حضوری' === $name ) {
+				unset( $rates[ $id ] );
+			}
+		}
+		return $rates;
+	}
+
+	public static function is_neyshabur( string $city ): bool {
+		$city = trim( wp_strip_all_tags( $city ) );
+		$city = str_replace( array( 'ي', 'ك', 'ة', '‌', ' ' ), array( 'ی', 'ک', 'ه', '', '' ), $city );
+		return 'نیشابور' === $city;
+	}
+
+	public static function shipping_label( $label, $method ): string {
+		$name = wp_strip_all_tags( $method->get_label() );
+		if ( 'تحویل حضوری' === $name ) {
+			return 'تحویل حضوری (فقط نیشابور)';
+		}
+		if ( in_array( $name, array( 'تیپاکس', 'دکاپست', 'چاپار', 'دیجی اکسپرس' ), true ) ) {
+			return esc_html( $name );
+		}
+		return $label;
+	}
+
+	public static function shipping_groups(): void {
+		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || is_order_received_page() ) {
+			return;
+		}
+		?>
+		<script id="pm-ship-groups">
+		(function () {
+			function group() {
+				var list = document.querySelector("ul.woocommerce-shipping-methods");
+				if (!list) return;
+				list.querySelectorAll(".pm-ship-head").forEach(function (node) { node.remove(); });
+				var freight = [];
+				var paid = [];
+				list.querySelectorAll("li").forEach(function (item) {
+					if (item.classList.contains("pm-ship-head")) return;
+					var text = item.textContent || "";
+					if (text.indexOf("دیجی اکسپرس") !== -1) paid.push(item);
+					else if (/تیپاکس|دکاپست|چاپار/.test(text)) freight.push(item);
+				});
+				function head(text, before) {
+					var row = document.createElement("li");
+					row.className = "pm-ship-head";
+					row.textContent = text;
+					before.parentNode.insertBefore(row, before);
+				}
+				if (freight[0]) head("پس کرایه", freight[0]);
+				if (paid[0]) head("هزینه پست ۱۸۰٬۰۰۰ تومان", paid[0]);
+			}
+			if (window.jQuery) {
+				window.jQuery(document.body).on("updated_checkout", group);
+				window.jQuery(document.body).on("change", "#billing_city, #shipping_city", function () {
+					window.jQuery(document.body).trigger("update_checkout");
+				});
+			}
+			if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", group);
+			else group();
+		})();
+		</script>
+		<?php
 	}
 
 	private static function copy_billing_onto_empty_shipping(): void {
