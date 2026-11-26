@@ -19,6 +19,10 @@ final class PM_Checkout {
 		add_action( 'wc_ajax_pm_checkout_item', array( __CLASS__, 'ajax_item' ) );
 		add_action( 'wc_ajax_nopriv_pm_checkout_item', array( __CLASS__, 'ajax_item' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ), 30 );
+		add_filter( 'woocommerce_checkout_fields', array( __CLASS__, 'persian_fields' ), 99999 );
+		add_filter( 'woocommerce_ship_to_different_address_checked', '__return_false' );
+		add_filter( 'gettext', array( __CLASS__, 'persian_strings' ), 20, 3 );
+		add_action( 'template_redirect', array( __CLASS__, 'translate_optin' ) );
 	}
 
 	public static function prime_customer_address(): void {
@@ -154,6 +158,52 @@ final class PM_Checkout {
 				'count'    => WC()->cart->get_cart_contents_count(),
 				'redirect' => WC()->cart->is_empty() ? wc_get_cart_url() : '',
 			)
+		);
+	}
+
+	/**
+	 * @param array<string, array<string, array<string, mixed>>> $fields Checkout fields.
+	 * @return array<string, array<string, array<string, mixed>>>
+	 */
+	public static function persian_fields( array $fields ): array {
+		if ( isset( $fields['order']['order_comments'] ) ) {
+			$fields['order']['order_comments']['label']       = 'یادداشت سفارش';
+			$fields['order']['order_comments']['placeholder'] = 'اگر توضیح خاصی برای ارسال دارید بنویسید.';
+		}
+		return $fields;
+	}
+
+	/**
+	 * @param string $translated Translated text.
+	 * @param string $text       Original text.
+	 * @param string $domain     Text domain.
+	 */
+	public static function persian_strings( $translated, $text, $domain ): string {
+		unset( $domain );
+		if ( 'I would like to receive exclusive emails with discounts and product information' === $text ) {
+			return 'می‌خواهم ایمیل تخفیف و محصولات جدید را دریافت کنم';
+		}
+		if ( 'Order Notes' === $text ) {
+			return 'یادداشت سفارش';
+		}
+		if ( is_string( $text ) && str_starts_with( $text, 'Notes about your order' ) ) {
+			return 'اگر توضیح خاصی برای ارسال دارید بنویسید.';
+		}
+		return is_string( $translated ) ? $translated : '';
+	}
+
+	public static function translate_optin(): void {
+		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || is_wc_endpoint_url( 'order-received' ) ) {
+			return;
+		}
+		ob_start(
+			static function ( $html ) {
+				return str_replace(
+					'I would like to receive exclusive emails with discounts and product information',
+					'می‌خواهم ایمیل تخفیف و محصولات جدید را دریافت کنم',
+					(string) $html
+				);
+			}
 		);
 	}
 

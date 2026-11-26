@@ -62,7 +62,9 @@ final class PM_Product_Gallery {
 				});
 				row.appendChild(btn);
 			});
-			if (main && main.parentNode === host) host.insertBefore(row, main.nextSibling);
+			var gallery = host.querySelector(".woocommerce-product-gallery");
+			if (gallery) gallery.insertAdjacentElement("afterend", row);
+			else if (main && main.parentNode === host) host.insertBefore(row, main.nextSibling);
 			else host.appendChild(row);
 		})();
 		</script>
