@@ -21,6 +21,7 @@ final class PM_Checkout {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ), 30 );
 		add_filter( 'woocommerce_checkout_fields', array( __CLASS__, 'persian_fields' ), 99999 );
 		add_filter( 'woocommerce_ship_to_different_address_checked', '__return_false' );
+		add_filter( 'woocommerce_package_rates', array( __CLASS__, 'neyshabur_pickup_only' ), 100, 2 );
 		add_filter( 'woocommerce_cart_shipping_method_full_label', array( __CLASS__, 'shipping_label' ), 20, 2 );
 		add_action( 'wp_footer', array( __CLASS__, 'shipping_groups' ), 30 );
 		add_filter( 'gettext', array( __CLASS__, 'persian_strings' ), 20, 3 );
@@ -235,8 +236,38 @@ final class PM_Checkout {
 	 * @param string           $label  Full method label.
 	 * @param WC_Shipping_Rate $method Rate.
 	 */
+	/**
+	 * In-person pickup is only offered when the customer city is Neyshabur.
+	 *
+	 * @param array<string, WC_Shipping_Rate> $rates   Rates.
+	 * @param array<string, mixed>            $package Package.
+	 * @return array<string, WC_Shipping_Rate>
+	 */
+	public static function neyshabur_pickup_only( array $rates, array $package ): array {
+		$city = isset( $package['destination']['city'] ) ? (string) $package['destination']['city'] : '';
+		if ( self::is_neyshabur( $city ) ) {
+			return $rates;
+		}
+		foreach ( $rates as $id => $rate ) {
+			$name = wp_strip_all_tags( $rate->get_label() );
+			if ( 'local_pickup' === $rate->get_method_id() || 'تحویل حضوری' === $name ) {
+				unset( $rates[ $id ] );
+			}
+		}
+		return $rates;
+	}
+
+	public static function is_neyshabur( string $city ): bool {
+		$city = trim( wp_strip_all_tags( $city ) );
+		$city = str_replace( array( 'ي', 'ك', 'ة', '‌', ' ' ), array( 'ی', 'ک', 'ه', '', '' ), $city );
+		return 'نیشابور' === $city;
+	}
+
 	public static function shipping_label( $label, $method ): string {
 		$name = wp_strip_all_tags( $method->get_label() );
+		if ( 'تحویل حضوری' === $name ) {
+			return 'تحویل حضوری (فقط نیشابور)';
+		}
 		if ( in_array( $name, array( 'تیپاکس', 'دکاپست', 'چاپار', 'دیجی اکسپرس' ), true ) ) {
 			return esc_html( $name );
 		}
@@ -273,6 +304,9 @@ final class PM_Checkout {
 			}
 			if (window.jQuery) {
 				window.jQuery(document.body).on("updated_checkout", group);
+				window.jQuery(document.body).on("change", "#billing_city, #shipping_city", function () {
+					window.jQuery(document.body).trigger("update_checkout");
+				});
 			}
 			if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", group);
 			else group();
