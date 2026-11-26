@@ -1,0 +1,234 @@
+/* Equal-size course / product cards + add-to-cart bar matching news cards. */
+
+.products:not(.list-view) .course-item {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.products:not(.list-view) .course-item-inner {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: #fff !important;
+	border: 1px solid #e5e5e5;
+	border-radius: 12px;
+	box-shadow: none !important;
+}
+
+.products:not(.list-view) .course-item:hover .course-item-inner {
+	box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+.products:not(.list-view) .course-thumbnail-holder {
+	display: block;
+	position: relative;
+	width: 100%;
+	flex: 0 0 auto;
+	aspect-ratio: 370 / 270;
+	overflow: hidden;
+	align-items: stretch;
+	justify-content: stretch;
+}
+
+.products:not(.list-view) .course-thumbnail-holder > a,
+.products:not(.list-view) .course-thumbnail-holder .image-item {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.products:not(.list-view) .course-thumbnail-holder img {
+	width: 100% !important;
+	height: 100% !important;
+	max-width: none;
+	object-fit: cover;
+	object-position: center;
+	border-radius: 12px 12px 0 0 !important;
+	border-bottom: 0 !important;
+}
+
+.products:not(.list-view) .course-content-holder,
+.products:not(.list-view) .course-item.inprolay3 .course-content-holder {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	margin: 0 !important;
+	padding: 0;
+	background: #fff !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	transform: none !important;
+	overflow: hidden;
+	position: relative;
+}
+
+.products:not(.list-view) .course-item.inprolay3:hover .course-content-holder {
+	transform: none !important;
+}
+
+.products:not(.list-view) .course-item.inprolay3 .course-item-inner,
+.products:not(.list-view) .course-item.inprolay3:hover .course-item-inner {
+	background: #fff !important;
+	border: 1px solid #e5e5e5;
+	box-shadow: none;
+}
+
+.products:not(.list-view) .course-title {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	min-height: 3em;
+	line-height: 1.5;
+	margin-bottom: 8px;
+}
+
+.products:not(.list-view) .course-content-holder .course-content-bottom {
+	margin-top: auto;
+}
+
+.products:not(.list-view) .course-price {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.nec-add-to-cart-wrap {
+	margin-top: auto;
+	flex: 0 0 auto;
+}
+
+.nec-add-to-cart-wrap a.nec-add-to-cart {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	background: var(--primary_color, #afd136);
+	color: #fff !important;
+	text-align: center;
+	padding: 11px 12px;
+	border: 0;
+	border-radius: 0;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+	box-shadow: none;
+}
+
+.nec-add-to-cart-wrap a.nec-add-to-cart:hover,
+.nec-add-to-cart-wrap a.nec-add-to-cart:focus {
+	background: var(--secondary_color, #a7906c);
+	color: #fff !important;
+}
+
+.nec-add-to-cart-wrap a.nec-add-to-cart i {
+	font-size: 14px;
+}
+
+.nec-add-to-cart-wrap a.nec-add-to-cart.added {
+	background: #4caf50;
+}
+
+.products:not(.list-view) a.studi_add_in_shop {
+	display: none !important;
+}
+
+.products.jpowl .owl-stage,
+.owl-carousel.products .owl-stage {
+	display: flex;
+	align-items: stretch;
+}
+
+.products.jpowl .owl-item,
+.owl-carousel.products .owl-item {
+	display: flex;
+	height: auto;
+	float: none;
+}
+
+.products.jpowl .owl-item > .course-item,
+.owl-carousel.products .owl-item > .course-item {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	margin-bottom: 0;
+}
+
+/* News cards: same image ratio + title clamp so every card matches. */
+.blog-loop-view-grid .post,
+.studiBlog.blog-loop-inner .post {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	height: 100%;
+}
+
+.blog-loop-view-grid .post-inner,
+.studiBlog.blog-loop-inner .post-inner {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	border-radius: 12px;
+}
+
+.blog-loop-view-grid .post-thumbnail,
+.studiBlog.blog-loop-inner .post-thumbnail {
+	flex: 0 0 auto;
+	aspect-ratio: 370 / 270;
+	overflow: hidden;
+}
+
+.blog-loop-view-grid .post-thumbnail a,
+.studiBlog.blog-loop-inner .post-thumbnail a {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.blog-loop-view-grid .post-thumbnail img,
+.studiBlog.blog-loop-inner .post-thumbnail img {
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover;
+	object-position: center;
+}
+
+.blog-loop-view-grid .entry-title,
+.studiBlog.blog-loop-inner .entry-title {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	min-height: 2.8em;
+	line-height: 1.4;
+}
+
+.blog-loop-view-grid .post_readmore,
+.studiBlog.blog-loop-inner .post_readmore {
+	margin-top: auto;
+}
+
+.studiBlog.blog-loop-inner,
+.blog-loop-view-grid.four-columns {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+}
+
+@media (max-width: 767px) {
+	.products:not(.list-view) .course-title {
+		min-height: 2.6em;
+	}
+}
