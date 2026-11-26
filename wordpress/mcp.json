@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "wordpress": {
+      "type": "http",
+      "url": "https://nahal.website/wp-json/easy-mcp-ai/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer ${WORDPRESS_API_TOKEN}"
+      }
+    }
+  }
+}
