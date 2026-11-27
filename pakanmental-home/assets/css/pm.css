@@ -16,7 +16,7 @@
   --pm-border: transparent;
   --pm-shadow-sm: 0 6px 28px color-mix(in srgb, var(--pm-teal-900) 5%, transparent);
   --pm-shadow-md: 0 14px 40px color-mix(in srgb, var(--pm-teal-900) 8%, transparent);
-  --pm-font: "Vazirmatn", system-ui, sans-serif;
+  --pm-font: "Vazirmatn", Vazir, Tahoma, sans-serif;
   --pm-container: min(1200px, 92vw);
   --pm-radius: 22px;
   --pm-radius-lg: 32px;

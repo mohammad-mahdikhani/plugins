@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Pakan Mental Home
  * Description: صفحهٔ اصلی سبک و ریسپانسیو پاکن منتال — تبدیل خودکار تصاویر به WebP.
- * Version: 1.2.3
+ * Version: 1.2.4
  * Author: Pakan Mental
  * Text Domain: pakanmental-home
  * Requires at least: 6.0
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PM_HOME_VERSION', '1.2.3' );
+define( 'PM_HOME_VERSION', '1.2.4' );
 define( 'PM_HOME_PATH', plugin_dir_path( __FILE__ ) );
 define( 'PM_HOME_URL', plugin_dir_url( __FILE__ ) );
 
@@ -47,3 +47,4 @@ pm_home_boot( 'includes/class-pm-shortcodes.php', 'PM_Shortcodes' );
 pm_home_boot( 'includes/class-pm-chrome.php', 'PM_Chrome' );
 pm_home_boot( 'includes/class-pm-product-content.php', 'PM_Product_Content' );
 pm_home_boot( 'includes/class-pm-game-specs.php', 'PM_Game_Specs' );
+pm_home_boot( 'includes/class-pm-digits.php', 'PM_Digits' );
