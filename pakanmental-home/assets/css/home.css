@@ -388,8 +388,15 @@ body.pm-home {
 
 .pm-card__price {
   margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #b54708;
+}
+
+.pm-card__price .woocommerce-Price-amount,
+.pm-card__price .woocommerce-Price-currencySymbol {
+  color: #b54708;
+  font-weight: 800;
 }
 
 .pm-card__badge {
