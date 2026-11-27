@@ -252,6 +252,50 @@ app.url_map.strict_slashes = False
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("daftarchi")
 
+
+def lan_cors_enabled() -> bool:
+    return os.environ.get("DAFTARCHI_LAN_CORS", "1").strip().lower() not in ("0", "false", "off", "no")
+
+
+@app.before_request
+def lan_cors_preflight():
+    if not lan_cors_enabled() or request.method != "OPTIONS":
+        return None
+    if not request.path.startswith("/api/"):
+        return None
+    origin = request.headers.get("Origin")
+    if not origin:
+        return None
+    resp = make_response("", 204)
+    resp.headers["Access-Control-Allow-Origin"] = origin
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Vary"] = "Origin"
+    return resp
+
+
+@app.after_request
+def lan_cors(resp):
+    if lan_cors_enabled() and request.path.startswith("/api/"):
+        origin = request.headers.get("Origin")
+        if origin:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Vary"] = "Origin"
+    return resp
+
+
+def lan_advertise_url(port: int) -> str:
+    try:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe.connect(("8.8.8.8", 80))
+        ip = probe.getsockname()[0]
+        probe.close()
+        return f"http://{ip}:{port}/"
+    except OSError:
+        return ""
+
 _woo_sync_lock = threading.Lock()
 _woo_sync_pending: set[tuple[int, int | None]] = set()
 _woo_sync_timer: threading.Timer | None = None
@@ -10334,6 +10378,9 @@ def main():
     port = int(os.environ.get("PORT", "8080"))
     host = os.environ.get("DAFTARCHI_BIND", "0.0.0.0")
     print(f"Daftarchi: http://127.0.0.1:{port}")
+    lan = lan_advertise_url(port)
+    if lan:
+        print(f"Daftarchi LAN: {lan}")
     threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
     start_backup_loop()
     fresh = os.environ.pop("DAFTARCHI_JUST_UPDATED", "").strip().lower() in ("1", "true", "yes", "on")

@@ -20,6 +20,38 @@ const MORE = [
 const NAV = [...PRIMARY, ...MORE];
 const TITLES = Object.fromEntries(NAV.map(([id, title]) => [id, title]));
 const PAY = { cash: "نقد", card: "کارت", gateway: "درگاه وب‌بیکری", credit: "نسیه" };
+const SERVER_STORAGE_KEY = "daftarchi_server_url";
+function normalizeServerUrl(raw) {
+  let text = String(raw || "").trim();
+  if (!text) return "";
+  if (!/^https?:\/\//i.test(text)) text = `http://${text}`;
+  try {
+    const url = new URL(text);
+    if (!url.hostname) return "";
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return "";
+  }
+}
+function savedServerUrl() {
+  return normalizeServerUrl(localStorage.getItem(SERVER_STORAGE_KEY) || "");
+}
+function currentOrigin() {
+  return normalizeServerUrl(`${location.protocol}//${location.host}`);
+}
+function redirectToSavedServer() {
+  const target = savedServerUrl();
+  if (!target || currentOrigin() === target) return false;
+  const tail = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
+  window.location.replace(`${target}${tail.startsWith("/") ? tail : `/${tail}`}`);
+  return true;
+}
+function apiUrl(path) {
+  const base = savedServerUrl();
+  const route = String(path || "");
+  if (!base || currentOrigin() === base) return route;
+  return `${base}${route.startsWith("/") ? route : `/${route}`}`;
+}
 function allowCredit() {
   return state.shop?.allow_credit !== false;
 }
@@ -357,7 +389,8 @@ function hideToast() {
   clearTimeout(toast.timer);
 }
 async function api(path, { method = "GET", body, form } = {}) {
-  const opts = { method, credentials: "same-origin" };
+  const cross = savedServerUrl() && currentOrigin() !== savedServerUrl();
+  const opts = { method, credentials: cross ? "include" : "same-origin" };
   if (form) opts.body = form;
   else if (body !== undefined) {
     opts.headers = { "Content-Type": "application/json" };
@@ -365,7 +398,7 @@ async function api(path, { method = "GET", body, form } = {}) {
   }
   let res;
   try {
-    res = await fetch(path, opts);
+    res = await fetch(apiUrl(path), opts);
   } catch {
     throw new Error("ارتباط با دفترچی قطع شد. اگر برنامه تازه نصب شده، آن را ببندید و دوباره باز کنید.");
   }
@@ -710,6 +743,19 @@ function prepareLoginBody(data) {
   if (!ident && password.toLowerCase() === "daftarchi") ident = "09120000000";
   return { ident, password };
 }
+function authServerBlock() {
+  const saved = savedServerUrl();
+  return `<section class="card auth-update-card auth-server-card">
+    <h2 class="section-title">سرور مرکزی (LAN)</h2>
+    <p class="hint">یک PC دفترچی را همیشه روشن بگذارید (همان SQLite). بقیه فقط مرورگر — بدون کپی پوشه data. عطر اشرافی و بقیه فروشگاه‌ها همین آدرس را می‌زنند.</p>
+    ${saved ? `<p>اتصال ذخیره‌شده: <strong class="ltr">${esc(saved)}</strong></p>` : ""}
+    <div class="field"><label>آدرس سرور</label><input class="ltr" name="server_url" inputmode="url" autocomplete="off" placeholder="http://192.168.1.10:8080" value="${esc(saved)}"></div>
+    <div class="auth-actions">
+      <button type="button" class="btn primary" data-act="connect-server">اتصال به سرور</button>
+      <button type="button" class="btn quiet" data-act="clear-server">همین نصب (محلی)</button>
+    </div>
+  </section>`;
+}
 function authPanelUpdateBlock() {
   const row = state.panelUpdate || {
     current: state.bootstrap?.version || state.update?.current || "",
@@ -836,7 +882,7 @@ function authHtml() {
     <p class="auth-links"><button type="button" class="text-link" data-act="show-forgot">رمز را فراموش کرده‌ام</button></p>
     ${updateBanner()}
     <p class="hint">نسخه ${esc(state.bootstrap?.version || state.update?.current || "")}</p>
-  </form>${authPanelUpdateBlock()}</div>`;
+  </form>${authPanelUpdateBlock()}${authServerBlock()}</div>`;
 }
 function showDesktopIcon() {
   return !state.installedApp;
@@ -3078,6 +3124,19 @@ async function onClick(event) {
   }
   if (act === "pick-mode") { await guard(() => chooseMode(el.dataset.mode)); return; }
   if (act === "skip-mode-setup") { await guard(() => skipModeSetup()); return; }
+  if (act === "connect-server") {
+    const url = normalizeServerUrl(document.querySelector('[name="server_url"]')?.value || "");
+    if (!url) { toast("آدرس سرور درست نیست. مثال: http://192.168.1.10:8080", { error: true }); return; }
+    localStorage.setItem(SERVER_STORAGE_KEY, url);
+    window.location.replace(`${url}/`);
+    return;
+  }
+  if (act === "clear-server") {
+    localStorage.removeItem(SERVER_STORAGE_KEY);
+    toast("این نصب محلی است");
+    render();
+    return;
+  }
   if (act === "pick-theme") {
     await guard(async () => {
       const id = applyTheme(el.dataset.theme);
@@ -3762,7 +3821,9 @@ window.addEventListener("appinstalled", () => {
   if (state.user) paintChrome();
   else render();
 });
-api("/api/auth/me").then(async (me) => {
+if (redirectToSavedServer()) {
+  // loading remote UI
+} else api("/api/auth/me").then(async (me) => {
   state.desktopIcon = Boolean(me.desktop_icon);
   loadUpdate().then(() => {
     if (!state.user) render();

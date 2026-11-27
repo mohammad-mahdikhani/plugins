@@ -4099,10 +4099,22 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("09120000000", script)
         self.assertIn("نه رمز", script)
         self.assertIn("skip-mode-setup", script)
+        self.assertIn("connect-server", script)
+        self.assertIn("daftarchi_server_url", script)
         self.assertNotIn("ریست برنامه را بزنید", script)
         self.assertIn("daftarchi-updated", script)
         css = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")
         self.assertIn("#toast.ok", css)
+
+    def test_lan_cors_allows_api_preflight(self):
+        headers = {
+            "Origin": "http://192.168.55.10:9090",
+            "Access-Control-Request-Method": "POST",
+        }
+        resp = self.client.options("/api/auth/login", headers=headers)
+        self.assertEqual(resp.status_code, 204)
+        self.assertEqual(resp.headers.get("Access-Control-Allow-Origin"), "http://192.168.55.10:9090")
+        self.assertEqual(resp.headers.get("Access-Control-Allow-Credentials"), "true")
 
     def test_update_manifest_from_webakery_folder(self):
         original = appmod.http_request
