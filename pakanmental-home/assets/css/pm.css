@@ -1772,6 +1772,19 @@ body.pm-wc-shell > .pm-footer,
   color: var(--pm-sand-200);
 }
 
+.pm-footer__instagram {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: var(--pm-mint-50);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.pm-footer__instagram:hover,
+.pm-footer__instagram:focus-visible {
+  color: #fff;
+}
+
 .pm-footer__title {
   margin: 0 0 0.65rem;
   font-size: 0.82rem;
