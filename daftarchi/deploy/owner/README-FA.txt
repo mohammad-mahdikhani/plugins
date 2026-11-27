@@ -11,6 +11,11 @@
 
 آدرس در مرورگر (بعد از اجرای استارتر): http://127.0.0.1:8080/
 
+ویندوز (بدون نصب پایتون جدا):
+  • Daftarchi-Owner-setup.exe را اجرا کنید (پایتون همراه داخل نصب است؛ Microsoft Store لازم نیست).
+  • یا Daftarchi-Owner-Windows.zip را کامل باز کنید و Start-Daftarchi.bat را بزنید.
+  • فایل کوچک Daftarchi-Owner.zip فقط برای توسعه است و پایتون ندارد.
+
 ویندوز: Start-Daftarchi.bat
 مک: Start-Daftarchi.command — اگر اجازه نداد راست‌کلیک و Open
 لینوکس: Start-Daftarchi.sh

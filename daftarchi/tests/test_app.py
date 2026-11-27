@@ -2035,15 +2035,25 @@ class DaftarchiTest(unittest.TestCase):
             sh = archive.read("Daftarchi-Owner/Start-Daftarchi.sh").decode()
             app_text = archive.read("Daftarchi-Owner/app/app.py").decode()
             readme = archive.read("Daftarchi-Owner/README-FA.txt").decode()
+            preset_txt = archive.read("Daftarchi-Owner/preset.json").decode()
         self.assertIn("DAFTARCHI_PRESET", bat)
         self.assertIn("DAFTARCHI_PRESET", sh)
         self.assertNotIn("DAFTARCHI_UNLOCK", bat)
         self.assertIn(f'APP_VERSION = "{appmod.APP_VERSION}"', app_text)
         self.assertIn("به مشتری ندهید", readme)
         self.assertIn("09373211344", readme)
-        preset_txt = archive.read("Daftarchi-Owner/preset.json").decode()
         self.assertIn("09373211344", preset_txt)
         self.assertIn("initial_admin", preset_txt)
+        self.assertIn("python\\python.exe", bat)
+        win_zip = root / "deploy" / "Daftarchi-Owner-Windows.zip"
+        self.assertTrue(win_zip.is_file(), win_zip)
+        with zipfile.ZipFile(win_zip) as archive:
+            self.assertIn("Daftarchi-Owner/python/python.exe", archive.namelist())
+        setup_exe = root / "deploy" / "Daftarchi-Owner-setup.exe"
+        self.assertTrue(setup_exe.is_file(), setup_exe)
+        blob = setup_exe.read_bytes()
+        self.assertEqual(blob[:2], b"MZ")
+        self.assertGreater(len(blob), 8_000_000)
 
     def test_daily_license_extends_after_trial(self):
         import sqlite3
