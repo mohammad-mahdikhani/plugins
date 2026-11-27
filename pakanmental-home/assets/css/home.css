@@ -10,7 +10,7 @@
   --pm-sand-200: #e5d4bc;
   --pm-text-muted: #5a6b66;
   --pm-border: rgba(44, 95, 82, 0.12);
-  --pm-font: "Vazirmatn", system-ui, sans-serif;
+  --pm-font: "Vazirmatn", Vazir, Tahoma, sans-serif;
   --pm-container: min(1200px, 92vw);
   --pm-radius: 16px;
   --pm-pill: 999px;
