@@ -219,8 +219,8 @@ $blog_url = get_post_type_archive_link( 'post' ) ?: home_url( '/blog/' );
 		<div class="pm-footer__brand">
 			<?php pm_picture( 'images/logo-pakanmental.webp', '', array( 'width' => 140, 'height' => 56, 'loading' => 'lazy' ) ); ?>
 			<p><?php esc_html_e( 'فروشگاه بازی فکری، بردگیم، پازل و سرگرمی رومیزی.', 'pakanmental-home' ); ?></p>
-			<a class="pm-footer__instagram" href="https://www.instagram.com/pakanmental/" target="_blank" rel="noopener noreferrer">
-				<svg class="pm-footer__ig-mark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+			<a class="pm-footer__instagram" href="https://www.instagram.com/pakanmental/" target="_blank" rel="noopener noreferrer" aria-label="<?php esc_attr_e( 'اینستاگرام پاکان منتال', 'pakanmental-home' ); ?>">
+				<svg class="pm-footer__ig-mark" viewBox="0 0 24 24" width="36" height="36" aria-hidden="true" focusable="false">
 					<defs>
 						<radialGradient id="pm-ig-mark" cx="30%" cy="107%" r="150%">
 							<stop offset="0%" stop-color="#feda75"/>
@@ -235,7 +235,6 @@ $blog_url = get_post_type_archive_link( 'post' ) ?: home_url( '/blog/' );
 					<circle cx="12" cy="12" r="3.15" fill="none" stroke="#fff" stroke-width="1.7"/>
 					<circle cx="16.55" cy="7.45" r="1.05" fill="#fff"/>
 				</svg>
-				<span><?php esc_html_e( 'اینستاگرام: instagram.com/pakanmental', 'pakanmental-home' ); ?></span>
 			</a>
 		</div>
 		<div>
