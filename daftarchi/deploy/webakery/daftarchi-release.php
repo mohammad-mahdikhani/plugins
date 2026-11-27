@@ -15,6 +15,7 @@ if (!function_exists('daftarchi_admin_parent')) {
             'daftarchi-support' => 'پیام‌ها',
             'daftarchi-signups' => 'ثبت‌نام‌ها',
             'daftarchi-logins' => 'ورودها',
+            'daftarchi-auth' => 'حساب ابری',
             'daftarchi-licenses' => 'لایسنس‌ها',
             'daftarchi-sms' => 'پیامک',
         );

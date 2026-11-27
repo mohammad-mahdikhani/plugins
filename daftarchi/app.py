@@ -177,6 +177,12 @@ HOST_LOGIN_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/login",
     "https://webakery.ir/wp-json/daftarchi/v1/signup",
 )
+CLOUD_AUTH_LOGIN_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/auth/login",
+)
+CLOUD_AUTH_REGISTER_URLS = (
+    "https://webakery.ir/wp-json/daftarchi/v1/auth/register",
+)
 HOST_LICENSE_URLS = (
     "https://webakery.ir/wp-json/daftarchi/v1/license",
 )
@@ -3076,6 +3082,103 @@ def push_login(conn, user) -> None:
         log.exception("login report")
 
 
+def cloud_auth_enabled() -> bool:
+    return os.environ.get("DAFTARCHI_CLOUD_AUTH", "1").strip().lower() not in ("0", "false", "no", "off")
+
+
+def cloud_auth_post(urls: tuple[str, ...], fields: dict) -> dict | None:
+    payload = {"key": HOST_MAIL_KEY, **fields}
+    for url in urls:
+        try:
+            status, body = http_request("POST", url, payload=payload, timeout=8)
+        except AppError:
+            continue
+        except Exception:
+            log.exception("cloud auth %s", url)
+            continue
+        if status < 400 and isinstance(body, dict) and body.get("ok") and isinstance(body.get("account"), dict):
+            return body["account"]
+        if status == 404:
+            return None
+        if status in (401, 403, 409):
+            return None
+    return None
+
+
+def push_cloud_register(user, password: str) -> None:
+    if not cloud_auth_enabled() or len(password or "") < 6:
+        return
+    cloud_auth_post(
+        CLOUD_AUTH_REGISTER_URLS,
+        {
+            "name": user["name"] or "",
+            "phone": user["phone"] or "",
+            "email": (user["email"] or "").lower(),
+            "role": user["role"] or "admin",
+            "password": password,
+        },
+    )
+
+
+def try_cloud_login(ident: str, password: str) -> dict | None:
+    if not cloud_auth_enabled():
+        return None
+    return cloud_auth_post(CLOUD_AUTH_LOGIN_URLS, {"ident": ident, "password": password})
+
+
+def mirror_cloud_user(conn, account: dict, password: str):
+    phone = mobile_number(account.get("phone") or "", required=False)
+    email = str(account.get("email") or "").strip().lower() or None
+    name = clean_text(account.get("name") or "مدیر", "name", 80) or "مدیر"
+    role = str(account.get("role") or "admin").strip().lower()
+    if role not in ("admin", "cashier", "stock"):
+        role = "admin"
+    if not phone and not email:
+        raise AppError("حساب ابری ناقص است", 502)
+    if not phone and email:
+        phone = f"g#{email}"
+    ident = phone if phone and not phone.startswith("g#") else (email or phone)
+    row = find_user(conn, ident)
+    hashed = hash_pw(password)
+    keep = secret_token(password)
+    if row:
+        conn.execute(
+            "UPDATE users SET name=?, phone=?, email=?, password_hash=?, password_keep=?, role=?, phone_verified=1, email_verified=1 WHERE id=?",
+            (name, phone, email, hashed, keep, role, row["id"]),
+        )
+        return conn.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
+    conn.execute(
+        """INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, phone_verified, created_at)
+           VALUES (?,?,?,?,?,?,1,1,?)""",
+        (name, phone, email, hashed, keep, role, iso()),
+    )
+    user_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+    return conn.execute("SELECT * FROM users WHERE id=? AND deleted_at IS NULL", (user_id,)).fetchone()
+
+
+def resolve_login_user(conn, ident: str, password: str):
+    row = find_user(conn, ident)
+    if row and check_pw(password, row["password_hash"]):
+        return row
+    account = try_cloud_login(ident, password)
+    if not account:
+        if row:
+            raise AppError("شماره یا رمز نادرست است", 401)
+        typed_phone = mobile_number(ident, required=False) if "@" not in ident else ""
+        if typed_phone:
+            raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 401)
+        raise AppError("شماره یا رمز نادرست است", 401)
+    mirrored = mirror_cloud_user(conn, account, password)
+    if not mirrored:
+        raise AppError("حساب ابری روی این نصب ساخته نشد", 502)
+    push_signup(conn, mirrored)
+    try:
+        push_cloud_register(mirrored, password)
+    except Exception:
+        log.exception("cloud register mirror")
+    return mirrored
+
+
 def host_account(action: str, fields: dict) -> dict:
     payload = {"key": HOST_MAIL_KEY, "action": action, **fields}
     failures = []
@@ -4665,6 +4768,35 @@ def seed_initial_admin_from_preset(conn, payload: dict) -> None:
         "INSERT INTO settings (key, value) VALUES ('owner_login_phone', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (phone,),
     )
+    try:
+        fresh = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
+        if fresh:
+            push_cloud_register(fresh, password)
+    except Exception:
+        log.exception("owner cloud register")
+
+
+def ensure_owner_shop_setup(conn, payload: dict) -> None:
+    """Skip the blocking shop-mode picker for Mohammad's Owner copy."""
+    if str(payload.get("site_id") or "").strip() != "owner":
+        return
+    mode_row = conn.execute("SELECT value FROM settings WHERE key='shop_mode'").fetchone()
+    mode = str(mode_row["value"] if mode_row else "").strip()
+    if mode:
+        return
+    block = payload.get("settings") if isinstance(payload.get("settings"), dict) else {}
+    pick = clean_text(block.get("shop_mode") or "offline", "mode", 20) or "offline"
+    if pick not in ("offline", "hybrid", "online"):
+        pick = "offline"
+    tour = str(block.get("tour_done") or "1").strip() or "1"
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('shop_mode', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (pick,),
+    )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('tour_done', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (tour if tour in ("0", "1") else "1",),
+    )
 
 
 def apply_site_preset(conn) -> None:
@@ -4679,6 +4811,7 @@ def apply_site_preset(conn) -> None:
     if not isinstance(payload, dict):
         return
     seed_initial_admin_from_preset(conn, payload)
+    ensure_owner_shop_setup(conn, payload)
     applied = conn.execute("SELECT value FROM settings WHERE key='site_preset_applied'").fetchone()
     if applied and str(applied["value"]) == "1":
         return
@@ -5945,6 +6078,7 @@ def bootstrap():
     owner_phone = norm_phone(settings.get("owner_login_phone") or "")
     if owner_phone:
         extra["owner_login_phone"] = owner_phone
+        extra["owner_skip_shop_setup"] = True
     return jsonify(initial=False, **extra)
 
 
@@ -5969,10 +6103,8 @@ def login():
     if hint:
         raise AppError(hint, 400)
     with connect() as conn:
-        row = find_user(conn, ident)
+        row = resolve_login_user(conn, ident, password)
         typed_phone = mobile_number(ident, required=False) if "@" not in ident else ""
-        if typed_phone and not row:
-            raise AppError("این شماره ثبت نشده. اول شماره را ثبت کنید.", 401)
         if row and typed_phone and not int(row["phone_verified"] or 0):
             raise AppError(
                 "این شماره هنوز تأیید نشده. کد تأیید را وارد کنید.",
@@ -5980,8 +6112,6 @@ def login():
                 needs_phone_verify=True,
                 ident=row["phone"],
             )
-        if not row or not check_pw(password, row["password_hash"]):
-            raise AppError("شماره یا رمز نادرست است", 401)
         if row["email"] and not int(row["email_verified"] or 0):
             raise AppError(
                 "این حساب هنوز با جیمیل تأیید نشده. کد شش‌رقمی را وارد کنید.",
@@ -5990,6 +6120,10 @@ def login():
                 ident=row["email"],
             )
         packed = login_payload(conn, row)
+        try:
+            push_cloud_register(row, password)
+        except Exception:
+            log.exception("cloud register after login")
     return finish_login(packed)
 
 
@@ -6276,7 +6410,8 @@ def logout():
 def me():
     user = current_user()
     with connect() as conn:
-        flag = get_settings(conn).get("must_change_password") == "1" if user else False
+        settings = get_settings(conn) if user else {}
+        flag = settings.get("must_change_password") == "1" if user else False
         access = ensure_access(conn) if user else None
         shop = shop_profile(conn) if user else None
         setup = setup_state(conn) if user else None
@@ -6291,6 +6426,8 @@ def me():
     }
     if user and flag and check_pw(INITIAL_PASSWORD, user["password_hash"]):
         packed["initial_password"] = INITIAL_PASSWORD
+    if user and norm_phone(settings.get("owner_login_phone") or ""):
+        packed["owner_skip_shop_setup"] = True
     return jsonify(**packed)
 
 

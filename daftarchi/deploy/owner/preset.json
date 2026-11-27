@@ -12,6 +12,8 @@
     "role": "admin"
   },
   "settings": {
-    "shop_name": "دفترچی محمد"
+    "shop_name": "دفترچی محمد",
+    "shop_mode": "offline",
+    "tour_done": "1"
   }
 }

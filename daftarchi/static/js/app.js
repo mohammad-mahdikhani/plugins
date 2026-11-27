@@ -1056,6 +1056,7 @@ function modePickerHtml() {
         <button type="button" class="btn mode-pick" data-act="pick-mode" data-mode="hybrid"><strong>حضوری و آنلاین</strong><span>صندوق ساده، به‌علاوه اتصال به ووکامرس.</span></button>
         <button type="button" class="btn mode-pick" data-act="pick-mode" data-mode="online"><strong>فقط آنلاین</strong><span>فقط اتصال REST API ووکامرس، با راهنمای تصویری.</span></button>
       </div>
+      <p class="row-actions"><button type="button" class="btn quiet" data-act="skip-mode-setup">رد شدن — شروع با فروشگاه حضوری</button></p>
     </div>`;
 }
 function holeShade(rect) {
@@ -1109,6 +1110,15 @@ function paintTour() {
       <button type="button" class="btn primary" data-act="tour-next">${last ? "تمام" : "بعدی"}</button>
     </div>
   </div>`;
+}
+async function skipModeSetup() {
+  const saved = await api("/api/settings", { method: "PUT", body: { shop_mode: "offline", tour_done: "1" } });
+  state.settings = saved.settings || state.settings;
+  state.shopMode = "offline";
+  state.tourDone = true;
+  state.tourOn = false;
+  state.tourStep = 0;
+  await navigate(homePage());
 }
 async function chooseMode(mode) {
   if (!["offline", "hybrid", "online"].includes(mode)) return;
@@ -3067,6 +3077,7 @@ async function onClick(event) {
     return;
   }
   if (act === "pick-mode") { await guard(() => chooseMode(el.dataset.mode)); return; }
+  if (act === "skip-mode-setup") { await guard(() => skipModeSetup()); return; }
   if (act === "pick-theme") {
     await guard(async () => {
       const id = applyTheme(el.dataset.theme);
@@ -3774,6 +3785,9 @@ api("/api/auth/me").then(async (me) => {
   applyTheme(state.shop?.theme);
   state.today = me.today || state.today;
   readSetup(me.setup);
+  if (me.owner_skip_shop_setup && !state.shopMode && state.user?.role === "admin") {
+    await guard(() => skipModeSetup());
+  }
   showUpdated();
   const opened = location.hash.replace("#", "");
   await navigate(opened && allowed(opened) ? opened : homePage());

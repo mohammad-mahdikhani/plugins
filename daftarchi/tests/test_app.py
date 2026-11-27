@@ -1593,6 +1593,66 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(body["latest"], "9.9.9-studio")
         self.assertIn("github.com", body["app_url"])
 
+    def test_cloud_login_mirrors_user_on_fresh_install(self):
+        def fake(method, url, payload=None, headers=None, form=None, timeout=12):
+            if "/auth/login" in str(url):
+                return 200, {
+                    "ok": True,
+                    "account": {"phone": "09129998877", "email": "", "name": "تست ابری", "role": "admin"},
+                }
+            if "/auth/register" in str(url):
+                return 200, {"ok": True, "account": {"phone": "09129998877", "role": "admin"}}
+            return 404, {"ok": False}
+
+        prev = os.environ.get("DAFTARCHI_DATA")
+        folder = tempfile.mkdtemp(prefix="daftarchi-cloud-")
+        os.environ["DAFTARCHI_DATA"] = folder
+        os.environ.pop("DAFTARCHI_PRESET", None)
+        original = appmod.http_request
+        appmod.http_request = fake
+        try:
+            for path in Path(folder).glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            guest = appmod.app.test_client()
+            ok = guest.post("/api/auth/login", json={"ident": "09129998877", "password": "secret99"})
+            self.assertEqual(ok.status_code, 200, ok.get_json())
+            self.assertEqual(ok.get_json()["user"]["phone"], "09129998877")
+        finally:
+            appmod.http_request = original
+            if prev is None:
+                os.environ.pop("DAFTARCHI_DATA", None)
+            else:
+                os.environ["DAFTARCHI_DATA"] = prev
+
+    def test_owner_preset_skips_shop_mode_picker(self):
+        preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
+        prev_data = os.environ.get("DAFTARCHI_DATA")
+        prev_preset = os.environ.get("DAFTARCHI_PRESET")
+        folder = tempfile.mkdtemp(prefix="daftarchi-owner-mode-")
+        os.environ["DAFTARCHI_DATA"] = folder
+        os.environ["DAFTARCHI_PRESET"] = str(preset)
+        try:
+            for path in Path(folder).glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            guest = appmod.app.test_client()
+            login = guest.post("/api/auth/login", json={"ident": "09373211344", "password": "3351252"})
+            self.assertEqual(login.status_code, 200, login.get_json())
+            me = guest.get("/api/auth/me").get_json()
+            self.assertEqual(me["setup"]["mode"], "offline")
+            self.assertEqual(me["setup"]["tour"], "1")
+            self.assertTrue(me.get("owner_skip_shop_setup"))
+        finally:
+            if prev_data is None:
+                os.environ.pop("DAFTARCHI_DATA", None)
+            else:
+                os.environ["DAFTARCHI_DATA"] = prev_data
+            if prev_preset is None:
+                os.environ.pop("DAFTARCHI_PRESET", None)
+            else:
+                os.environ["DAFTARCHI_PRESET"] = prev_preset
+
     def test_owner_preset_seeds_mohammad_admin(self):
         preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
         prev_data = os.environ.get("DAFTARCHI_DATA")
@@ -4038,6 +4098,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("authPanelUpdateBlock", script)
         self.assertIn("09120000000", script)
         self.assertIn("نه رمز", script)
+        self.assertIn("skip-mode-setup", script)
         self.assertNotIn("ریست برنامه را بزنید", script)
         self.assertIn("daftarchi-updated", script)
         css = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")
