@@ -381,7 +381,7 @@ async function api(path, { method = "GET", body, form } = {}) {
     const err = new Error(message);
     err.status = res.status;
     err.data = data;
-    if (res.status === 401 && !String(path).includes("/api/auth/login")) {
+    if (res.status === 401 && !String(path).includes("/api/auth/login") && !String(path).includes("/api/panel/update")) {
       state.user = null;
       render();
     }
@@ -701,6 +701,24 @@ function authProblem() {
 function authBackLink() {
   return `<p class="auth-links"><button type="button" class="text-link" data-act="show-login">بازگشت به ورود</button></p>`;
 }
+function authPanelUpdateBlock() {
+  const info = state.panelUpdate;
+  if (!info && !state.updating) return "";
+  const row = info || { current: state.bootstrap?.version || "", reachable: false, update: false };
+  const status = row.update
+    ? `<p>نسخه <strong class="ltr">${esc(row.latest)}</strong> آماده است.</p>`
+    : `<p>${row.reachable ? "همین نسخه آخر است." : esc(row.error || "ارتباط با سرور به‌روزرسانی برقرار نشد")}</p>`;
+  return `<section class="card auth-update-card">
+    <h2 class="section-title">به‌روزرسانی بدون ورود</h2>
+    <p class="hint">روی همین نصب است؛ پوشه data دست نمی‌خورد.</p>
+    ${row.current ? `<p>نسخه نصب‌شده: <strong class="ltr">${esc(row.current)}</strong></p>` : ""}
+    ${status}
+    <div class="auth-actions">
+      <button type="button" class="btn" data-act="check-panel-update" ${state.updating ? "disabled" : ""}>بررسی آپدیت</button>
+      <button type="button" class="btn primary" data-act="self-update" ${!row.update || state.updating ? "disabled" : ""}>${state.updating ? "در حال آپدیت..." : "آپدیت"}</button>
+    </div>
+  </section>`;
+}
 function authHtml() {
   const draft = state.authDraft || {};
   if (state.authView === "verify") {
@@ -799,7 +817,7 @@ function authHtml() {
     <p class="auth-links"><button type="button" class="text-link" data-act="show-forgot">رمز را فراموش کرده‌ام</button></p>
     ${updateBanner()}
     <p class="hint">نسخه ${esc(state.bootstrap?.version || state.update?.current || "")}</p>
-  </form></div>`;
+  </form>${authPanelUpdateBlock()}</div>`;
 }
 function showDesktopIcon() {
   return !state.installedApp;
@@ -3724,6 +3742,7 @@ api("/api/auth/me").then(async (me) => {
     state.desktopIcon = Boolean(state.bootstrap.desktop_icon);
     state.today = state.bootstrap.today || me.today || state.today;
     applyTheme(state.bootstrap.theme);
+    try { await loaders.updates(); } catch { /* offline */ }
     render();
     showUpdated();
     return;

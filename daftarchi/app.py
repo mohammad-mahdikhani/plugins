@@ -5201,13 +5201,11 @@ def schedule_restart(after_update: bool = False) -> None:
 
 @app.get("/api/panel/update")
 def panel_update_info():
-    require_admin()
     return jsonify(panel_update_status())
 
 
 @app.post("/api/panel/update")
 def panel_update_apply():
-    require_admin()
     upload = request.files.get("file")
     if upload is not None and upload.filename:
         blob = upload.read()

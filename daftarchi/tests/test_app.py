@@ -1593,6 +1593,14 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(body["latest"], "9.9.9-studio")
         self.assertIn("github.com", body["app_url"])
 
+    def test_panel_update_api_works_without_login(self):
+        guest = appmod.app.test_client()
+        seen = guest.get("/api/panel/update")
+        self.assertEqual(seen.status_code, 200, seen.get_json())
+        body = seen.get_json()
+        self.assertEqual(body["current"], appmod.APP_VERSION)
+        self.assertIn("reachable", body)
+
     def test_panel_zip_url_rejects_full_installer(self):
         self.assertEqual(
             appmod.panel_zip_app_url("https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-windows.zip"),
@@ -3971,6 +3979,8 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("window.close()", script)
         self.assertIn("reopenAfterUpdate", script)
         self.assertIn("آپدیت روی همین نصب است", script)
+        self.assertIn("به‌روزرسانی بدون ورود", script)
+        self.assertIn("authPanelUpdateBlock", script)
         self.assertNotIn("ریست برنامه را بزنید", script)
         self.assertIn("daftarchi-updated", script)
         css = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")

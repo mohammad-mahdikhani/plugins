@@ -100,11 +100,15 @@ h1, h2, h3, p { margin: 0; }
 
 .auth {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--control-gap);
   padding: 24px;
 }
 .auth-card { width: min(400px, 100%); padding: 32px 28px; }
+.auth-update-card { width: min(400px, 100%); padding: 20px 28px; }
 .auth-actions, .btn-stack {
   display: grid;
   gap: var(--control-gap);
