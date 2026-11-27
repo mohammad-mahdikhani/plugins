@@ -218,7 +218,8 @@ $blog_url = get_post_type_archive_link( 'post' ) ?: home_url( '/blog/' );
 	<div class="pm-container pm-footer__grid">
 		<div class="pm-footer__brand">
 			<?php pm_picture( 'images/logo-pakanmental.webp', '', array( 'width' => 140, 'height' => 56, 'loading' => 'lazy' ) ); ?>
-			<p><?php esc_html_e( 'فروشگاه بازی فکری، بردگیم، پازل و سرگرمی رومیزی.', 'pakanmental-home' ); ?></p>
+			<p class="pm-footer__tagline"><?php esc_html_e( 'تخصصی‌ترین فروشگاه محصولات فکری و اکشن فیگور در نیشابور', 'pakanmental-home' ); ?></p>
+			<p class="pm-footer__tagline"><?php esc_html_e( 'عرضه‌کننده انواع پازل، تخته‌نرد، بازی‌های رومیزی و فیگورهای کلکسیونی از شخصیت‌های محبوب انیمه، فیلم، بازی و انیمیشن؛ با بیش از ۱۰ سال سابقه فعالیت.', 'pakanmental-home' ); ?></p>
 			<a class="pm-footer__instagram" href="https://www.instagram.com/pakanmental/" target="_blank" rel="noopener noreferrer" aria-label="<?php esc_attr_e( 'اینستاگرام پاکان منتال', 'pakanmental-home' ); ?>">
 				<svg class="pm-footer__ig-mark" viewBox="0 0 24 24" width="36" height="36" aria-hidden="true" focusable="false">
 					<defs>

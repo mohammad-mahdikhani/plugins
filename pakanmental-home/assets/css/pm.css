@@ -1770,9 +1770,13 @@ body.pm-wc-shell > .pm-footer,
   margin: 0.65rem 0 0.25rem;
   font-size: 0.88rem;
   line-height: 1.65;
-  max-width: 32ch;
+  max-width: 100%;
   color: var(--pm-cream);
   opacity: 0.9;
+}
+
+.pm-footer__tagline + .pm-footer__tagline {
+  margin-top: 0.35rem;
 }
 
 .pm-footer__brand-name {

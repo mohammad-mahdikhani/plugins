@@ -472,7 +472,7 @@ body.pm-home {
   margin: 0.5rem 0 0;
   font-size: 0.85rem;
   opacity: 0.9;
-  max-width: 30ch;
+  max-width: 100%;
 }
 
 .pm-footer__title {
