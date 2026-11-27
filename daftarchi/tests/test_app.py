@@ -411,10 +411,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("desktop_icon", script)
         self.assertIn("Daftarchi.url", script)
         worker = self.client.get("/sw.js").get_data(as_text=True)
-        self.assertIn("daftarchi-1.1.69", worker)
+        self.assertIn(f'VERSION = "{appmod.APP_VERSION}"', worker)
         self.assertIn('pathname.startsWith("/api/")', worker)
-        self.assertIn("/static/js/app.js?v=1.1.69", worker)
-        packed = self.client.get("/static/js/app.js?v=1.1.69", headers={"Accept-Encoding": "gzip"})
+        self.assertIn(f"/static/js/app.js?v={appmod.APP_VERSION}", worker)
+        packed = self.client.get(f"/static/js/app.js?v={appmod.APP_VERSION}", headers={"Accept-Encoding": "gzip"})
         self.assertEqual(packed.headers.get("Content-Encoding"), "gzip")
         self.assertLess(len(packed.data), 220000)
         self.assertIn("display: flex; width: 100%", sheet)
@@ -1592,6 +1592,27 @@ class DaftarchiTest(unittest.TestCase):
         self.assertTrue(body["update"])
         self.assertEqual(body["latest"], "9.9.9-studio")
         self.assertIn("github.com", body["app_url"])
+
+    def test_login_rejects_daftarchi_in_phone_field(self):
+        guest = appmod.app.test_client()
+        bad = guest.post("/api/auth/login", json={"ident": "daftarchi", "password": "daftarchi"})
+        self.assertEqual(bad.status_code, 400, bad.get_json())
+        self.assertIn("۰۹۱۲۰۰۰۰۰۰۰", bad.get_json()["error"])
+        ok = guest.post("/api/auth/login", json={"ident": "", "password": "daftarchi"})
+        self.assertEqual(ok.status_code, 200, ok.get_json())
+
+    def test_login_accepts_empty_ident_with_daftarchi_password_after_normalize(self):
+        fixed_ident, fixed_pw, hint = appmod.normalize_login_ident_password("", "daftarchi")
+        self.assertEqual(hint, "")
+        self.assertEqual(fixed_ident, appmod.INITIAL_PHONE)
+        self.assertEqual(fixed_pw, "daftarchi")
+
+    def test_service_worker_matches_app_version(self):
+        worker = self.client.get("/sw.js").get_data(as_text=True)
+        self.assertIn(f'VERSION = "{appmod.APP_VERSION}"', worker)
+        self.assertIn("daftarchi-${VERSION}", worker)
+        self.assertNotIn("daftarchi-1.1.69", worker)
+        self.assertNotIn("__APP_VERSION__", worker)
 
     def test_panel_update_api_works_without_login(self):
         guest = appmod.app.test_client()
@@ -3981,6 +4002,8 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("آپدیت روی همین نصب است", script)
         self.assertIn("به‌روزرسانی بدون ورود", script)
         self.assertIn("authPanelUpdateBlock", script)
+        self.assertIn("09120000000", script)
+        self.assertIn("نه رمز", script)
         self.assertNotIn("ریست برنامه را بزنید", script)
         self.assertIn("daftarchi-updated", script)
         css = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")
@@ -4114,7 +4137,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(manifest["name"], "دفترچی")
         worker = self.client.get("/sw.js")
         self.assertEqual(worker.status_code, 200)
-        self.assertIn("daftarchi-1.1.69", worker.get_data(as_text=True))
+        self.assertIn(f'VERSION = "{appmod.APP_VERSION}"', worker.get_data(as_text=True))
         relay = Path("/workspace/site-updates/daftarchi/telegram.php").read_text(encoding="utf-8")
         self.assertIn("daftarchi-telegram", relay)
         self.assertIn("telegram.json", relay)

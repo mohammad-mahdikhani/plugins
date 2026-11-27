@@ -4861,7 +4861,10 @@ def web_manifest():
 
 @app.get("/sw.js")
 def service_worker():
-    resp = send_file(Path(__file__).resolve().parent / "static" / "sw.js", mimetype="application/javascript")
+    body = (Path(__file__).resolve().parent / "static" / "sw.js").read_text(encoding="utf-8")
+    body = body.replace("__APP_VERSION__", APP_VERSION)
+    resp = make_response(body, 200)
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
     resp.headers["Cache-Control"] = "no-store"
     resp.headers["Service-Worker-Allowed"] = "/"
     return resp
@@ -5891,11 +5894,26 @@ def bootstrap():
     return jsonify(initial=False, **extra)
 
 
+def normalize_login_ident_password(ident: str, password: str) -> tuple[str, str, str]:
+    ident = str(ident or "").strip()
+    password = str(password or "")
+    if ident.lower() == "daftarchi":
+        return (
+            ident,
+            password,
+            "شماره ۰۹۱۲۰۰۰۰۰۰۰ را در فیلد موبایل بگذارید؛ daftarchi فقط رمز است، نه شماره.",
+        )
+    if not ident and password.lower() == "daftarchi":
+        return INITIAL_PHONE, password, ""
+    return ident, password, ""
+
+
 @app.post("/api/auth/login")
 def login():
     payload = body_json()
-    ident = str(payload.get("ident") or "")
-    password = str(payload.get("password") or "")
+    ident, password, hint = normalize_login_ident_password(payload.get("ident"), payload.get("password"))
+    if hint:
+        raise AppError(hint, 400)
     with connect() as conn:
         row = find_user(conn, ident)
         typed_phone = mobile_number(ident, required=False) if "@" not in ident else ""

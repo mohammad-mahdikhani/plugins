@@ -701,10 +701,23 @@ function authProblem() {
 function authBackLink() {
   return `<p class="auth-links"><button type="button" class="text-link" data-act="show-login">بازگشت به ورود</button></p>`;
 }
+function prepareLoginBody(data) {
+  let ident = String(data.ident || "").trim();
+  const password = String(data.password || "");
+  if (ident.toLowerCase() === "daftarchi") {
+    throw new Error("شماره ۰۹۱۲۰۰۰۰۰۰۰ را در فیلد موبایل بگذارید؛ daftarchi فقط رمز است، نه شماره.");
+  }
+  if (!ident && password.toLowerCase() === "daftarchi") ident = "09120000000";
+  return { ident, password };
+}
 function authPanelUpdateBlock() {
-  const info = state.panelUpdate;
-  if (!info && !state.updating) return "";
-  const row = info || { current: state.bootstrap?.version || "", reachable: false, update: false };
+  const row = state.panelUpdate || {
+    current: state.bootstrap?.version || state.update?.current || "",
+    reachable: false,
+    update: false,
+    latest: "",
+    error: "",
+  };
   const status = row.update
     ? `<p>نسخه <strong class="ltr">${esc(row.latest)}</strong> آماده است.</p>`
     : `<p>${row.reachable ? "همین نسخه آخر است." : esc(row.error || "ارتباط با سرور به‌روزرسانی برقرار نشد")}</p>`;
@@ -807,9 +820,10 @@ function authHtml() {
   }
   return `<div class="auth"><form class="card auth-card" data-act="login">
     <div class="brand"><div class="mark">${logo()}</div><div><strong>دفترچی</strong><span>${esc(state.bootstrap?.today?.label || "صندوق و حسابداری فروشگاه")}</span></div></div>
+  <p class="hint">ورود اول مدیریت: موبایل <span class="ltr">09120000000</span> · رمز <span class="ltr">daftarchi</span> (رمز در فیلد پایین، نه موبایل)</p>
     ${authProblem()}
-    <div class="field"><label>موبایل یا جیمیل</label><input name="ident" autocomplete="username" required value="${esc(draft.ident || "")}" placeholder="09... یا name@gmail.com"></div>
-    <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}"></div>
+    <div class="field"><label>موبایل یا جیمیل</label><input class="ltr" name="ident" autocomplete="username" required value="${esc(draft.ident || "")}" placeholder="09120000000 — نه رمز"></div>
+    <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}" placeholder="مثلاً daftarchi"></div>
     <div class="auth-actions">
       <button class="btn primary block" type="submit">ورود</button>
       <button class="btn quiet block" type="button" data-act="show-register">ثبت‌نام</button>
@@ -2432,7 +2446,7 @@ async function onSubmit(event) {
   await guard(async () => {
     if (act === "login") {
       try {
-        const result = await api("/api/auth/login", { method: "POST", body: data });
+        const result = await api("/api/auth/login", { method: "POST", body: prepareLoginBody(data) });
         state.user = result.user;
         state.mustChange = result.must_change_password;
         state.initialPassword = result.initial_password || "";
