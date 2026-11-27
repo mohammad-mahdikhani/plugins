@@ -1596,10 +1596,20 @@ html.pm-scrolled .pm-site--has-hero .pm-rev__viewport {
   overflow: hidden;
 }
 
-.pm-card__price {
+.pm-card__price,
+.pm-product__price {
   margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #b54708;
+}
+
+.pm-card__price .woocommerce-Price-amount,
+.pm-card__price .woocommerce-Price-currencySymbol,
+.pm-product__price .woocommerce-Price-amount,
+.pm-product__price .woocommerce-Price-currencySymbol {
+  color: #b54708;
+  font-weight: 800;
 }
 
 .pm-card.pm-has-discount,
@@ -3457,6 +3467,12 @@ body.pm-wc-shell .site-main {
   font-size: 1.35rem;
   font-weight: 800;
   margin: 0 0 1rem;
+  color: #b54708;
+}
+
+.pm-wc-single-product .price .woocommerce-Price-amount,
+.pm-wc-single-product .price .woocommerce-Price-currencySymbol {
+  color: #b54708;
 }
 
 .pm-wc-single-product .woocommerce-product-details__short-description {
@@ -3544,7 +3560,12 @@ body.pm-wc-shell .site-main {
   margin: 0.2rem 0 0.75rem;
   font-size: 1.02rem;
   font-weight: 800;
-  color: var(--pm-teal-900);
+  color: #b54708;
+}
+
+.pm-related ul.products li.product .price .woocommerce-Price-amount,
+.pm-related ul.products li.product .price .woocommerce-Price-currencySymbol {
+  color: #b54708;
 }
 
 .pm-related ul.products li.product .button,

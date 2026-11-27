@@ -300,7 +300,7 @@ final class PM_Checkout {
 					before.parentNode.insertBefore(row, before);
 				}
 				if (freight[0]) head("پس کرایه", freight[0]);
-				if (paid[0]) head("هزینه پست ۱۸۰٬۰۰۰ تومان", paid[0]);
+				if (paid[0]) head("هزینه پست ۲۰۰٬۰۰۰ تومان", paid[0]);
 			}
 			if (window.jQuery) {
 				window.jQuery(document.body).on("updated_checkout", group);
