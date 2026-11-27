@@ -818,11 +818,16 @@ function authHtml() {
       ${authBackLink()}
     </form></div>`;
   }
+  const ownerPhone = state.bootstrap?.owner_login_phone;
+  const loginHint = ownerPhone
+    ? `ورود مدیریت: موبایل <span class="ltr">${esc(ownerPhone)}</span> (رمز در فیلد پایین)`
+    : `ورود اول مدیریت: موبایل <span class="ltr">09120000000</span> · رمز <span class="ltr">daftarchi</span> (رمز در فیلد پایین، نه موبایل)`;
+  const identPh = ownerPhone ? `${ownerPhone} — موبایل` : "09120000000 — نه رمز";
   return `<div class="auth"><form class="card auth-card" data-act="login">
     <div class="brand"><div class="mark">${logo()}</div><div><strong>دفترچی</strong><span>${esc(state.bootstrap?.today?.label || "صندوق و حسابداری فروشگاه")}</span></div></div>
-  <p class="hint">ورود اول مدیریت: موبایل <span class="ltr">09120000000</span> · رمز <span class="ltr">daftarchi</span> (رمز در فیلد پایین، نه موبایل)</p>
+  <p class="hint">${loginHint}</p>
     ${authProblem()}
-    <div class="field"><label>موبایل یا جیمیل</label><input class="ltr" name="ident" autocomplete="username" required value="${esc(draft.ident || "")}" placeholder="09120000000 — نه رمز"></div>
+    <div class="field"><label>موبایل یا جیمیل</label><input class="ltr" name="ident" autocomplete="username" required value="${esc(draft.ident || "")}" placeholder="${esc(identPh)}"></div>
     <div class="field"><label>رمز</label><input type="password" name="password" autocomplete="current-password" required value="${esc(draft.password || "")}" placeholder="مثلاً daftarchi"></div>
     <div class="auth-actions">
       <button class="btn primary block" type="submit">ورود</button>

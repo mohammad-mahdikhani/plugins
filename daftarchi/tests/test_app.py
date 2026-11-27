@@ -1593,6 +1593,36 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(body["latest"], "9.9.9-studio")
         self.assertIn("github.com", body["app_url"])
 
+    def test_owner_preset_seeds_mohammad_admin(self):
+        preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
+        prev_data = os.environ.get("DAFTARCHI_DATA")
+        prev_preset = os.environ.get("DAFTARCHI_PRESET")
+        folder = tempfile.mkdtemp(prefix="daftarchi-owner-")
+        os.environ["DAFTARCHI_DATA"] = folder
+        os.environ["DAFTARCHI_PRESET"] = str(preset)
+        try:
+            for path in Path(folder).glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            guest = appmod.app.test_client()
+            ok = guest.post("/api/auth/login", json={"ident": "09373211344", "password": "3351252"})
+            self.assertEqual(ok.status_code, 200, ok.get_json())
+            boot = guest.get("/api/auth/bootstrap").get_json()
+            self.assertEqual(boot.get("owner_login_phone"), "09373211344")
+            old = guest.post("/api/auth/login", json={"ident": "09120000000", "password": "daftarchi"})
+            self.assertIn(old.status_code, (401, 400))
+        finally:
+            if prev_data is None:
+                os.environ.pop("DAFTARCHI_DATA", None)
+            else:
+                os.environ["DAFTARCHI_DATA"] = prev_data
+            if prev_preset is None:
+                os.environ.pop("DAFTARCHI_PRESET", None)
+            else:
+                os.environ["DAFTARCHI_PRESET"] = prev_preset
+            for path in Path(folder).glob("daftarchi.db*"):
+                path.unlink()
+
     def test_login_rejects_daftarchi_in_phone_field(self):
         guest = appmod.app.test_client()
         bad = guest.post("/api/auth/login", json={"ident": "daftarchi", "password": "daftarchi"})
@@ -1916,6 +1946,10 @@ class DaftarchiTest(unittest.TestCase):
         self.assertNotIn("DAFTARCHI_UNLOCK", bat)
         self.assertIn(f'APP_VERSION = "{appmod.APP_VERSION}"', app_text)
         self.assertIn("به مشتری ندهید", readme)
+        self.assertIn("09373211344", readme)
+        preset_txt = archive.read("Daftarchi-Owner/preset.json").decode()
+        self.assertIn("09373211344", preset_txt)
+        self.assertIn("initial_admin", preset_txt)
 
     def test_daily_license_extends_after_trial(self):
         import sqlite3

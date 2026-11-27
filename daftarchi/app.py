@@ -4617,12 +4617,59 @@ def preset_path() -> Path | None:
     return side if side.is_file() else None
 
 
+def seed_initial_admin_from_preset(conn, payload: dict) -> None:
+    """Personal Owner zip only (site_id owner). Never use in customer presets."""
+    if str(payload.get("site_id") or "").strip() != "owner":
+        return
+    block = payload.get("initial_admin")
+    if not isinstance(block, dict):
+        return
+    phone = mobile_number(block.get("phone") or "", required=False)
+    password = str(block.get("password") or "")
+    name = clean_text(block.get("name") or "مدیر", "name", 80) or "مدیر"
+    role = str(block.get("role") or "admin").strip().lower()
+    if role not in ("admin", "cashier", "stock"):
+        role = "admin"
+    if not phone or len(password) < 6:
+        return
+    hashed = hash_pw(password)
+    keep = secret_token(password)
+    row = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
+    if row:
+        if not check_pw(password, row["password_hash"]):
+            conn.execute(
+                "UPDATE users SET password_hash=?, password_keep=? WHERE id=?",
+                (hashed, keep, row["id"]),
+            )
+        conn.execute(
+            "UPDATE users SET name=?, role=?, phone_verified=1, email_verified=1 WHERE id=?",
+            (name, role, row["id"]),
+        )
+    else:
+        bootstrap = conn.execute("SELECT * FROM users WHERE phone=?", (INITIAL_PHONE,)).fetchone()
+        if bootstrap and check_pw(INITIAL_PASSWORD, bootstrap["password_hash"]):
+            conn.execute(
+                "UPDATE users SET name=?, phone=?, password_hash=?, password_keep=?, role=?, phone_verified=1 WHERE id=?",
+                (name, phone, hashed, keep, role, bootstrap["id"]),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO users (name, phone, email, password_hash, password_keep, role, email_verified, phone_verified, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (name, phone, None, hashed, keep, role, 1, 1, iso()),
+            )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('manager_phone', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (phone,),
+    )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('owner_login_phone', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (phone,),
+    )
+
+
 def apply_site_preset(conn) -> None:
     path = preset_path()
     if not path:
-        return
-    applied = conn.execute("SELECT value FROM settings WHERE key='site_preset_applied'").fetchone()
-    if applied and str(applied["value"]) == "1":
         return
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -4630,6 +4677,10 @@ def apply_site_preset(conn) -> None:
         log.warning("preset unreadable: %s", path)
         return
     if not isinstance(payload, dict):
+        return
+    seed_initial_admin_from_preset(conn, payload)
+    applied = conn.execute("SELECT value FROM settings WHERE key='site_preset_applied'").fetchone()
+    if applied and str(applied["value"]) == "1":
         return
     block = payload.get("settings")
     if isinstance(block, dict) and block:
@@ -5891,6 +5942,9 @@ def bootstrap():
         "today": jalali_clock(),
         "theme": clean_theme(settings.get("ui_theme")),
     }
+    owner_phone = norm_phone(settings.get("owner_login_phone") or "")
+    if owner_phone:
+        extra["owner_login_phone"] = owner_phone
     return jsonify(initial=False, **extra)
 
 
