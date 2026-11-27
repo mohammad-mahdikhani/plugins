@@ -5019,14 +5019,15 @@ def panel_update_status() -> dict:
     body = remote.get("body") or {}
     latest = str(body.get("version") or "").strip()
     newer = bool(latest) and version_tuple(latest) > version_tuple(current)
+    app_url = pick_panel_update_url(body)
     return {
         "current": current,
         "latest": latest,
         "update": newer,
         "notes": str(body.get("notes") or "")[:12000],
         "history": local_release_history(),
-        "app_url": str(body.get("app_url") or ""),
-        "full_url": str(body.get("full_url") or ""),
+        "app_url": app_url,
+        "full_url": str(body.get("full_url") or body.get("url") or "")[:2000],
         "mac_url": str(body.get("mac_url") or ""),
         "linux_url": str(body.get("linux_url") or ""),
         "manifest": remote.get("manifest") or studio_manifest_url(),
@@ -5037,12 +5038,23 @@ def panel_update_status() -> dict:
     }
 
 
+PANEL_ZIP_ROOTS = {
+    "Daftarchi",
+    "Daftarchi-Customer",
+    "Daftarchi-Studio",
+    "Daftarchi-Studio-App",
+    "Daftarchi-rst",
+    "Daftarchi-rst-Mac",
+    "Daftarchi-rst-Linux",
+}
+
+
 def _safe_panel_rel(name: str) -> Path | None:
     cleaned = name.replace("\\", "/").lstrip("/")
     parts = [part for part in cleaned.split("/") if part and part != "."]
     if not parts or ".." in parts:
         return None
-    if parts[0] in {"Daftarchi-Studio", "Daftarchi-Studio-App"} and len(parts) > 1:
+    while parts and parts[0] in PANEL_ZIP_ROOTS and len(parts) > 1:
         parts = parts[1:]
     if parts and parts[0] == "app" and len(parts) > 1:
         parts = parts[1:]
@@ -5084,6 +5096,32 @@ def apply_panel_package(blob: bytes, dest: Path | None = None) -> list[str]:
     if not written:
         raise AppError("چیزی برای نصب داخل زیپ نبود")
     return written
+
+
+def panel_zip_app_url(url: str) -> str:
+    text = str(url or "").strip()
+    if not text:
+        return ""
+    parsed = urllib.parse.urlparse(text)
+    if parsed.scheme != "https" or (parsed.hostname or "").lower() not in UPDATE_ZIP_HOSTS:
+        return ""
+    path = (parsed.path or "").lower()
+    if path.endswith(".exe") or path.endswith(".dmg"):
+        return ""
+    name = Path(path).name
+    if name.endswith("-windows.zip") or name.endswith("-mac.zip") or name.endswith("-linux.zip"):
+        return ""
+    if path.endswith(".zip"):
+        return text
+    return ""
+
+
+def pick_panel_update_url(body: dict) -> str:
+    for key in ("app_url", "url"):
+        found = panel_zip_app_url(str(body.get(key) or ""))
+        if found:
+            return found
+    return ""
 
 
 def download_update_zip(url: str) -> bytes:
@@ -5131,6 +5169,7 @@ def schedule_restart(after_update: bool = False) -> None:
     env = os.environ.copy()
     if after_update:
         env["DAFTARCHI_JUST_UPDATED"] = "1"
+        env["DAFTARCHI_OPEN_BROWSER"] = "1"
     else:
         env.pop("DAFTARCHI_JUST_UPDATED", None)
     python = quiet_python()
@@ -5177,12 +5216,23 @@ def panel_update_apply():
         if payload.get("source") != "remote":
             raise AppError("فایل زیپ را انتخاب کنید یا دریافت نسخه را بزنید")
         status = panel_update_status()
-        if not status["app_url"]:
-            raise AppError(status["error"] or "آدرس نسخه جدید پیدا نشد")
-        blob = download_update_zip(status["app_url"])
+        if not status["update"]:
+            raise AppError("همین نسخه آخر است")
+        url = status["app_url"]
+        if not url:
+            raise AppError(
+                status["error"]
+                or "فقط زیپ پنل از وب‌بیکری (app.zip) پشتیبانی می‌شود؛ فایل نصب ویندوز جایگزین همین پوشه نمی‌شود.",
+                409,
+            )
+        blob = download_update_zip(url)
     written = apply_panel_package(blob)
     schedule_restart(after_update=True)
-    return jsonify(ok=True, files=len(written), message="آپدیت شد. دفترچی بسته می‌شود و دوباره باز می‌شود.")
+    return jsonify(
+        ok=True,
+        files=len(written),
+        message="فایل‌های برنامه روی همین نصب جایگزین شد. پوشه data دست نخورده است. دفترچی بسته و دوباره باز می‌شود.",
+    )
 
 
 @app.post("/api/system/restart")

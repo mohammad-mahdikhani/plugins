@@ -1593,6 +1593,61 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(body["latest"], "9.9.9-studio")
         self.assertIn("github.com", body["app_url"])
 
+    def test_panel_zip_url_rejects_full_installer(self):
+        self.assertEqual(
+            appmod.panel_zip_app_url("https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-windows.zip"),
+            "",
+        )
+        self.assertEqual(
+            appmod.panel_zip_app_url("https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-app.zip"),
+            "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-app.zip",
+        )
+        body = {
+            "version": "1.1.93",
+            "url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-windows.zip",
+            "app_url": "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-app.zip",
+        }
+        self.assertEqual(appmod.pick_panel_update_url(body), body["app_url"])
+
+    def test_nested_customer_zip_overlays_same_install(self):
+        folder = Path(tempfile.mkdtemp())
+        app_dir = folder / "app"
+        app_dir.mkdir()
+        (app_dir / "app.py").write_text('APP_VERSION = "1.1.56"\n', encoding="utf-8")
+        (folder / "data").mkdir()
+        (folder / "data" / "daftarchi.db").write_bytes(b"legacy-shop")
+        blob = io.BytesIO()
+        with zipfile.ZipFile(blob, "w") as archive:
+            archive.writestr("Daftarchi-Customer/app/app.py", 'APP_VERSION = "1.1.93"\n')
+            archive.writestr("Daftarchi-Customer/app/static/js/app.js", "overlay-1193\n")
+            archive.writestr("Daftarchi-Customer/data/daftarchi.db", b"wiped")
+        appmod.apply_panel_package(blob.getvalue(), app_dir)
+        self.assertIn("1.1.93", (app_dir / "app.py").read_text(encoding="utf-8"))
+        self.assertIn("overlay-1193", (app_dir / "static/js/app.js").read_text(encoding="utf-8"))
+        self.assertEqual((folder / "data" / "daftarchi.db").read_bytes(), b"legacy-shop")
+
+    def test_legacy_install_overlays_webakery_panel_zip(self):
+        webakery_zip = Path("/tmp/customer-1.1.93-app.zip")
+        if not webakery_zip.is_file():
+            urllib_mod = __import__("urllib.request")
+            urllib_mod.urlretrieve(
+                "https://webakery.ir/wp-content/uploads/daftarchi-releases/customer-1.1.93-app.zip",
+                webakery_zip,
+            )
+        folder = Path(tempfile.mkdtemp())
+        app_dir = folder / "app"
+        app_dir.mkdir()
+        (app_dir / "app.py").write_text('APP_VERSION = "1.1.56"\nold\n', encoding="utf-8")
+        (folder / "data").mkdir()
+        (folder / "data" / "daftarchi.db").write_bytes(b"shop-from-156")
+        blob = webakery_zip.read_bytes()
+        written = appmod.apply_panel_package(blob, app_dir)
+        self.assertGreater(len(written), 3)
+        text = (app_dir / "app.py").read_text(encoding="utf-8")
+        self.assertIn('APP_VERSION = "1.1.93"', text)
+        self.assertNotIn('APP_VERSION = "1.1.56"', text)
+        self.assertEqual((folder / "data" / "daftarchi.db").read_bytes(), b"shop-from-156")
+
     def test_remote_update_replaces_the_running_program(self):
         folder = Path(tempfile.mkdtemp())
         (folder / "app.py").write_text("old\n", encoding="utf-8")
@@ -1623,7 +1678,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.panel_root = original_root
             appmod.http_request = original_http
         self.assertEqual(response.status_code, 200, response.get_json())
-        self.assertIn("آپدیت شد", response.get_json()["message"])
+        self.assertIn("همین نصب", response.get_json()["message"])
         self.assertIn("9.9.9", (folder / "app.py").read_text(encoding="utf-8"))
         self.assertIn("self-update", (folder / "static" / "js" / "app.js").read_text(encoding="utf-8"))
         self.assertEqual((folder / "data" / "daftarchi.db").read_bytes(), b"shop")
@@ -3909,11 +3964,13 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("DEVNULL", source)
         self.assertIn("time.sleep(1.4)", source)
         self.assertIn("DAFTARCHI_JUST_UPDATED", source)
+        self.assertIn("DAFTARCHI_OPEN_BROWSER", source)
         script = Path(__file__).resolve().parents[1].joinpath("static/js/app.js").read_text(encoding="utf-8")
         self.assertIn("بررسی آپدیت", script)
         self.assertIn("آپدیت شدی", script)
         self.assertIn("window.close()", script)
         self.assertIn("reopenAfterUpdate", script)
+        self.assertIn("آپدیت روی همین نصب است", script)
         self.assertNotIn("ریست برنامه را بزنید", script)
         self.assertIn("daftarchi-updated", script)
         css = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")

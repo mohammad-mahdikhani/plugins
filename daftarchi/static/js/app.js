@@ -2103,6 +2103,7 @@ function updatesHtml() {
     : `<p>${info.reachable ? "همین نسخه آخر است." : esc(info.error || "ارتباط با سرور به‌روزرسانی برقرار نشد. می‌توانید فایل زیپ را دستی نصب کنید.")}</p>`;
   return `<div class="stack">
     <section class="card"><h2 class="section-title">به‌روزرسانی پنل و اپ</h2>
+      <p class="hint">آپدیت روی همین نصب است؛ فروش‌ها و تنظیمات داخل پوشه data نمی‌روند. نیازی به پوشه یا زیپ تازه نیست.</p>
       <p>نسخه این برنامه: <strong class="ltr">${esc(info.current || "")}</strong></p>
       ${info.channel ? `<p>کانال این مشتری: <strong class="ltr">${esc(info.channel)}</strong></p>` : ""}
       ${info.latest ? `<p>نسخه موجود: <strong class="ltr">${esc(info.latest)}</strong></p>` : ""}
