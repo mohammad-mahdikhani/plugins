@@ -4732,6 +4732,79 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(scanned.status_code, 200, scanned.get_json())
         self.assertEqual(scanned.get_json()["items"][0]["weight_grams"], "2.5")
 
+    def test_light_host_is_opt_in_and_keeps_lan_default(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertFalse(appmod.light_host_enabled())
+        self.assertEqual(appmod.server_thread_count(), appmod.SERVER_THREADS)
+        self.assertGreaterEqual(appmod.SERVER_THREADS, 8)
+        prev_bind = os.environ.get("DAFTARCHI_BIND")
+        os.environ.pop("DAFTARCHI_BIND", None)
+        try:
+            self.assertEqual(appmod.bind_host(), "0.0.0.0")
+        finally:
+            if prev_bind is not None:
+                os.environ["DAFTARCHI_BIND"] = prev_bind
+        self.assertEqual(appmod.sqlite_cache_size(), appmod.LAN_SQLITE_CACHE_KB)
+        lan_bat = (root / "deploy/Daftarchi-Customer/Start-Daftarchi.bat").read_text(encoding="utf-8")
+        lan_sh = (root / "deploy/Daftarchi-Customer/Start-Daftarchi.sh").read_text(encoding="utf-8")
+        self.assertNotIn("DAFTARCHI_LIGHT", lan_bat)
+        self.assertNotIn("DAFTARCHI_LIGHT", lan_sh)
+        self.assertIn("waitress", (root / "requirements.txt").read_text(encoding="utf-8"))
+        self.assertNotIn("gunicorn", (root / "requirements.txt").read_text(encoding="utf-8"))
+        health = self.client.get("/api/health").get_json()
+        self.assertEqual(health["name"], "دفترچی")
+        self.assertNotIn("host", health)
+        with appmod.connect() as conn:
+            journal = str(conn.execute("PRAGMA journal_mode").fetchone()[0]).lower()
+            self.assertEqual(journal, "wal")
+
+    def test_light_host_uses_one_worker_profile_and_wal(self):
+        root = Path(__file__).resolve().parents[1]
+        prev = {key: os.environ.get(key) for key in ("DAFTARCHI_LIGHT", "DAFTARCHI_BIND", "DAFTARCHI_THREADS")}
+        os.environ["DAFTARCHI_LIGHT"] = "1"
+        os.environ.pop("DAFTARCHI_BIND", None)
+        os.environ.pop("DAFTARCHI_THREADS", None)
+        try:
+            self.assertTrue(appmod.light_host_enabled())
+            self.assertEqual(appmod.server_thread_count(), 1)
+            self.assertEqual(appmod.bind_host(), "127.0.0.1")
+            self.assertEqual(appmod.sqlite_cache_size(), appmod.LIGHT_SQLITE_CACHE_KB)
+            health = self.client.get("/api/health").get_json()
+            self.assertEqual(health["host"], "light")
+            self.assertEqual(health["sqlite"], "wal")
+            self.assertEqual(health["threads"], 1)
+            with appmod.connect() as conn:
+                journal = str(conn.execute("PRAGMA journal_mode").fetchone()[0]).lower()
+                cache = conn.execute("PRAGMA cache_size").fetchone()[0]
+            self.assertEqual(journal, "wal")
+            self.assertEqual(int(cache), appmod.LIGHT_SQLITE_CACHE_KB)
+        finally:
+            for key, value in prev.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        gconf = (root / "deploy/light-host/gunicorn.conf.py").read_text(encoding="utf-8")
+        self.assertIn("workers = 1", gconf)
+        self.assertIn("threads = 1", gconf)
+        self.assertIn('worker_class = "sync"', gconf)
+        start = (root / "deploy/light-host/start-light.sh").read_text(encoding="utf-8")
+        self.assertIn("DAFTARCHI_LIGHT=1", start)
+        self.assertIn("gunicorn", start)
+        wsgi = (root / "wsgi.py").read_text(encoding="utf-8")
+        self.assertIn('setdefault("DAFTARCHI_LIGHT", "1")', wsgi)
+        self.assertIn("wsgi:application", start)
+        proxy = (root / "deploy/light-host/php-proxy.php").read_text(encoding="utf-8")
+        self.assertIn("127.0.0.1:8080", proxy)
+        self.assertIn("allow_remote", proxy)
+        self.assertNotIn("eval(", proxy)
+        self.assertIn("REQUEST_URI", proxy)
+        apache = (root / "deploy/light-host/apache-subdomain.conf").read_text(encoding="utf-8")
+        self.assertIn("pos.webakery.ir", apache)
+        self.assertIn("ProxyPass", apache)
+        self.assertIn("webakery.ir", apache)
+
 
 if __name__ == "__main__":
     unittest.main()

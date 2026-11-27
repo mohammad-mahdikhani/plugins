@@ -4,6 +4,15 @@
 
 این راهنما برای **نسخه مشتری** (`Daftarchi-Customer-setup.exe`) است؛ Owner محمد جداست.
 
+## دو مسیر موازی (LAN اصلی — هاست اختیاری)
+
+| مسیر | نقش |
+|------|-----|
+| **LAN مغازه (اصلی)** | PC سرور + مرورگر روی Wi‑Fi — پیش‌فرض نصب؛ این سند |
+| **هاست سبک (موازی)** | cPanel / VPS ضعیف؛ **جایگزین LAN نیست** |
+
+LAN با آمدن هاست شکسته نمی‌شود. استقرار هاست: [daftarchi-light-host.md](./daftarchi-light-host.md).
+
 ## چه چیزی می‌گیرید
 
 | حالت | چه دستگاهی لازم است | داده کجاست |
@@ -92,7 +101,7 @@
 برای دسترسی از راه دور امن، گزینه‌های رایج:
 
 - VPN به شبکهٔ مغازه، بعد همان آدرس LAN.
-- یا آینده: قرار دادن `app.py` پشت **nginx + HTTPS** روی هاست (یک دامنه ثابت برای کل تیم).
+- یا مسیر موازی هاست سبک: gunicorn یک worker پشت HTTPS روی ساب‌دامین (مثلاً `pos.webakery.ir`)؛ وردپرس `webakery.ir` سر جایش می‌ماند. جزئیات: [daftarchi-light-host.md](./daftarchi-light-host.md).
 
 هویت ورود بین نصب‌های مختلف می‌تواند با **Webakery** (`daftarchi-auth.php`) یکسان شود؛ **فایل حسابداری فروش** همچنان روی سرور همان فروشگاه می‌ماند.
 
@@ -125,6 +134,7 @@ Microsoft Store یا نصب جداگانهٔ Python لازم نیست.
 | موضوع | سند |
 |--------|-----|
 | جزئیات LAN و کارت ورود «سرور مرکزی» | [daftarchi-central-server.md](./daftarchi-central-server.md) |
+| هاست سبک (cPanel / VPS ضعیف، موازی) | [daftarchi-light-host.md](./daftarchi-light-host.md) |
 | چند حساب / Owner (فقط توسعه) | در مخزن پروژه — `daftarchi-unified-accounts.md` |
 
 ## جمع‌بندی برای مشتری

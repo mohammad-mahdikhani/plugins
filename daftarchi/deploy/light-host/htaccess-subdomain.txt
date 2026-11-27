@@ -1,0 +1,8 @@
+# Document root of the Daftarchi SUBDOMAIN (not WordPress public_html).
+# Rename to .htaccess next to php-proxy.php (saved as index.php).
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>

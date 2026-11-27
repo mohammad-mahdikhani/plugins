@@ -1,0 +1,26 @@
+[Unit]
+Description=Daftarchi light-host (Flask + SQLite, 1 gunicorn worker)
+After=network.target
+# Parallel to shop-PC LAN. Do not install this on the Windows till unless you mean to.
+
+[Service]
+Type=simple
+User=daftarchi
+Group=daftarchi
+WorkingDirectory=/opt/daftarchi
+Environment=DAFTARCHI_LIGHT=1
+Environment=DAFTARCHI_DATA=/opt/daftarchi/data
+Environment=DAFTARCHI_BIND=127.0.0.1
+Environment=PORT=8080
+Environment=DAFTARCHI_OPEN_BROWSER=0
+Environment=DAFTARCHI_LAN_CORS=0
+Environment=DAFTARCHI_COOKIE_SECURE=1
+# ~one CPython + Flask on 512MB–1GB. Raise only if this box is dedicated and idle RAM is high.
+MemoryMax=280M
+TasksMax=64
+Restart=on-failure
+RestartSec=4
+ExecStart=/opt/daftarchi/.venv/bin/gunicorn --config /opt/daftarchi/deploy/light-host/gunicorn.conf.py wsgi:application
+
+[Install]
+WantedBy=multi-user.target

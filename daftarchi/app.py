@@ -137,6 +137,57 @@ WOO_SYNC_DELAY = 0.35
 WOO_SYNC_URGENT = 0.12
 SERVER_THREADS = 16
 SERVER_CHANNEL_TIMEOUT = 180
+LIGHT_SQLITE_CACHE_KB = -2000
+LAN_SQLITE_CACHE_KB = -8000
+
+
+def env_flag(name: str, default: str = "0") -> bool:
+    return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
+
+
+def light_host_enabled() -> bool:
+    """Opt-in weak shared/VPS profile. Shop-PC LAN (Waitress, 16 threads) stays the default."""
+    return env_flag("DAFTARCHI_LIGHT")
+
+
+def server_thread_count() -> int:
+    raw = str(os.environ.get("DAFTARCHI_THREADS") or "").strip()
+    if raw.isdigit():
+        return max(1, int(raw))
+    return 1 if light_host_enabled() else SERVER_THREADS
+
+
+def bind_host() -> str:
+    raw = str(os.environ.get("DAFTARCHI_BIND") or "").strip()
+    if raw:
+        return raw
+    return "127.0.0.1" if light_host_enabled() else "0.0.0.0"
+
+
+def sqlite_cache_size() -> int:
+    raw = str(os.environ.get("DAFTARCHI_SQLITE_CACHE") or "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    return LIGHT_SQLITE_CACHE_KB if light_host_enabled() else LAN_SQLITE_CACHE_KB
+
+
+def apply_light_host(flask_app=None):
+    """Tighten cookies and trust one reverse-proxy hop. Call only when DAFTARCHI_LIGHT=1."""
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    flask_app = flask_app or app
+    if not light_host_enabled():
+        return flask_app
+    flask_app.config["SESSION_COOKIE_SECURE"] = env_flag("DAFTARCHI_COOKIE_SECURE", "1")
+    flask_app.config["PREFERRED_URL_SCHEME"] = "https"
+    if not isinstance(flask_app.wsgi_app, ProxyFix):
+        flask_app.wsgi_app = ProxyFix(flask_app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    return flask_app
+
+
 POS_PROVIDERS = {"manual", "saman", "behpardakht", "parsian", "irankish", "sepehr", "asanpardakht", "pardakhtnovin"}
 GATEWAYS = {"zarinpal", "idpay", "zibal"}
 UI_THEMES = ("light", "dark", "sand", "forest")
@@ -415,13 +466,13 @@ def license_period_end(start: datetime, plan: str) -> datetime:
 
 @contextmanager
 def connect():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=3000")
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA cache_size=-8000")
+    conn.execute(f"PRAGMA cache_size={int(sqlite_cache_size())}")
     try:
         yield conn
         conn.commit()
@@ -5200,7 +5251,10 @@ def uploaded(name: str):
 
 @app.get("/api/health")
 def health():
-    return jsonify(ok=True, name="دفترچی", version=APP_VERSION)
+    body = {"ok": True, "name": "دفترچی", "version": APP_VERSION}
+    if light_host_enabled():
+        body.update(host="light", sqlite="wal", threads=server_thread_count())
+    return jsonify(body)
 
 
 @app.post("/api/desktop-shortcut")
@@ -10502,15 +10556,22 @@ def main():
     quiet_stdio()
     hide_console()
     port = int(os.environ.get("PORT", "8080"))
-    host = os.environ.get("DAFTARCHI_BIND", "0.0.0.0")
+    host = bind_host()
+    light = light_host_enabled()
+    if light:
+        apply_light_host(app)
     print(f"Daftarchi: http://127.0.0.1:{port}")
-    lan = lan_advertise_url(port)
-    if lan:
-        print(f"Daftarchi LAN: {lan}")
-    threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
+    if light:
+        print("Daftarchi light-host: 1 worker, SQLite WAL, bind " + host)
+    else:
+        lan = lan_advertise_url(port)
+        if lan:
+            print(f"Daftarchi LAN: {lan}")
+        threading.Thread(target=ensure_windows_desktop_icon, daemon=True).start()
     start_backup_loop()
     fresh = os.environ.pop("DAFTARCHI_JUST_UPDATED", "").strip().lower() in ("1", "true", "yes", "on")
-    if os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on"):
+    open_browser = os.environ.get("DAFTARCHI_OPEN_BROWSER", "").strip().lower() in ("1", "true", "yes", "on")
+    if open_browser and not light:
         def _open_browser():
             for _ in range(40):
                 try:
@@ -10524,6 +10585,8 @@ def main():
                 target += "?updated=1"
             webbrowser.open(target)
         threading.Thread(target=_open_browser, daemon=True).start()
+    threads = server_thread_count()
+    channel_timeout = 60 if light else SERVER_CHANNEL_TIMEOUT
     deadline = time.time() + 20
     while True:
         try:
@@ -10532,12 +10595,12 @@ def main():
                 app,
                 host=host,
                 port=port,
-                threads=SERVER_THREADS,
-                channel_timeout=SERVER_CHANNEL_TIMEOUT,
+                threads=threads,
+                channel_timeout=channel_timeout,
             )
             return
         except ImportError:
-            app.run(host=host, port=port, debug=False, threaded=True)
+            app.run(host=host, port=port, debug=False, threaded=not light)
             return
         except OSError:
             if time.time() > deadline:
