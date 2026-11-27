@@ -1738,7 +1738,7 @@ function accessCard(access) {
   if (access.active) {
     return `<section class="card access-card"><span>استفاده رایگان</span><h2>۷ روز رایگان فعال است</h2><p class="days">${num(access.days_left)} روز مانده</p><p class="hint">تا ${esc(access.ends_jalali)}. هر وقت خواستید روی یک طرح بزنید.</p></section>`;
   }
-  return `<section class="card access-card"><span>مهلت رایگان</span><h2>۷ روز رایگان تمام شده</h2><p class="hint">یکی از نسخه‌های ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله یا پنجاه‌ساله را بخرید. صفحه زیبال باز می‌شود.</p></section>`;
+  return `<section class="card access-card"><span>مهلت رایگان</span><h2>۷ روز رایگان تمام شده</h2><p class="hint">با «ادامه روزانه» روز به روز تمدید کنید، یا یکی از نسخه‌های ماهانه تا پنجاه‌ساله بخرید. صفحه زیبال باز می‌شود.</p></section>`;
 }
 function shopFeatureList(items) {
   return `<ul class="shop-plan-features">${items.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>`;
@@ -1763,6 +1763,7 @@ function licensesHtml() {
   const packList = pro.packs || [];
   const packs = Object.fromEntries(packList.map((pack) => [pack.id, pack]));
   const monthly = byId["1m"]?.price || 0;
+  const daily = byId["1d"];
   const echo = byId[period];
   const plus = byId["50y"];
   const packId = packList.some((pack) => pack.id === state.proPackId) ? state.proPackId : (packList[1]?.id || packList[0]?.id || "pro50");
@@ -1770,6 +1771,19 @@ function licensesHtml() {
   const echoMonths = echoPeriods.find(([id]) => id === period)?.[2] || 3;
   const echoOff = periodOff(monthly, echo?.price, echoMonths);
   const periods = echoPeriods.map(([id, label, months]) => [id, label, id === "1m" ? 0 : periodOff(monthly, byId[id]?.price, months)]);
+  const dailyCard = daily ? `<article class="shop-plan daily-plan">
+    <h3>ادامه روزانه</h3>
+    <p class="shop-plan-kicker">بعد از ۷ روز رایگان یا تمدید کوتاه</p>
+    ${daily.discount_percent ? `<del class="num">${money(daily.list_price)}</del>` : ""}
+    <p class="shop-plan-price"><strong class="num">${money(daily.price)}</strong><span>برای یک روز دیگر</span></p>
+    <button type="button" class="btn primary block" data-act="pick-plan" data-plan="1d">پرداخت روزانه</button>
+    ${shopFeatureList([
+      "همان امکانات اکو تا پایان همان روز",
+      "چند بار پشت‌سرهم = چند روز اضافه",
+      "برای امتحان کوتاه بعد از مهلت رایگان",
+      "طرح‌های ماهانه و بالاتر زیر همین صفحه‌اند",
+    ])}
+  </article>` : "";
   const echoCard = `<article class="shop-plan">
     <h3>اکو</h3>
     <p class="shop-plan-kicker">فروشگاه حضوری</p>
@@ -1820,12 +1834,12 @@ function licensesHtml() {
     <section class="shop-store">
       <h2 class="shop-store-title">خرید و ارتقا بسته</h2>
       <div class="seg shop-periods">${periods.map(([id, label, off]) => `<button type="button" class="${period === id ? "on" : ""}" data-act="pick-period" data-period="${id}">${label}${off ? `<small>${num(off)}٪ تخفیف</small>` : ""}</button>`).join("")}</div>
-      <div class="shop-plans">${echoCard}${plusCard}${proCard}</div>
-      <p class="hint">نسخه‌های لایسنس فروشگاه: ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله و پنجاه‌ساله. بسته پرو جداست و سه اندازه توکن دارد. امکانات اکو و پلاس و پرو فرق می‌کند. پرداخت در زیبال وب‌بیکری است و وارد صندوق فروشگاه نمی‌شود.</p>
+      <div class="shop-plans">${dailyCard}${echoCard}${plusCard}${proCard}</div>
+      <p class="hint">ادامه روزانه ۱۵۰ هزار تومان برای هر روز است. نسخه‌های لایسنس فروشگاه: ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله و پنجاه‌ساله. بسته پرو جداست. پرداخت در زیبال وب‌بیکری است.</p>
     </section>
       <details><summary>قیمت‌ها و ظرفیت پنجاه‌ساله</summary><form data-act="save-prices"><div class="grid-2">
-        ${[["price_1m", "یک ماهه"], ["price_3m", "سه ماهه"], ["price_6m", "شش ماهه"], ["price_12m", "یک ساله"], ["price_50y", "پنجاه ساله"], ["cap_50y", "ظرفیت پنجاه ساله"], ["price_pro10", "پرو ۱۰ هزار توکن"], ["price_pro50", "پرو ۵۰ هزار توکن"], ["price_pro200", "پرو ۲۰۰ هزار توکن"]].map(([key, label]) => {
-          const plan = data.plans.find((item) => item.id === { price_1m: "1m", price_3m: "3m", price_6m: "6m", price_12m: "12m", price_50y: "50y" }[key]);
+        ${[["price_1d", "ادامه روزانه"], ["price_1m", "یک ماهه"], ["price_3m", "سه ماهه"], ["price_6m", "شش ماهه"], ["price_12m", "یک ساله"], ["price_50y", "پنجاه ساله"], ["cap_50y", "ظرفیت پنجاه ساله"], ["price_pro10", "پرو ۱۰ هزار توکن"], ["price_pro50", "پرو ۵۰ هزار توکن"], ["price_pro200", "پرو ۲۰۰ هزار توکن"]].map(([key, label]) => {
+          const plan = data.plans.find((item) => item.id === { price_1d: "1d", price_1m: "1m", price_3m: "3m", price_6m: "6m", price_12m: "12m", price_50y: "50y" }[key]);
           const pack = (data.pro?.packs || []).find((item) => item.id === { price_pro10: "pro10", price_pro50: "pro50", price_pro200: "pro200" }[key]);
           const value = key === "cap_50y" ? (data.plans.find((item) => item.id === "50y")?.cap ?? 50) : (plan?.list_price ?? plan?.price ?? pack?.price ?? "");
           return `<div class="field"><label>${label}</label><input name="${key}" value="${value}"></div>`;
@@ -2212,7 +2226,7 @@ function modalHtml() {
 
 function pageHtml() {
   if (state.access && !state.access.active && state.page !== "licenses" && state.page !== "settings" && state.page !== "updates") {
-    return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا خرید یکی از نسخه‌ها بسته است. ماهانه، سه‌ماهه، شش‌ماهه، یک‌ساله و پنجاه‌ساله روی صفحه لایسنس است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">دیدن نسخه‌ها</button></section>`;
+    return `<section class="card access-card"><h2>مهلت ۷ روز رایگان تمام شده</h2><p class="hint">فروش تا تمدید بسته است. روی لایسنس، «ادامه روزانه» (۱۵۰ هزار تومان برای هر روز) یا طرح‌های ماهانه تا پنجاه‌ساله است. اطلاعات فروشگاه سر جایش می‌ماند.</p><button type="button" class="btn primary" data-act="nav" data-page="licenses">دیدن نسخه‌ها</button></section>`;
   }
   const pages = {
     dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml, invoices: invoicesHtml, calendar: calendarHtml,

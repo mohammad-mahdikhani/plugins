@@ -51,6 +51,7 @@ JMONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرد
 JWEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 PLANS = {
+    "1d": ("ادامه روزانه", 0, "price_1d"),
     "1m": ("یک ماهه", 1, "price_1m"),
     "3m": ("سه ماهه", 3, "price_3m"),
     "6m": ("شش ماهه", 6, "price_6m"),
@@ -96,6 +97,7 @@ DEFAULT_SETTINGS = {
     "low_stock": "5",
     "smtp_user": "",
     "smtp_password": "",
+    "price_1d": "150000",
     "price_1m": "6000000",
     "price_3m": "8000000",
     "price_6m": "12000000",
@@ -134,7 +136,7 @@ UI_THEMES = ("light", "dark", "sand", "forest")
 WEBAKERY_URL = "https://webakery.ir"
 SANDBOX_MERCHANT = "00000000-0000-0000-0000-000000000000"
 ZIBAL_LICENSE_MERCHANT = "6a331116da557b902563c32f"
-APP_VERSION = "1.1.69"
+APP_VERSION = "1.1.94"
 STUDIO_UPDATE_MANIFEST = (
     "https://github.com/mohammad-mahdikhani/plugins/raw/"
     "cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/studio-version.json"
@@ -317,6 +319,41 @@ def add_months(dt: datetime, months: int) -> datetime:
     month = index % 12 + 1
     day = min(dt.day, calendar.monthrange(year, month)[1])
     return dt.replace(year=year, month=month, day=day)
+
+
+def parse_local_dt(value: str) -> datetime:
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=TEHRAN)
+    return dt
+
+
+def license_stack_start(conn, moment: datetime | None = None) -> datetime:
+    moment = (moment or now_dt()).replace(microsecond=0)
+    cursor = moment
+    paid = conn.execute(
+        """SELECT ends_at FROM licenses
+           WHERE status='paid' AND plan!='7d' AND ends_at>?
+           ORDER BY ends_at DESC LIMIT 1""",
+        (iso(moment),),
+    ).fetchone()
+    if paid:
+        end = parse_local_dt(paid["ends_at"])
+        if end > cursor:
+            cursor = end
+    trial_end = str(get_settings(conn).get("trial_ends_at") or "").strip()
+    if trial_end:
+        end = parse_local_dt(trial_end)
+        if end > cursor:
+            cursor = end
+    return cursor
+
+
+def license_period_end(start: datetime, plan: str) -> datetime:
+    if plan == "1d":
+        return start + timedelta(days=1)
+    months = PLANS[plan][1]
+    return add_months(start, months)
 
 
 @contextmanager
@@ -3402,7 +3439,11 @@ def ensure_access(conn) -> dict:
 def require_access(conn) -> dict:
     access = ensure_access(conn)
     if not access["active"]:
-        raise AppError("مهلت ۷ روز رایگان تمام شده. برای ادامه، از بخش لایسنس اپ یک طرح بخرید.", 402)
+        raise AppError(
+            "مهلت ۷ روز رایگان تمام شده. برای ادامه، از بخش لایسنس «ادامه روزانه» "
+            f"({setting_int(get_settings(conn), 'price_1d'):,} تومان برای هر روز) یا یک طرح ماهانه و بالاتر بخرید.",
+            402,
+        )
     return access
 
 
@@ -9077,8 +9118,8 @@ def mark_license_paid(conn, license_id: int, user_id: int, ref: str):
     if row["status"] != "pending":
         raise AppError("این لایسنس قابل تأیید نیست")
     title, months, _price_key = PLANS[row["plan"]]
-    start = now_dt().replace(microsecond=0)
-    end = add_months(start, months)
+    start = license_stack_start(conn)
+    end = license_period_end(start, row["plan"])
     updated = conn.execute(
         "UPDATE licenses SET status='paid', gateway_ref=?, starts_at=?, ends_at=? WHERE id=? AND status='pending'",
         (ref, iso(start), iso(end), license_id),
@@ -9105,7 +9146,11 @@ def license_price_quote(settings, plan, as_of=None) -> dict:
     discount = list_price // 2 if campaign["active"] else 0
     return {"list_price": list_price, "discount": discount, "price": list_price - discount,
             "discount_percent": 50 if campaign["active"] else 0,
-            "description": "شخصی‌سازی اپ متناسب با نیازمندی‌های کسب‌وکار تا ۵۰ سال" if plan == "50y" else ""}
+            "description": (
+                "شخصی‌سازی اپ متناسب با نیازمندی‌های کسب‌وکار تا ۵۰ سال"
+                if plan == "50y"
+                else ("هر روز یک روز به مهلت استفاده اضافه می‌شود. می‌توانید چند بار پشت‌سرهم بخرید." if plan == "1d" else "")
+            )}
 
 
 @app.get("/api/licenses")
@@ -9133,7 +9178,11 @@ def list_licenses():
 def update_license_prices():
     require_admin()
     payload = body_json()
-    allowed = {key: payload[key] for key in ("price_1m", "price_3m", "price_6m", "price_12m", "price_50y", "cap_50y") if key in payload}
+    allowed = {
+        key: payload[key]
+        for key in ("price_1d", "price_1m", "price_3m", "price_6m", "price_12m", "price_50y", "cap_50y")
+        if key in payload
+    }
     with connect() as conn:
         save_settings(conn, allowed)
     return jsonify(ok=True)
@@ -9170,8 +9219,8 @@ def sell_license():
             raise AppError("قیمت طرح تغییر کرده است. قیمت تازه را ببینید و دوباره طرح را انتخاب کنید.", 409)
         if method == "gateway" and payable < 1000:
             raise AppError("حداقل مبلغ درگاه ۱۰۰۰ تومان است")
-        start = now_dt().replace(microsecond=0)
-        end = add_months(start, months)
+        start = license_stack_start(conn)
+        end = license_period_end(start, plan)
         status = "pending" if method == "gateway" else "paid"
         cur = conn.execute(
             """INSERT INTO licenses (plan, list_price, discount, payable, buyer_name, phone, starts_at, ends_at,

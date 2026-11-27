@@ -509,9 +509,14 @@ class DaftarchiTest(unittest.TestCase):
             self.assertNotIn("DAFTARCHI_PRESET", script)
             self.assertNotIn("CHANNEL=rst", script)
             self.assertNotIn("رستوران", script)
-            self.assertIn('APP_VERSION = "1.1.13"', app_text)
+            self.assertIn(f'APP_VERSION = "{appmod.APP_VERSION}"', app_text)
             self.assertFalse(any(name.endswith("preset.json") for name in names))
             self.assertFalse(any("studio-unlock" in name for name in names))
+        setup_exe = deploy / "Daftarchi-Customer-setup.exe"
+        self.assertTrue(setup_exe.is_file(), setup_exe)
+        blob = setup_exe.read_bytes()
+        self.assertEqual(blob[:2], b"MZ")
+        self.assertGreater(len(blob), 8_000_000)
         with zipfile.ZipFile(deploy / "Daftarchi-Customer.zip") as archive:
             self.assertIn("Daftarchi/python/python.exe", archive.namelist())
         with zipfile.ZipFile(deploy / "Daftarchi-Customer-Mac.zip") as archive:
@@ -1825,8 +1830,39 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("DAFTARCHI_PRESET", bat)
         self.assertIn("DAFTARCHI_PRESET", sh)
         self.assertNotIn("DAFTARCHI_UNLOCK", bat)
-        self.assertIn('APP_VERSION = "1.1.69"', app_text)
+        self.assertIn(f'APP_VERSION = "{appmod.APP_VERSION}"', app_text)
         self.assertIn("به مشتری ندهید", readme)
+
+    def test_daily_license_extends_after_trial(self):
+        import sqlite3
+        past = (appmod.now_dt() - appmod.timedelta(days=1)).isoformat(timespec="seconds")
+        db = sqlite3.connect(Path(os.environ["DAFTARCHI_DATA"]) / "daftarchi.db")
+        db.execute("UPDATE settings SET value=? WHERE key='trial_ends_at'", (past,))
+        db.commit()
+        db.close()
+        product = self.add_product(barcode="daily-trial")
+        self.open_register(0)
+        blocked = self.client.post("/api/sales", json={
+            "items": [{"product_id": product["id"], "qty": 1}], "payment_method": "cash",
+        })
+        self.assertEqual(blocked.status_code, 402)
+        plans = {row["id"]: row for row in self.client.get("/api/licenses").get_json()["plans"]}
+        self.assertEqual(plans["1d"]["price"], 150000)
+        first = self.client.post("/api/licenses", json={
+            "plan": "1d", "buyer_name": "فروشگاه روزانه", "phone": "09120003333", "payment_method": "cash",
+        })
+        self.assertEqual(first.status_code, 200, first.get_json())
+        access = self.client.get("/api/auth/me").get_json()["access"]
+        self.assertEqual(access["mode"], "paid")
+        self.assertTrue(access["active"])
+        self.assertEqual(access["title"], "ادامه روزانه")
+        self.assertGreaterEqual(access["days_left"], 1)
+        second = self.client.post("/api/licenses", json={
+            "plan": "1d", "buyer_name": "فروشگاه روزانه", "phone": "09120003333", "payment_method": "cash",
+        })
+        self.assertEqual(second.status_code, 200, second.get_json())
+        again = self.client.get("/api/auth/me").get_json()["access"]
+        self.assertGreaterEqual(again["days_left"], access["days_left"])
 
     def test_trial_lasts_seven_days_then_blocks_sales(self):
         access = self.client.get("/api/auth/me").get_json()["access"]
@@ -3938,7 +3974,7 @@ class DaftarchiTest(unittest.TestCase):
             appmod.http_request = original
 
     def test_installer_overlays_existing_install(self):
-        self.assertEqual(appmod.APP_VERSION, "1.1.69")
+        self.assertEqual(appmod.APP_VERSION, "1.1.94")
         self.assertIn("--app=", Path("/workspace/windows/launcher.py").read_text(encoding="utf-8"))
         bat = Path("/workspace/windows/دفترچی.bat").read_text(encoding="utf-8")
         self.assertIn("pythonw.exe", bat)
