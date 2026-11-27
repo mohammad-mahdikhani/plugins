@@ -5,6 +5,7 @@ const PRIMARY = [
   ["register", "صندوق"],
 ];
 const MORE = [
+  ["hub", "پیشخوان مرکزی", "admin"],
   ["inventory", "انبار", "stock"],
   ["checks", "چک", "admin"],
   ["accounts", "حسابداری", "admin"],
@@ -177,6 +178,7 @@ const state = {
   tourDone: false,
   tourOn: false,
   tourStep: 0,
+  centralHub: false,
   settings: null,
   users: [],
   importResult: null,
@@ -567,6 +569,9 @@ const loaders = {
     state.today = data.today || state.today;
     state.calYear = data.year;
     state.calMonth = data.month;
+  },
+  async hub() {
+    state.hub = await api("/api/hub");
   },
 };
 
@@ -1025,11 +1030,18 @@ function receiptHtml(modal) {
   <div class="row-actions"><button type="button" class="btn" data-act="receipt-layout" data-layout="receipt" aria-pressed="${compact}">رسید کوتاه</button><button type="button" class="btn" data-act="receipt-layout" data-layout="invoice" aria-pressed="${!compact}">فاکتور کامل</button><button type="button" class="btn primary" data-act="print" title="یک نسخه، به اندازه کالاهای همین فروش">چاپ یک نسخه</button><button type="button" class="btn" data-act="printer-settings">تنظیم ابعاد چاپ</button><button type="button" class="btn quiet" data-act="clear-print-memory">پاک کردن حافظه چاپ</button>${sale.moadian_status === "success" ? "" : `<button type="button" class="btn" data-act="moadian-send" data-id="${sale.id}">ارسال به سامانه مودیان</button>`}${sale.moadian_reference ? `<button type="button" class="btn" data-act="moadian-inquiry" data-id="${sale.id}">استعلام مودیان</button>` : ""}</div>`;
 }
 function homePage() {
+  if (state.centralHub && isAdmin()) return "hub";
   if (state.shopMode === "online") return "settings";
   if (state.shopMode === "offline" || state.shopMode === "hybrid") return "pos";
   return "dashboard";
 }
+function navItems() {
+  if (!state.centralHub || !isAdmin()) return NAV;
+  const rest = NAV.filter((row) => row[0] !== "hub");
+  return [["hub", "فروشگاه‌ها", "admin"], ...rest];
+}
 function modeAllows(page) {
+  if (page === "hub") return isAdmin();
   if (page === "licenses") return true;
   if (page === "siteorders") return state.shopMode !== "offline" && state.user?.role !== "stock";
   if (page === "checks" && !allowCredit()) return false;
@@ -1225,7 +1237,7 @@ function webShell() {
         <div class="brand"><div class="mark">${brandMark()}</div><strong>دفترچی</strong></div>
         <div class="top-actions" id="app-status"></div>
       </div>
-      <nav class="tabbar" aria-label="بخش‌ها">${visibleNav(NAV).map(tabButton).join("")}</nav>
+      <nav class="tabbar" aria-label="بخش‌ها">${visibleNav(navItems()).map(tabButton).join("")}</nav>
     </header>
     <div id="banner-host"></div>
     <main class="stage" id="view"></main>
@@ -2095,6 +2107,59 @@ function field(key, label, type = "text", placeholder = "", tour = "") {
   const mark = tour ? ` data-tour="${tour}"` : "";
   return `<div class="field"${mark}><label>${label}</label><input name="${key}" type="${type}" value="${esc(state.settings[key] || "")}"${hold} ${type === "text" && /url|host|phone|sender|key|user|merchant|callback|chat/.test(key) ? `class="ltr"` : ""}></div>`;
 }
+const ROLE_LABEL = { admin: "مدیر", cashier: "صندوق", stock: "انبار" };
+function hubUnifiedLink() {
+  const target = savedServerUrl() || currentOrigin();
+  return `${target.replace(/\/+$/, "")}/`;
+}
+function hubHtml() {
+  const hub = state.hub || {};
+  const shops = hub.shops || [];
+  const users = hub.users || [];
+  const current = String(hub.site_id || "");
+  const link = hubUnifiedLink();
+  const cards = shops.map((row, index) => {
+    const active = row.site_id === current || row.id === current;
+    const url = row.url || "";
+    const action = active
+      ? `<button type="button" class="btn primary block mode-pick" data-act="nav" data-page="pos"><strong>حسابداری این فروشگاه</strong><span>همین سرور — بدون کپی فایل</span></button>`
+      : url
+        ? `<button type="button" class="btn primary block mode-pick" data-act="open-shop" data-url="${esc(url)}" data-site="${esc(row.site_id || "")}"><strong>باز کردن</strong><span class="ltr">${esc(url)}</span></button>`
+        : `<p class="hint">آدرس سرور LAN را پایین ذخیره کنید؛ بعد با همان اکانت فروشگاه وارد می‌شوید.</p>`;
+    return `<article class="hub-shop-card ${active ? "hub-shop-active" : ""}">
+      <h3 class="section-title">${esc(row.label)} ${active ? '<span class="pill">اینجا</span>' : ""}</h3>
+      <p class="hint ltr">${esc(row.site_id || row.id || "")}</p>
+      ${action}
+      <input type="hidden" data-hub-field="label" data-hub-index="${index}" value="${esc(row.label)}">
+      <input type="hidden" data-hub-field="site_id" data-hub-index="${index}" value="${esc(row.site_id || "")}">
+      <input type="hidden" data-hub-field="note" data-hub-index="${index}" value="${esc(row.note || "")}">
+    </article>`;
+  }).join("");
+  const urlFields = shops.map((row, index) => {
+    const url = row.url || "";
+    return `<div class="field"><label>${esc(row.label)} — آدرس سرور</label><input class="ltr" data-hub-field="url" data-hub-index="${index}" value="${esc(url)}" placeholder="http://192.168.1.10:8080"></div>`;
+  }).join("");
+  const userRows = users.map((row) => `<tr><td>${esc(row.name)}</td><td class="ltr">${esc(row.phone)}</td><td>${esc(ROLE_LABEL[row.role] || row.role)}</td></tr>`).join("");
+  return `<div class="stack">
+    <section class="card hub-hero">
+      <h2 class="section-title">یک لینک، همه فروشگاه‌ها</h2>
+      <p class="hint">مثل یک فایل مشترک: این آدرس را bookmark کنید، از موبایل یا هر PC با همان اکانت وارد شوید، فروشگاه را انتخاب کنید. داده روی سرور همان فروشگاه می‌ماند — <strong>بدون کپی پوشه data</strong>.</p>
+      <p class="hub-link-line"><strong class="ltr" id="hub-unified-link">${esc(link)}</strong>
+        <button type="button" class="btn" data-act="copy-hub-link">کپی لینک</button></p>
+    </section>
+    <section class="card"><div class="mode-grid hub-shop-grid">${cards || `<p class="empty">فروشگاهی تعریف نشده</p>`}</div></section>
+    <section class="card"><h2 class="section-title">آدرس سرور هر فروشگاه (LAN)</h2>
+      <p class="hint">اشرافی و پاکان اگر روی PC جدا هستند، فقط آدرس مرورگر همان نصب را بزنید.</p>
+      ${urlFields}
+      <div class="row-actions"><button type="button" class="btn primary" data-act="save-hub-shops">ذخیره</button></div>
+    </section>
+    <section class="card"><h2 class="section-title">کاربران همین سرور</h2>
+      <table><thead><tr><th>نام</th><th>موبایل</th><th>نقش</th></tr></thead><tbody>
+        ${userRows || `<tr><td colspan="3">—</td></tr>`}
+      </tbody></table>
+    </section>
+  </div>`;
+}
 function settingsHtml() {
   const s = state.settings;
   if (!s) return "";
@@ -2325,7 +2390,7 @@ function pageHtml() {
   const pages = {
     dashboard: dashboardHtml, pos: posHtml, products: productsHtml, inventory: inventoryHtml, checks: checksHtml, invoices: invoicesHtml, calendar: calendarHtml,
     accounts: accountsHtml, register: registerHtml, licenses: licensesHtml, customers: customersHtml,
-    sms: smsHtml, settings: settingsHtml, updates: updatesHtml, siteorders: siteOrdersHtml,
+    sms: smsHtml, hub: hubHtml, settings: settingsHtml, updates: updatesHtml, siteorders: siteOrdersHtml,
   };
   const draw = pages[state.page];
   return draw ? draw() : "";
@@ -3137,6 +3202,44 @@ async function onClick(event) {
     render();
     return;
   }
+  if (act === "open-shop") {
+    const url = normalizeServerUrl(el.dataset.url || "");
+    if (!url) { toast("آدرس سرور خالی است", { error: true }); return; }
+    const site = el.dataset.site || "";
+    if (site) sessionStorage.setItem("daftarchi_shop_target", site);
+    localStorage.setItem(SERVER_STORAGE_KEY, url);
+    window.location.replace(`${url}/`);
+    return;
+  }
+  if (act === "copy-hub-link") {
+    const text = hubUnifiedLink();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("لینک کپی شد");
+    } catch {
+      toast(text);
+    }
+    return;
+  }
+  if (act === "save-hub-shops") {
+    await guard(async () => {
+      const shops = (state.hub?.shops || []).map((row, index) => {
+        const pick = (field) => document.querySelector(`[data-hub-field="${field}"][data-hub-index="${index}"]`)?.value;
+        return {
+          id: row.id,
+          label: pick("label") || row.label,
+          site_id: pick("site_id") || row.site_id,
+          url: pick("url") || "",
+          note: pick("note") || "",
+        };
+      });
+      const saved = await api("/api/hub/shops", { method: "PUT", body: { shops } });
+      state.hub = { ...(state.hub || {}), shops: saved.shops || shops };
+      toast("آدرس فروشگاه‌ها ذخیره شد");
+      render();
+    });
+    return;
+  }
   if (act === "pick-theme") {
     await guard(async () => {
       const id = applyTheme(el.dataset.theme);
@@ -3839,6 +3942,7 @@ if (redirectToSavedServer()) {
     return;
   }
   state.user = me.user;
+  state.centralHub = Boolean(me.central_hub);
   state.mustChange = me.must_change_password;
   state.initialPassword = me.initial_password || "";
   state.access = me.access || null;

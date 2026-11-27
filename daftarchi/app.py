@@ -124,7 +124,14 @@ DEFAULT_SETTINGS = {
     "ui_theme": "light",
     "backup_auto": "1",
     "allow_credit": "1",
+    "central_hub": "0",
+    "shop_directory": "",
 }
+CENTRAL_HUB_DEFAULT_SHOPS = [
+    {"id": "owner", "label": "دفترچی محمد", "site_id": "owner", "url": "", "note": "همین سرور Owner"},
+    {"id": "ashrafi", "label": "عطر اشرافی", "site_id": "ashrafi", "url": "", "note": "آدرس LAN سرور اشرافی، مثال http://192.168.1.20:8080"},
+    {"id": "pakan", "label": "فروشگاه پاکان", "site_id": "pakan", "url": "", "note": "آدرس LAN سرور پاکان"},
+]
 PAYMENT_PRODUCT_SKU = "__daftarchi_pay__"
 WOO_SYNC_DELAY = 0.35
 WOO_SYNC_URGENT = 0.12
@@ -4820,6 +4827,91 @@ def seed_initial_admin_from_preset(conn, payload: dict) -> None:
         log.exception("owner cloud register")
 
 
+def normalize_shop_url(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if not re.match(r"^https?://", text, re.I):
+        text = f"http://{text}"
+    try:
+        parts = urllib.parse.urlsplit(text)
+        if not parts.netloc:
+            return ""
+        return f"{parts.scheme.lower()}://{parts.netloc}"
+    except ValueError:
+        return ""
+
+
+def shop_directory_list(conn) -> list[dict]:
+    raw = str(get_settings(conn).get("shop_directory") or "").strip()
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, list) and data:
+                return [row for row in data if isinstance(row, dict)]
+        except json.JSONDecodeError:
+            log.warning("shop_directory invalid json")
+    settings = get_settings(conn)
+    site = str(settings.get("site_id") or "").strip()
+    if site:
+        return [
+            {
+                "id": site,
+                "label": settings.get("shop_name") or site,
+                "site_id": site,
+                "url": "",
+                "note": "همین نصب",
+            }
+        ]
+    return []
+
+
+def shop_directory_save(conn, items: list) -> list[dict]:
+    cleaned: list[dict] = []
+    for index, row in enumerate(items[:40]):
+        if not isinstance(row, dict):
+            continue
+        label = clean_text(row.get("label"), "نام فروشگاه", 80, required=True)
+        site_id = clean_text(row.get("site_id") or row.get("id") or "", "site", 40) or ""
+        sid = clean_text(row.get("id") or site_id or f"shop-{index + 1}", "id", 40)
+        cleaned.append(
+            {
+                "id": sid,
+                "label": label,
+                "site_id": site_id,
+                "url": normalize_shop_url(row.get("url")),
+                "note": clean_text(row.get("note") or "", "یادداشت", 200) or "",
+            }
+        )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('shop_directory', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (json.dumps(cleaned, ensure_ascii=False),),
+    )
+    return cleaned
+
+
+def ensure_central_hub_shops(conn, payload: dict) -> None:
+    if str(payload.get("site_id") or "").strip() != "owner":
+        return
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('central_hub', '1') "
+        "ON CONFLICT(key) DO UPDATE SET value='1'",
+    )
+    row = conn.execute("SELECT value FROM settings WHERE key='shop_directory'").fetchone()
+    if row and str(row["value"] or "").strip():
+        return
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('shop_directory', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (json.dumps(CENTRAL_HUB_DEFAULT_SHOPS, ensure_ascii=False),),
+    )
+
+
+def central_hub_active(settings: dict) -> bool:
+    return str(settings.get("central_hub") or "").strip() == "1"
+
+
 def ensure_owner_shop_setup(conn, payload: dict) -> None:
     """Skip the blocking shop-mode picker for Mohammad's Owner copy."""
     if str(payload.get("site_id") or "").strip() != "owner":
@@ -4856,6 +4948,7 @@ def apply_site_preset(conn) -> None:
         return
     seed_initial_admin_from_preset(conn, payload)
     ensure_owner_shop_setup(conn, payload)
+    ensure_central_hub_shops(conn, payload)
     applied = conn.execute("SELECT value FROM settings WHERE key='site_preset_applied'").fetchone()
     if applied and str(applied["value"]) == "1":
         return
@@ -6472,6 +6565,8 @@ def me():
         packed["initial_password"] = INITIAL_PASSWORD
     if user and norm_phone(settings.get("owner_login_phone") or ""):
         packed["owner_skip_shop_setup"] = True
+    if user and user["role"] == "admin" and central_hub_active(settings):
+        packed["central_hub"] = True
     return jsonify(**packed)
 
 
@@ -6547,6 +6642,37 @@ def reset_password():
         write_password(conn, user["id"], new_password)
         clear_initial_secret(conn, user)
     return jsonify(ok=True)
+
+
+@app.get("/api/hub")
+def hub_snapshot():
+    require_admin()
+    with connect() as conn:
+        settings = get_settings(conn)
+        shops = shop_directory_list(conn)
+        users = conn.execute("SELECT * FROM users WHERE deleted_at IS NULL ORDER BY id").fetchall()
+        install_id = ensure_install_id(conn)
+    return jsonify(
+        shops=shops,
+        users=[public_user(row) for row in users],
+        site_id=settings.get("site_id") or "",
+        shop_name=settings.get("shop_name") or "",
+        install_id=install_id,
+        central_hub=central_hub_active(settings),
+        version=APP_VERSION,
+    )
+
+
+@app.put("/api/hub/shops")
+def hub_shops_save():
+    require_admin()
+    payload = body_json()
+    items = payload.get("shops")
+    if not isinstance(items, list):
+        raise AppError("فهرست فروشگاه نامعتبر است")
+    with connect() as conn:
+        shops = shop_directory_save(conn, items)
+    return jsonify(ok=True, shops=shops)
 
 
 @app.get("/api/users")

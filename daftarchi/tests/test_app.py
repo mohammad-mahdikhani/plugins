@@ -1625,6 +1625,40 @@ class DaftarchiTest(unittest.TestCase):
             else:
                 os.environ["DAFTARCHI_DATA"] = prev
 
+    def test_owner_hub_lists_ashrafi_pakan(self):
+        preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
+        prev_data = os.environ.get("DAFTARCHI_DATA")
+        prev_preset = os.environ.get("DAFTARCHI_PRESET")
+        folder = tempfile.mkdtemp(prefix="daftarchi-hub-")
+        os.environ["DAFTARCHI_DATA"] = folder
+        os.environ["DAFTARCHI_PRESET"] = str(preset)
+        try:
+            for path in Path(folder).glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            guest = appmod.app.test_client()
+            login = guest.post("/api/auth/login", json={"ident": "09373211344", "password": "3351252"})
+            self.assertEqual(login.status_code, 200, login.get_json())
+            hub = guest.get("/api/hub").get_json()
+            self.assertTrue(hub.get("central_hub"))
+            ids = {row["id"] for row in hub["shops"]}
+            self.assertIn("ashrafi", ids)
+            self.assertIn("pakan", ids)
+            updated = [{**row, "url": "http://192.168.1.5:8080" if row["id"] == "ashrafi" else row.get("url", "")} for row in hub["shops"]]
+            guest.put("/api/hub/shops", json={"shops": updated})
+            again = guest.get("/api/hub").get_json()
+            ashrafi = next(row for row in again["shops"] if row["id"] == "ashrafi")
+            self.assertEqual(ashrafi["url"], "http://192.168.1.5:8080")
+        finally:
+            if prev_data is None:
+                os.environ.pop("DAFTARCHI_DATA", None)
+            else:
+                os.environ["DAFTARCHI_DATA"] = prev_data
+            if prev_preset is None:
+                os.environ.pop("DAFTARCHI_PRESET", None)
+            else:
+                os.environ["DAFTARCHI_PRESET"] = prev_preset
+
     def test_owner_preset_skips_shop_mode_picker(self):
         preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
         prev_data = os.environ.get("DAFTARCHI_DATA")
@@ -4101,6 +4135,8 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("skip-mode-setup", script)
         self.assertIn("connect-server", script)
         self.assertIn("daftarchi_server_url", script)
+        self.assertIn("copy-hub-link", script)
+        self.assertIn("فروشگاه‌ها", script)
         self.assertNotIn("ریست برنامه را بزنید", script)
         self.assertIn("daftarchi-updated", script)
         css = Path(__file__).resolve().parents[1].joinpath("static/css/app.css").read_text(encoding="utf-8")

@@ -720,6 +720,10 @@ summary { cursor: pointer; font-weight: 600; }
 }
 .mode-pick strong { display: block; }
 .mode-pick span { color: #4d6080; font-size: 13px; }
+.hub-shop-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.hub-shop-card { padding: 14px; border-radius: 14px; background: var(--soft); border: 1px solid transparent; }
+.hub-shop-active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(25, 98, 230, 0.12); }
+.hub-link-line { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
 .woo-figure { background: #f4f7fb; color: #10284f; border-radius: 12px; padding: 10px; margin-top: 10px; }
 .woo-figure svg { width: 100%; height: auto; }
 .woo-figure text { font-family: Vazirmatn, Tahoma, sans-serif; font-size: 13px; fill: #10284f; }

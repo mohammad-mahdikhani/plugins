@@ -14,6 +14,7 @@
   "settings": {
     "shop_name": "دفترچی محمد",
     "shop_mode": "offline",
-    "tour_done": "1"
+    "tour_done": "1",
+    "central_hub": "1"
   }
 }
