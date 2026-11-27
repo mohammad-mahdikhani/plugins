@@ -120,6 +120,7 @@ class DaftarchiTest(unittest.TestCase):
         self.assertIn("آخرین سفارشات", page)
         self.assertIn("<th>کالا</th>", page)
         self.assertIn("sale.item_names", page)
+        self.assertIn("نام کالا", page)
         self.assertNotIn("موجودی این کالاها به زیر حد هشدار رسیده", page)
         self.assertNotIn("ناموجودها", page)
         self.assertNotIn("موجودی زیر ۲ عدد", page)

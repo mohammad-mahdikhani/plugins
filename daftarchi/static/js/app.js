@@ -1293,7 +1293,7 @@ function invoicesHtml() {
     <p class="hint">اگر کالا، تعداد، قیمت، تخفیف، خریدار یا روش پرداخت اشتباه ثبت شده، اصلاح را بزنید. اگر یک قلم اشتباه خریده شده، همان قلم را حذف کنید. اگر کل سفارش اشتباه است، داخل اصلاح «حذف فاکتور» را بزنید تا موجودی و حساب به قبل از فروش برگردد.</p>
     <div class="field"><label>بارکدخوان فاکتور</label><input id="invoice-barcode" data-barcode="invoice" class="ltr" autocomplete="off" placeholder="بارکد پایین رسید را بگیرید تا همان فاکتور باز شود"></div>
     <div class="grid-2">
-      <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، خریدار یا موبایل">
+      <input id="invoice-query" value="${esc(state.invoiceQuery)}" placeholder="شماره فاکتور، نام کالا، خریدار یا موبایل">
       <div class="field"><label>تاریخ شمسی</label><div class="jalali-date-wrap"><input class="jalali-date" id="invoice-date" value="${esc(state.invoiceDate)}" placeholder="همه روزها" autocomplete="off"><button type="button" class="btn" data-act="open-datepicker" data-target="invoice-date">تقویم</button></div></div>
     </div>
     <div id="invoice-table">${salesTable(rows, true)}</div></section></div>`;
