@@ -10502,6 +10502,8 @@ def main():
     quiet_stdio()
     hide_console()
     port = int(os.environ.get("PORT", "8080"))
+    # Default bind stays 0.0.0.0 so shop LAN (browser clients on Wi‑Fi) keeps working;
+    # optional weak hosting is a parallel deploy path, not a replacement.
     host = os.environ.get("DAFTARCHI_BIND", "0.0.0.0")
     print(f"Daftarchi: http://127.0.0.1:{port}")
     lan = lan_advertise_url(port)

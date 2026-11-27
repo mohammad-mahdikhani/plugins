@@ -4162,6 +4162,16 @@ class DaftarchiTest(unittest.TestCase):
         self.assertEqual(resp.headers.get("Access-Control-Allow-Origin"), "http://192.168.55.10:9090")
         self.assertEqual(resp.headers.get("Access-Control-Allow-Credentials"), "true")
 
+    def test_shop_lan_defaults_stay_intact(self):
+        main_src = Path(__file__).resolve().parents[1].joinpath("app.py").read_text(encoding="utf-8")
+        self.assertIn('os.environ.get("DAFTARCHI_BIND", "0.0.0.0")', main_src)
+        self.assertIn("Daftarchi LAN:", main_src)
+        self.assertTrue(appmod.lan_cors_enabled())
+        docs = Path(__file__).resolve().parents[1] / "docs"
+        webapp = (docs / "daftarchi-webapp.md").read_text(encoding="utf-8")
+        self.assertIn("LAN اصلی", webapp)
+        self.assertIn("نشکسته", webapp)
+
     def test_update_manifest_from_webakery_folder(self):
         original = appmod.http_request
 
