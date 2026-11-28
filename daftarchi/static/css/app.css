@@ -1,18 +1,18 @@
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.69") format("woff2");
+  src: url("../fonts/Vazirmatn-Regular.woff2?v=1.1.94") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.69") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.94") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: Vazirmatn;
-  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.69") format("woff2");
+  src: url("../fonts/Vazirmatn-SemiBold.woff2?v=1.1.94") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -318,6 +318,13 @@ tr.selected { background: var(--soft); }
 .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: var(--soft); color: var(--accent-ink); border: 0; }
 .pill.warn { background: #ffedd5; color: var(--warn); }
 .pill.danger { background: #ffe4e6; color: var(--danger); }
+.price-history { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.price-history-row { display: grid; gap: 2px; border-radius: 12px; padding: 10px 12px; }
+.price-history-row time { direction: ltr; unicode-bidi: isolate; text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+.price-history-row.increase { background: #dcfce7; color: #166534; }
+.price-history-row.decrease { background: #ffedd5; color: #c2410c; }
+html[data-theme="dark"] .price-history-row.increase { background: #14532d; color: #86efac; }
+html[data-theme="dark"] .price-history-row.decrease { background: #7c2d12; color: #fdba74; }
 .pill.update { background: var(--accent); color: #fff; border: 0; cursor: pointer; }
 button.pill { font: inherit; cursor: pointer; min-height: 0; box-shadow: none; }
 .banner {

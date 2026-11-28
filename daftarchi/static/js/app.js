@@ -128,6 +128,7 @@ const state = {
   productMetric: "total",
   focusBarcode: false,
   products: [],
+  priceHistory: [],
   archivedProducts: [],
   showArchivedProducts: false,
   siteTerms: {},
@@ -494,12 +495,14 @@ const loaders = {
     syncCartStock();
   },
   async products() {
-    const [active, archived] = await Promise.all([
+    const [active, archived, history] = await Promise.all([
       api("/api/products"),
       state.showArchivedProducts && isAdmin() ? api("/api/products?archived=1") : null,
+      isAdmin() ? api("/api/products/price-history") : null,
     ]);
     state.products = stampProducts(active.products);
     if (archived) state.archivedProducts = stampProducts(archived.products);
+    state.priceHistory = history?.changes || [];
     state.productLimit = PAGE_SIZE;
   },
   async inventory() {
@@ -1679,6 +1682,51 @@ function sortedProducts(products, sort) {
   return rows;
 }
 
+function firstTermName(product, kind) {
+  return String((product?.[kind] || [])[0]?.name || "");
+}
+function uniqueTerms(kind) {
+  const seen = new Map();
+  for (const product of state.products || []) {
+    for (const term of product[kind] || []) {
+      const name = String(term.name || "").trim();
+      if (!name) continue;
+      const key = `${term.id || ""}:${name}`;
+      if (!seen.has(key)) seen.set(key, { id: term.id || "", name });
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name, "fa"));
+}
+function termNameOptions(kind) {
+  return uniqueTerms(kind).map((row) => `<option value="${esc(row.name)}">`).join("");
+}
+function bulkTermOptions(kind) {
+  return uniqueTerms(kind).map((row) => `<option value="${esc(String(row.id || row.name))}" data-name="${esc(row.name)}">${esc(row.name)}</option>`).join("");
+}
+function bulkPriceHtml() {
+  const categories = bulkTermOptions("categories");
+  const rows = state.priceHistory || [];
+  const history = rows.length
+    ? rows.map((row) => `<li class="price-history-row ${row.direction === "decrease" ? "decrease" : "increase"}"><time datetime="${esc(row.at || "")}" dir="ltr">${esc(row.at_jalali || "")}</time><strong>${esc(row.title || "")}</strong><span>${esc(row.detail || "")}</span></li>`).join("")
+    : `<li class="muted">هنوز تغییر گروهی ثبت نشده.</li>`;
+  return `<section class="card"><h2 class="section-title">تغییر قیمت گروهی</h2>
+    <p class="hint">قیمت فروش کالاهای یک دسته یا یک برند را با درصد یا مبلغ ثابت، افزایش یا کاهش بدهید. اول روی کالا دسته و برند بگذارید.</p>
+    <form data-act="bulk-price">
+      <div class="grid-2">
+        <div class="field"><label>بر اساس</label><select name="scope"><option value="category">دسته‌بندی</option><option value="brand">برند</option></select></div>
+        <div class="field"><label>دسته یا برند</label><select name="term" required><option value="">انتخاب کنید</option>${categories}</select></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>نوع تغییر</label><select name="direction"><option value="increase">افزایش</option><option value="decrease">کاهش</option></select></div>
+        <div class="field"><label>روش</label><select name="mode"><option value="percent">درصد</option><option value="amount">مبلغ ثابت، تومان</option></select></div>
+      </div>
+      <div class="field"><label>مقدار</label><input name="value" inputmode="numeric" required autocomplete="off" placeholder="مثلاً ۱۰"></div>
+      <button class="btn primary" type="submit">اعمال روی قیمت فروش</button>
+    </form>
+    <h3 class="section-title">سابقه تغییر قیمت</h3>
+    <ul class="price-history">${history}</ul>
+  </section>`;
+}
 function productRowActions(product, archived) {
   if (!isAdmin()) return "";
   if (archived) return `${product.woo_id || ["online", "hybrid"].includes(state.shopMode) ? `<button type="button" class="btn" data-act="draft-archived-product" data-id="${product.id}">پیش‌نویس در سایت</button>` : ""}<button type="button" class="btn danger" data-act="delete-archived-product" data-id="${product.id}">حذف</button>`;
@@ -1726,7 +1774,7 @@ function productsHtml() {
     ${isAdmin() ? `<section class="card"><h2 class="section-title">افزودن با بارکد</h2>
       <div class="field"><label>بارکدخوان</label><input id="add-barcode" data-barcode="add" class="ltr" autocomplete="off" placeholder="بارکد را بگیرید"></div>
       <p class="hint">بارکد را بگیرید. بعد نام، قیمت خرید، قیمت فروش و تعداد را بنویسید. اگر ووکامرس وصل باشد، کالا در سایت هم ساخته می‌شود.</p>
-    </section>` : ""}
+    </section>${bulkPriceHtml()}` : ""}
     <section class="card"><div class="row-actions">
       ${isAdmin() ? `<button type="button" class="btn primary" data-act="new-product">کالای جدید</button>` : ""}
       <a class="btn" href="/api/products/template">نمونه اکسل</a>
@@ -2297,6 +2345,12 @@ function productForm() {
     </div>
     ${product.type === "variable" ? `<section class="stack"><h3 class="section-title">قیمت و موجودی هر نوع</h3><p class="hint">قیمت و تعداد هر نوع را جدا تغییر دهید و «ذخیره» را بزنید. قیمت پایه و موجودی کل خودکار محاسبه می‌شوند.</p>${(product.variations || []).map(item => `<fieldset class="variation-edit" data-product-variation="${item.id}"><legend>${esc(item.label)}</legend><div class="grid-2"><div class="field"><label for="variation-price-${item.id}">قیمت فروش، تومان</label><input id="variation-price-${item.id}" data-variation-field="price" inputmode="decimal" required autocomplete="off" value="${item.price}"></div><div class="field"><label for="variation-stock-${item.id}">تعداد</label><input id="variation-stock-${item.id}" data-variation-field="stock" inputmode="numeric" autocomplete="off" ${item.tracked ? "required" : ""} placeholder="${item.tracked ? "تعداد" : "بدون کنترل تعداد"}" value="${item.tracked ? item.stock : ""}"></div></div>${item.tracked ? "" : `<p class="hint">با واردکردن تعداد، مدیریت موجودی عددی این نوع فعال می‌شود؛ خالی بگذارید تا وضعیت فعلی حفظ شود.</p>`}</fieldset>`).join("") || `<p class="hint">نوعی دریافت نشده است؛ ابتدا کالا را از ووکامرس دریافت کنید.</p>`}</section>` : `<div class="field"><label for="product-stock">موجودی، عدد</label><input id="product-stock" name="stock" inputmode="numeric" autocomplete="off" value="${product.id ? product.stock : ""}"></div>`}
     <p class="hint">اگر سایت وصل باشد، نام، قیمت فروش و تعداد روی سایت هم می‌نشیند.</p>
+    <div class="grid-2">
+      <div class="field"><label>دسته‌بندی</label><input name="category_name" list="category-names" autocomplete="off" value="${esc(firstTermName(product, "categories"))}" placeholder="مثلاً عطر"></div>
+      <div class="field"><label>برند</label><input name="brand_name" list="brand-names" autocomplete="off" value="${esc(firstTermName(product, "brands"))}" placeholder="مثلاً اشرافی"></div>
+    </div>
+    <datalist id="category-names">${termNameOptions("categories")}</datalist>
+    <datalist id="brand-names">${termNameOptions("brands")}</datalist>
     <div class="field"><label for="price-per-gram">قیمت هر گرم عطر، تومان (اختیاری)</label><input id="price-per-gram" name="price_per_gram" inputmode="numeric" autocomplete="off" value="${product.price_per_gram || ""}" placeholder="فقط برای فروش گرمی عطر"><p class="hint">با واردکردن این نرخ، انتخاب عطر محاسبهٔ وزن و مبلغ را باز می‌کند. نرخ گرمی فقط در دفترچی است و قیمت یا موجودی سایت را تغییر نمی‌دهد. برای غیرفعال‌کردن، این فیلد را خالی کنید.</p></div>
     ${state.shopMode !== "offline" ? `<section class="stack">${termField("categories")}${termField("brands")}</section>` : ""}
     <div class="field"><label>شناسه کالا/خدمت مودیان</label><input class="ltr" name="tax_code" inputmode="numeric" autocomplete="off" placeholder="۱۳ رقم، اختیاری" value="${esc(product.tax_code || "")}"></div>
@@ -2756,6 +2810,27 @@ async function onSubmit(event) {
       state.checkDetails = state.creditKind === "check" ? { number: data.check_number, due_on: data.check_due } : null;
       await submitSale("credit", "");
     } else if (act === "save-product") await saveProduct(form, data);
+    else if (act === "bulk-price") {
+      const select = form.querySelector("[name=term]");
+      const option = select?.selectedOptions?.[0];
+      const rawId = Number(select?.value);
+      const body = {
+        scope: data.scope,
+        term_id: Number.isFinite(rawId) && rawId > 0 ? rawId : "",
+        term_name: option?.dataset.name || "",
+        direction: data.direction,
+        mode: data.mode,
+        value: data.value,
+      };
+      const group = data.scope === "brand" ? "برند" : "دسته";
+      const action = data.direction === "decrease" ? "کاهش" : "افزایش";
+      const how = data.mode === "percent" ? `${data.value} درصد` : `${data.value} تومان`;
+      if (!window.confirm(`قیمت فروش کالاهای این ${group} ${action} شود (${how})؟`)) return;
+      const result = await api("/api/products/bulk-price", { method: "POST", body });
+      await loaders.products();
+      toast(result.woo_sync_note ? `${result.message} ${result.woo_sync_note}` : (result.message || "قیمت‌ها عوض شد"));
+      render();
+    }
     else if (act === "save-settings") await saveSettings(form);
     else if (act === "save-check") {
       if (!allowCredit()) return toast("در این نسخه چک نیست");
@@ -3821,6 +3896,10 @@ function onChange(event) {
   if (event.target.dataset.siteTerms && state.modal?.type === "product") {
     state.modal.termDraft ||= {};
     state.modal.termDraft[event.target.dataset.siteTerms] = [...event.target.selectedOptions].map(option => ({ id: Number(option.value), name: option.textContent }));
+  }
+  if (event.target.name === "scope" && event.target.closest("form[data-act=bulk-price]")) {
+    const select = event.target.form.querySelector("[name=term]");
+    if (select) select.innerHTML = `<option value="">انتخاب کنید</option>${bulkTermOptions(event.target.value === "brand" ? "brands" : "categories")}`;
   }
   if (event.target.id === "product-sort") {
     state.productSort = event.target.value;

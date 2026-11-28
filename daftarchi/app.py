@@ -3800,6 +3800,92 @@ def product_terms(row, key: str) -> list[dict]:
     return [item for item in value if isinstance(item, dict) and isinstance(item.get("id"), int) and item["id"] > 0] if isinstance(value, list) else []
 
 
+def local_term(name: str, label: str) -> dict | None:
+    text = clean_text(name, label, 120)
+    if not text:
+        return None
+    digest = hashlib.md5(text.encode("utf-8")).hexdigest()
+    return {"id": (int(digest[:8], 16) % 900_000_000) + 1, "name": text}
+
+
+def apply_named_product_terms(conn, product_id: int, payload: dict) -> None:
+    mapping = (("category_name", "categories", "دسته‌بندی"), ("brand_name", "brands", "برند"))
+    for field, key, label in mapping:
+        if field not in payload or key in payload:
+            continue
+        term = local_term(payload.get(field), label)
+        conn.execute(
+            f"UPDATE products SET {key}=? WHERE id=?",
+            (json.dumps([term], ensure_ascii=False) if term else "[]", product_id),
+        )
+
+
+def product_has_term(row, key: str, term_id: int, term_name: str) -> bool:
+    wanted = (term_name or "").strip()
+    for item in product_terms(row, key):
+        if term_id and int(item["id"]) == term_id:
+            return True
+        if wanted and str(item.get("name") or "").strip() == wanted:
+            return True
+    return False
+
+
+def shift_sale_price(old: int, direction: str, mode: str, value: int) -> int:
+    old = int(old or 0)
+    if mode == "percent":
+        delta = int((Decimal(old) * Decimal(value) / Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+        new = old + delta if direction == "increase" else old - delta
+    else:
+        new = old + value if direction == "increase" else old - value
+    return max(0, min(new, 10**13))
+
+
+def resolve_bulk_term_name(rows, key: str, term_id: int, term_name: str) -> str:
+    wanted = (term_name or "").strip()
+    if wanted:
+        return wanted
+    for row in rows:
+        for item in product_terms(row, key):
+            if term_id and int(item["id"]) == term_id:
+                name = str(item.get("name") or "").strip()
+                if name:
+                    return name
+    return ""
+
+
+def present_price_change(row) -> dict:
+    scope = str(row["scope"] or "")
+    label = "دسته‌بندی" if scope == "category" else "برند"
+    direction = str(row["direction"] or "")
+    mode = str(row["mode"] or "")
+    value = int(row["value"] or 0)
+    how = f"{value} درصد" if mode == "percent" else f"{value:,} تومان"
+    action = "افزایش" if direction == "increase" else "کاهش"
+    name = str(row["term_name"] or "").strip()
+    return {
+        "id": row["id"],
+        "scope": scope,
+        "scope_label": label,
+        "term_name": name,
+        "direction": direction,
+        "mode": mode,
+        "value": value,
+        "count": int(row["product_count"] or 0),
+        "at": row["created_at"],
+        "at_jalali": to_jalali(row["created_at"]),
+        "title": f"{label} {name}".strip(),
+        "detail": f"{how} {action}",
+    }
+
+
+def record_price_change(conn, *, scope: str, term_name: str, direction: str, mode: str, value: int, count: int, user_id: int | None) -> None:
+    conn.execute(
+        """INSERT INTO price_changes (scope, term_name, direction, mode, value, product_count, created_at, user_id)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (scope, term_name, direction, mode, value, count, iso(), user_id),
+    )
+
+
 def english_product_slug(row) -> str:
     text = re.sub(r"[^a-z0-9]+", "-", str(row["name"] or "").lower()).strip("-")
     return (text[:65].rstrip("-") if text else "product") + "-" + str(row["id"])
@@ -4416,6 +4502,17 @@ def init_db():
               old_value INTEGER,
               new_value INTEGER,
               note TEXT,
+              created_at TEXT NOT NULL,
+              user_id INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS price_changes (
+              id INTEGER PRIMARY KEY,
+              scope TEXT NOT NULL,
+              term_name TEXT NOT NULL,
+              direction TEXT NOT NULL,
+              mode TEXT NOT NULL,
+              value INTEGER NOT NULL,
+              product_count INTEGER NOT NULL DEFAULT 0,
               created_at TEXT NOT NULL,
               user_id INTEGER
             );
@@ -6835,6 +6932,100 @@ def list_products():
     return jsonify(products=products)
 
 
+@app.post("/api/products/bulk-price")
+def bulk_update_product_prices():
+    user = require_admin()
+    payload = body_json()
+    scope = str(payload.get("scope") or "").strip()
+    if scope not in {"category", "brand"}:
+        raise AppError("دسته یا برند را انتخاب کنید")
+    key = "categories" if scope == "category" else "brands"
+    label = "دسته‌بندی" if scope == "category" else "برند"
+    term_name = clean_text(payload.get("term_name"), f"نام {label}", 120)
+    term_id = 0
+    if payload.get("term_id") not in (None, ""):
+        term_id = parse_money(payload.get("term_id"), f"شناسه {label}", allow_empty=True)
+    if not term_id and not term_name:
+        raise AppError(f"{label} را انتخاب کنید")
+    direction = str(payload.get("direction") or "").strip()
+    if direction not in {"increase", "decrease"}:
+        raise AppError("افزایش یا کاهش را انتخاب کنید")
+    mode = str(payload.get("mode") or "").strip()
+    if mode not in {"percent", "amount"}:
+        raise AppError("درصد یا مبلغ ثابت را انتخاب کنید")
+    value = parse_money(payload.get("value"), "مقدار تغییر")
+    if value <= 0:
+        raise AppError("مقدار تغییر باید بیشتر از صفر باشد")
+    if mode == "percent" and value > 1000:
+        raise AppError("درصد تغییر خیلی بزرگ است")
+    changed = []
+    notes = []
+    with connect() as conn:
+        rows = conn.execute("SELECT * FROM products WHERE active=1 ORDER BY id").fetchall()
+        display_name = resolve_bulk_term_name(rows, key, term_id, term_name)
+        for row in rows:
+            if is_payment_product(row) or not product_has_term(row, key, term_id, term_name):
+                continue
+            pid = int(row["id"])
+            if product_kind(row) == "variable":
+                variations = conn.execute(
+                    "SELECT * FROM product_variations WHERE product_id=? AND active=1",
+                    (pid,),
+                ).fetchall()
+                touched = False
+                for item in variations:
+                    new_price = shift_sale_price(item["price"], direction, mode, value)
+                    if new_price == int(item["price"]):
+                        continue
+                    conn.execute("UPDATE product_variations SET price=? WHERE id=?", (new_price, item["id"]))
+                    log_stock(conn, pid, "price", 0, int(item["price"]), new_price, f"تغییر قیمت گروهی · {item['label']}", user["id"])
+                    touched = True
+                if touched:
+                    variable_parent_stock(conn, pid)
+                    changed.append(pid)
+                    notes.append(publish_saved_product(conn, pid))
+                continue
+            new_price = shift_sale_price(row["price"], direction, mode, value)
+            gram = int(row["price_per_gram"] or 0) if "price_per_gram" in row.keys() else 0
+            new_gram = shift_sale_price(gram, direction, mode, value) if gram else 0
+            if new_price == int(row["price"]) and new_gram == gram:
+                continue
+            conn.execute(
+                "UPDATE products SET price=?, price_per_gram=?, updated_at=? WHERE id=?",
+                (new_price, new_gram or None, iso(), pid),
+            )
+            if new_price != int(row["price"]):
+                log_stock(conn, pid, "price", 0, int(row["price"]), new_price, "تغییر قیمت گروهی", user["id"])
+            changed.append(pid)
+            notes.append(publish_saved_product(conn, pid))
+        if not changed:
+            raise AppError(f"کالایی با این {label} نیست")
+        record_price_change(
+            conn,
+            scope=scope,
+            term_name=display_name or term_name or label,
+            direction=direction,
+            mode=mode,
+            value=value,
+            count=len(changed),
+            user_id=user["id"],
+        )
+    how = f"{value} درصد" if mode == "percent" else f"{value:,} تومان"
+    action = "افزایش" if direction == "increase" else "کاهش"
+    message = f"قیمت فروش {len(changed)} کالا {how} {action} یافت."
+    woo_note = next((item for item in notes if item and "سایت" in item), "")
+    return jsonify(ok=True, count=len(changed), ids=changed, message=message, woo_sync_note=woo_note)
+
+
+@app.get("/api/products/price-history")
+def list_price_history():
+    require_admin()
+    with connect() as conn:
+        rows = conn.execute("SELECT * FROM price_changes ORDER BY id DESC LIMIT 100").fetchall()
+        changes = [present_price_change(row) for row in rows]
+    return jsonify(changes=changes)
+
+
 @app.get("/api/scan")
 def scan_document():
     require_user()
@@ -6943,6 +7134,7 @@ def create_product():
         threshold = setting_int(get_settings(conn), "low_stock")
         save_perfume_rate(conn, product_id, payload)
         taxonomy_fields = save_product_terms(conn, product_id, payload)
+        apply_named_product_terms(conn, product_id, payload)
         note = publish_saved_product(conn, product_id, taxonomy_fields=taxonomy_fields)
         row = conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
         product = present_product(conn, row, threshold)
@@ -6993,6 +7185,7 @@ def update_product(pid: int):
         threshold = setting_int(get_settings(conn), "low_stock")
         save_perfume_rate(conn, pid, payload)
         taxonomy_fields = save_product_terms(conn, pid, payload)
+        apply_named_product_terms(conn, pid, payload)
         note = publish_saved_product(conn, pid, changed_variations, taxonomy_fields=taxonomy_fields)
         updated = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
         product = present_product(conn, updated, threshold)
