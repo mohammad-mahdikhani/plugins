@@ -3502,6 +3502,46 @@ def is_vip_shop(*names, site_id: str = "") -> bool:
     return any(token in blob for token in VIP_SHOPS)
 
 
+def owner_install_marked(settings: dict) -> bool:
+    if str(settings.get("site_id") or "").strip() == "owner":
+        return True
+    if norm_phone(settings.get("owner_login_phone") or ""):
+        return True
+    return str(settings.get("owner_entitlements") or "").strip() == "1"
+
+
+def ensure_owner_unlimited_license(conn, payload: dict) -> None:
+    unlimited = payload.get("unlimited") is True or str(payload.get("unlimited") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if not unlimited and not owner_install_marked(get_settings(conn)):
+        return
+    now = now_dt()
+    paid = conn.execute(
+        """SELECT 1 FROM licenses
+           WHERE status='paid' AND plan!='7d' AND ends_at>? LIMIT 1""",
+        (iso(now),),
+    ).fetchone()
+    if paid:
+        return
+    stale = conn.execute(
+        "SELECT id FROM licenses WHERE status='paid' AND plan='50y' ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    buyer = str(payload.get("buyer_name") or payload.get("label") or "محمد مهدیخانی").strip() or "Owner"
+    start = now.replace(microsecond=0)
+    end = add_months(start, PLANS["50y"][1])
+    if stale:
+        conn.execute(
+            "UPDATE licenses SET ends_at=?, starts_at=?, status='paid', buyer_name=? WHERE id=?",
+            (iso(end), iso(start), clean_text(buyer, "خریدار", 80) or buyer, stale["id"]),
+        )
+        return
+    seed_paid_license(conn, buyer, "50y")
+
+
 def seed_paid_license(conn, buyer_name: str, plan: str = "50y") -> None:
     if plan not in PLANS:
         return
@@ -3535,6 +3575,12 @@ def seed_studio_license(conn) -> None:
 def ensure_access(conn) -> dict:
     now = now_dt()
     settings = get_settings(conn)
+    if owner_install_marked(settings):
+        ensure_owner_unlimited_license(
+            conn,
+            load_preset_payload()
+            or {"unlimited": True, "buyer_name": settings.get("shop_name") or "Owner"},
+        )
     if studio_unlock_active(settings):
         end = add_months(now.replace(microsecond=0), PLANS["50y"][1])
         ends_at = iso(end)
@@ -4912,46 +4958,65 @@ def central_hub_active(settings: dict) -> bool:
     return str(settings.get("central_hub") or "").strip() == "1"
 
 
-def ensure_owner_shop_setup(conn, payload: dict) -> None:
-    """Skip the blocking shop-mode picker for Mohammad's Owner copy."""
+def load_preset_payload() -> dict | None:
+    path = preset_path()
+    if not path:
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        log.warning("preset unreadable: %s", path)
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def reconcile_owner_install(conn, payload: dict) -> None:
+    """Re-apply Owner entitlements on every startup (survives customer overlay / expired trial DB)."""
     if str(payload.get("site_id") or "").strip() != "owner":
         return
-    mode_row = conn.execute("SELECT value FROM settings WHERE key='shop_mode'").fetchone()
-    mode = str(mode_row["value"] if mode_row else "").strip()
-    if mode:
-        return
+    seed_initial_admin_from_preset(conn, payload)
+    ensure_central_hub_shops(conn, payload)
     block = payload.get("settings") if isinstance(payload.get("settings"), dict) else {}
     pick = clean_text(block.get("shop_mode") or "offline", "mode", 20) or "offline"
     if pick not in ("offline", "hybrid", "online"):
         pick = "offline"
     tour = str(block.get("tour_done") or "1").strip() or "1"
+    if tour not in ("0", "1"):
+        tour = "1"
     conn.execute(
         "INSERT INTO settings (key, value) VALUES ('shop_mode', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (pick,),
     )
     conn.execute(
         "INSERT INTO settings (key, value) VALUES ('tour_done', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-        (tour if tour in ("0", "1") else "1",),
+        (tour,),
     )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('site_id', 'owner') ON CONFLICT(key) DO UPDATE SET value='owner'",
+    )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('owner_entitlements', '1') "
+        "ON CONFLICT(key) DO UPDATE SET value='1'",
+    )
+    for key in ("shop_name", "central_hub"):
+        if key in block:
+            val = str(block[key])
+            conn.execute(
+                f"INSERT INTO settings (key, value) VALUES ('{key}', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (val,),
+            )
+    ensure_owner_unlimited_license(conn, payload)
 
 
 def apply_site_preset(conn) -> None:
-    path = preset_path()
-    if not path:
+    payload = load_preset_payload()
+    if not payload:
         return
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        log.warning("preset unreadable: %s", path)
-        return
-    if not isinstance(payload, dict):
-        return
-    seed_initial_admin_from_preset(conn, payload)
-    ensure_owner_shop_setup(conn, payload)
-    ensure_central_hub_shops(conn, payload)
+    reconcile_owner_install(conn, payload)
     applied = conn.execute("SELECT value FROM settings WHERE key='site_preset_applied'").fetchone()
     if applied and str(applied["value"]) == "1":
         return
+    seed_initial_admin_from_preset(conn, payload)
     block = payload.get("settings")
     if isinstance(block, dict) and block:
         save_settings(conn, block)
@@ -6213,8 +6278,10 @@ def bootstrap():
         "theme": clean_theme(settings.get("ui_theme")),
     }
     owner_phone = norm_phone(settings.get("owner_login_phone") or "")
-    if owner_phone:
-        extra["owner_login_phone"] = owner_phone
+    if owner_install_marked(settings):
+        owner_phone = norm_phone(settings.get("owner_login_phone") or "")
+        if owner_phone:
+            extra["owner_login_phone"] = owner_phone
         extra["owner_skip_shop_setup"] = True
     return jsonify(initial=False, **extra)
 
@@ -6563,7 +6630,7 @@ def me():
     }
     if user and flag and check_pw(INITIAL_PASSWORD, user["password_hash"]):
         packed["initial_password"] = INITIAL_PASSWORD
-    if user and norm_phone(settings.get("owner_login_phone") or ""):
+    if user and owner_install_marked(settings):
         packed["owner_skip_shop_setup"] = True
     if user and user["role"] == "admin" and central_hub_active(settings):
         packed["central_hub"] = True

@@ -1659,6 +1659,46 @@ class DaftarchiTest(unittest.TestCase):
             else:
                 os.environ["DAFTARCHI_PRESET"] = prev_preset
 
+    def test_owner_reconcile_fixes_customer_overlay_db(self):
+        preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
+        prev_data = os.environ.get("DAFTARCHI_DATA")
+        prev_preset = os.environ.get("DAFTARCHI_PRESET")
+        folder = tempfile.mkdtemp(prefix="daftarchi-owner-overlay-")
+        os.environ["DAFTARCHI_DATA"] = folder
+        os.environ["DAFTARCHI_PRESET"] = str(preset)
+        try:
+            for path in Path(folder).glob("daftarchi.db*"):
+                path.unlink()
+            appmod.init_db()
+            past = (appmod.now_dt() - appmod.timedelta(days=30)).isoformat(timespec="seconds")
+            with appmod.connect() as conn:
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_preset_applied', '1')")
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_id', 'customer')")
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_mode', '')")
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tour_done', '0')")
+                conn.execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES ('trial_ends_at', ?)",
+                    (past,),
+                )
+            appmod.init_db()
+            guest = appmod.app.test_client()
+            login = guest.post("/api/auth/login", json={"ident": "09373211344", "password": "3351252"})
+            self.assertEqual(login.status_code, 200, login.get_json())
+            me = guest.get("/api/auth/me").get_json()
+            self.assertEqual(me["setup"]["mode"], "offline")
+            self.assertEqual(me["setup"]["tour"], "1")
+            self.assertTrue(me["access"]["active"])
+            self.assertEqual(me["access"]["mode"], "paid")
+        finally:
+            if prev_data is None:
+                os.environ.pop("DAFTARCHI_DATA", None)
+            else:
+                os.environ["DAFTARCHI_DATA"] = prev_data
+            if prev_preset is None:
+                os.environ.pop("DAFTARCHI_PRESET", None)
+            else:
+                os.environ["DAFTARCHI_PRESET"] = prev_preset
+
     def test_owner_preset_skips_shop_mode_picker(self):
         preset = Path(__file__).resolve().parents[1] / "deploy" / "owner" / "preset.json"
         prev_data = os.environ.get("DAFTARCHI_DATA")
