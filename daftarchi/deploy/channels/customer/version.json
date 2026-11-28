@@ -1,0 +1,11 @@
+{
+  "version": "1.1.94",
+  "channel": "customer",
+  "notes": "قیمت فروش یک دسته یا برند را با درصد یا مبلغ ثابت تغییر بدهید. سابقه نام دسته یا برند و تاریخ و ساعت را با رنگ سبز و نارنجی نشان می‌دهد. ۷ روز رایگان؛ بعد ادامه روزانه ۱۵۰ هزار تومان.",
+  "url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-setup.exe",
+  "app_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/channels/customer/customer-1.1.94-app.zip",
+  "full_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-setup.exe",
+  "mac_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-setup.dmg",
+  "linux_url": "https://github.com/mohammad-mahdikhani/plugins/raw/cursor/instant-woo-pos-receipt-3e51/daftarchi/deploy/Daftarchi-Customer-Linux.zip",
+  "published_at": "2026-11-28T10:00:00+00:00"
+}

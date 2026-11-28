@@ -1,0 +1,17 @@
+{
+  "customer_no": "ashrafi",
+  "site_id": "ashrafi",
+  "channel": "customer",
+  "label": "اشرافی",
+  "buyer_name": "سید بهنام حسینی",
+  "unlimited": true,
+  "settings": {
+    "shop_name": "اشرافی",
+    "shop_mode": "offline",
+    "allow_credit": "0",
+    "pos_provider": "pardakhtnovin",
+    "pos_host": "192.168.1.2",
+    "pos_port": "1362",
+    "pos_terminal": "1186042"
+  }
+}

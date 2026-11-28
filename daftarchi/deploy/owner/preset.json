@@ -1,0 +1,20 @@
+{
+  "customer_no": "owner",
+  "site_id": "owner",
+  "channel": "customer",
+  "label": "نسخه شخصی محمد",
+  "buyer_name": "محمد مهدیخانی",
+  "unlimited": true,
+  "initial_admin": {
+    "name": "مدیر",
+    "phone": "09373211344",
+    "password": "3351252",
+    "role": "admin"
+  },
+  "settings": {
+    "shop_name": "دفترچی محمد",
+    "shop_mode": "offline",
+    "tour_done": "1",
+    "central_hub": "1"
+  }
+}

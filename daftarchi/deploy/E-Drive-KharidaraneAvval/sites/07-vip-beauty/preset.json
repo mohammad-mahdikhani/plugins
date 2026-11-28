@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-07",
+  "label": "آرایشی VIP",
+  "note": "کسب‌وکار VIP شماره ۷",
+  "settings": {
+    "shop_name": "آرایشی VIP",
+    "wp_url": "https://example-shop-07.ir",
+    "gateway_callback": "https://example-shop-07.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

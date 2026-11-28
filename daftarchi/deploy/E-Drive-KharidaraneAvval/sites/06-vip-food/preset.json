@@ -1,0 +1,14 @@
+{
+  "site_id": "vip-06",
+  "label": "موادغذایی VIP",
+  "note": "کسب‌وکار VIP شماره ۶",
+  "settings": {
+    "shop_name": "موادغذایی VIP",
+    "wp_url": "https://example-shop-06.ir",
+    "gateway_callback": "https://example-shop-06.ir",
+    "woo_key": "",
+    "woo_secret": "",
+    "woo_auto_sync": "1",
+    "manager_phone": ""
+  }
+}

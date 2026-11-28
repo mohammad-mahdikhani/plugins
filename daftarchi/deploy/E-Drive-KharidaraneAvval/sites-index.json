@@ -1,0 +1,142 @@
+[
+  {
+    "folder": "01-webakery",
+    "site_id": "vip-01",
+    "shop_name": "وب‌بیکری",
+    "wp_url": "https://webakery.ir",
+    "host_version": "1.1.7.01"
+  },
+  {
+    "folder": "02-vip-aqua",
+    "site_id": "vip-02",
+    "shop_name": "آب‌فروشی VIP",
+    "wp_url": "https://example-shop-02.ir",
+    "host_version": "1.1.7.02"
+  },
+  {
+    "folder": "03-vip-home",
+    "site_id": "vip-03",
+    "shop_name": "خانه‌وآشپز VIP",
+    "wp_url": "https://example-shop-03.ir",
+    "host_version": "1.1.7.03"
+  },
+  {
+    "folder": "04-vip-fashion",
+    "site_id": "vip-04",
+    "shop_name": "پوشاک VIP",
+    "wp_url": "https://example-shop-04.ir",
+    "host_version": "1.1.7.04"
+  },
+  {
+    "folder": "05-vip-digital",
+    "site_id": "vip-05",
+    "shop_name": "دیجیتال VIP",
+    "wp_url": "https://example-shop-05.ir",
+    "host_version": "1.1.7.05"
+  },
+  {
+    "folder": "06-vip-food",
+    "site_id": "vip-06",
+    "shop_name": "موادغذایی VIP",
+    "wp_url": "https://example-shop-06.ir",
+    "host_version": "1.1.7.06"
+  },
+  {
+    "folder": "07-vip-beauty",
+    "site_id": "vip-07",
+    "shop_name": "آرایشی VIP",
+    "wp_url": "https://example-shop-07.ir",
+    "host_version": "1.1.7.07"
+  },
+  {
+    "folder": "08-vip-sport",
+    "site_id": "vip-08",
+    "shop_name": "ورزشی VIP",
+    "wp_url": "https://example-shop-08.ir",
+    "host_version": "1.1.7.08"
+  },
+  {
+    "folder": "09-vip-kids",
+    "site_id": "vip-09",
+    "shop_name": "کودک VIP",
+    "wp_url": "https://example-shop-09.ir",
+    "host_version": "1.1.7.09"
+  },
+  {
+    "folder": "10-vip-tools",
+    "site_id": "vip-10",
+    "shop_name": "ابزار VIP",
+    "wp_url": "https://example-shop-10.ir",
+    "host_version": "1.1.7.10"
+  },
+  {
+    "folder": "11-vip-auto",
+    "site_id": "vip-11",
+    "shop_name": "لوازم خودرو VIP",
+    "wp_url": "https://example-shop-11.ir",
+    "host_version": "1.1.7.11"
+  },
+  {
+    "folder": "12-vip-pet",
+    "site_id": "vip-12",
+    "shop_name": "حیوانات VIP",
+    "wp_url": "https://example-shop-12.ir",
+    "host_version": "1.1.7.12"
+  },
+  {
+    "folder": "13-vip-book",
+    "site_id": "vip-13",
+    "shop_name": "لوازم‌التحریر VIP",
+    "wp_url": "https://example-shop-13.ir",
+    "host_version": "1.1.7.13"
+  },
+  {
+    "folder": "14-vip-gift",
+    "site_id": "vip-14",
+    "shop_name": "کادویی VIP",
+    "wp_url": "https://example-shop-14.ir",
+    "host_version": "1.1.7.14"
+  },
+  {
+    "folder": "15-vip-organic",
+    "site_id": "vip-15",
+    "shop_name": "ارگانیک VIP",
+    "wp_url": "https://example-shop-15.ir",
+    "host_version": "1.1.7.15"
+  },
+  {
+    "folder": "16-vip-cafe",
+    "site_id": "vip-16",
+    "shop_name": "کافه VIP",
+    "wp_url": "https://example-shop-16.ir",
+    "host_version": "1.1.7.16"
+  },
+  {
+    "folder": "17-vip-pharm",
+    "site_id": "vip-17",
+    "shop_name": "سلامت VIP",
+    "wp_url": "https://example-shop-17.ir",
+    "host_version": "1.1.7.17"
+  },
+  {
+    "folder": "18-vip-decor",
+    "site_id": "vip-18",
+    "shop_name": "دکور VIP",
+    "wp_url": "https://example-shop-18.ir",
+    "host_version": "1.1.7.18"
+  },
+  {
+    "folder": "19-vip-mobile",
+    "site_id": "vip-19",
+    "shop_name": "موبایل VIP",
+    "wp_url": "https://example-shop-19.ir",
+    "host_version": "1.1.7.19"
+  },
+  {
+    "folder": "20-vip-20",
+    "site_id": "vip-20",
+    "shop_name": "فروشگاه VIP ۲۰",
+    "wp_url": "https://example-shop-20.ir",
+    "host_version": "1.1.7.20"
+  }
+]
